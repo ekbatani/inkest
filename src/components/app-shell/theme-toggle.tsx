@@ -15,20 +15,22 @@ export function ThemeToggle() {
   const { setTheme, theme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
+  // Canonical next-themes pattern to avoid hydration mismatch on the icon.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => setMounted(true), []);
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Toggle theme">
-          {!mounted ? (
-            <Monitor className="size-4" />
-          ) : theme === "dark" ? (
-            <Moon className="size-4" />
-          ) : (
-            <Sun className="size-4" />
-          )}
-        </Button>
+      <DropdownMenuTrigger
+        render={<Button variant="ghost" size="icon" aria-label="Toggle theme" />}
+      >
+        {!mounted ? (
+          <Monitor className="size-4" />
+        ) : theme === "dark" ? (
+          <Moon className="size-4" />
+        ) : (
+          <Sun className="size-4" />
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => setTheme("light")}>

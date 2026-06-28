@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Lora } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SessionProvider } from "@/components/providers/session-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -44,7 +45,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+          <SessionProvider>
+            <TooltipProvider delay={300}>{children}</TooltipProvider>
+          </SessionProvider>
           <Toaster richColors closeButton position="bottom-right" />
         </ThemeProvider>
       </body>

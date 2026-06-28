@@ -33,15 +33,17 @@ export function Topbar() {
     <>
       <header className="flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:px-4">
         <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              aria-label="Open navigation"
-            >
-              <Menu className="size-4" />
-            </Button>
+          <SheetTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                aria-label="Open navigation"
+              />
+            }
+          >
+            <Menu className="size-4" />
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
             <SheetTitle className="sr-only">Navigation</SheetTitle>
