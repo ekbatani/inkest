@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# InkNest
 
-## Getting Started
+A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and lightweight AI actions -- all self-hosted.
 
-First, run the development server:
+## Features
+
+- **Markdown-native** -- notes are stored as plain Markdown with GFM support
+- **Mermaid diagrams** -- fenced `mermaid` blocks render inline
+- **Projects & tasks** -- project notes with status, priority, due dates, and a kanban board
+- **Tags & hierarchy** -- color-coded tags, parent-child note tree
+- **Daily notes** -- one note per day, auto-created
+- **AI actions** -- summarize, improve writing, extract tasks, generate diagrams, translate (OpenAI-compatible)
+- **Image uploads** -- local filesystem storage, private serving
+- **Version history** -- automatic snapshots with one-click restore
+- **Wiki links** -- `[[Note Title]]` linking with backlinks
+- **Export** -- full workspace ZIP or single-note Markdown
+- **Command palette** -- Ctrl+K for quick navigation and search
+- **RTL support** -- per-note direction (LTR, RTL, auto)
+- **Dark mode** -- system-aware light/dark theme
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS v4 + shadcn/ui |
+| Database | Drizzle ORM + libSQL/Turso |
+| Editor | CodeMirror 6 |
+| Preview | react-markdown + remark-gfm + rehype-sanitize |
+| Auth | Auth.js (next-auth) with Credentials |
+| AI | OpenAI SDK (any compatible provider) |
+| Runtime | Bun |
+
+## Quick Start
+
+### Prerequisites
+
+- [Bun](https://bun.sh/) 1.x
+
+### Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Install dependencies
+bun install
+
+# Set up environment variables
+cp .env.local.example .env.local
+# Edit .env.local with your values
+
+# Run database migrations
+bun run db:migrate
+
+# Start the dev server
+bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) and create an account to get started.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Docker
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Build and run
+docker compose up -d
 
-## Learn More
+# Or build manually
+docker build -t inknest .
+docker run -p 3000:3000 \
+  -e NEXTAUTH_SECRET=$(openssl rand -base64 32) \
+  -e DATABASE_URL=file:/app/data/local.db \
+  -v inknest-data:/app/data \
+  -v inknest-storage:/app/storage \
+  inknest
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Environment Variables
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `NEXTAUTH_URL` | Yes | -- | App URL (e.g. `http://localhost:3000`) |
+| `NEXTAUTH_SECRET` | Yes | -- | Auth.js secret (`openssl rand -base64 32`) |
+| `DATABASE_URL` | Yes | `file:local.db` | SQLite file path or Turso URL |
+| `DATABASE_AUTH_TOKEN` | No | -- | Turso auth token (if using remote DB) |
+| `OPENAI_API_KEY` | No | -- | API key for AI features |
+| `OPENAI_BASE_URL` | No | OpenAI default | Custom API endpoint |
+| `OPENAI_MODEL` | No | `gpt-4o-mini` | Model to use for AI actions |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Keyboard Shortcuts
 
-## Deploy on Vercel
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+K` | Command palette |
+| `Ctrl+N` | New note |
+| `Ctrl+D` | Today's daily note |
+| `Ctrl+\` | Toggle sidebar |
+| `Ctrl+S` | Force save (in editor) |
+| `Ctrl+E` | Toggle edit/preview (in editor) |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Private project.

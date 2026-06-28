@@ -1,0 +1,21 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=file:/app/data/local.db
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-changeme-generate-with-openssl-rand-base64-32}
+      # Optional: uncomment and set your API key for AI features
+      # - OPENAI_API_KEY=
+      # - OPENAI_BASE_URL=
+      # - OPENAI_MODEL=
+    volumes:
+      - inknest-data:/app/data
+      - inknest-storage:/app/storage
+    restart: unless-stopped
+
+volumes:
+  inknest-data:
+  inknest-storage:

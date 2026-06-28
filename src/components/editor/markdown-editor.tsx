@@ -35,6 +35,7 @@ export function MarkdownEditor({
           ".cm-scroller": {
             fontFamily: "var(--font-mono)",
             lineHeight: "1.7",
+            overflow: "auto",
           },
           ".cm-content": {
             padding: "0",
@@ -44,6 +45,9 @@ export function MarkdownEditor({
           },
           "&.cm-focused": {
             outline: "none",
+          },
+          ".cm-cursor, .cm-dropCursor": {
+            borderLeftColor: "var(--foreground)",
           },
           ".cm-editor": {
             height: "100%",
@@ -57,7 +61,7 @@ export function MarkdownEditor({
   const dir = direction === "auto" ? undefined : direction;
 
   return (
-    <div className={cn("h-full overflow-hidden", className)} dir={dir}>
+    <div className={cn("h-full", className)} dir={dir}>
       <CodeMirror
         ref={editorRef}
         value={value}

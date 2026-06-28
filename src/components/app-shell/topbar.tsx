@@ -20,14 +20,27 @@ export function Topbar() {
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const key = e.key.toLowerCase();
+
+      if (key === "k") {
         e.preventDefault();
         setCommandOpen((v) => !v);
+      } else if (key === "n" && !e.shiftKey) {
+        e.preventDefault();
+        router.push("/notes/new");
+      } else if (key === "d" && !e.shiftKey) {
+        e.preventDefault();
+        router.push("/daily");
+      } else if (key === "\\") {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent("inknest:toggle-sidebar"));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [router]);
 
   return (
     <>

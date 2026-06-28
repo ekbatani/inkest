@@ -1,4 +1,4 @@
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, ne, lte, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
@@ -104,6 +104,34 @@ export async function deleteTask(id: string): Promise<void> {
   await db
     .delete(schema.tasks)
     .where(and(eq(schema.tasks.id, id), eq(schema.tasks.userId, user.id)));
+}
+
+export type TaskWithNote = Task & { noteTitle: string };
+
+export async function listUpcomingTasks(
+  limit = 10,
+): Promise<TaskWithNote[]> {
+  const { user } = await getContext();
+
+  const rows = await db
+    .select({
+      task: schema.tasks,
+      noteTitle: schema.notes.title,
+    })
+    .from(schema.tasks)
+    .innerJoin(schema.notes, eq(schema.tasks.noteId, schema.notes.id))
+    .where(
+      and(
+        eq(schema.tasks.userId, user.id),
+        ne(schema.tasks.status, "done"),
+        ne(schema.tasks.status, "canceled"),
+        isNull(schema.notes.deletedAt),
+      ),
+    )
+    .orderBy(asc(schema.tasks.dueDate), asc(schema.tasks.createdAt))
+    .limit(limit);
+
+  return rows.map((r) => ({ ...r.task, noteTitle: r.noteTitle }));
 }
 
 // ── Markdown checkbox sync ────────────────────────────────────────────────

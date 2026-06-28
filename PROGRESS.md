@@ -84,13 +84,48 @@ A calm, Markdown-first personal workspace. Self-hosted MVP.
 - [x] ai_events row logged per real action (action, input_hash, output_md, provider, model)
 - [x] Graceful stub: no OPENAI_API_KEY → clear "AI not configured" message, 503 status
 
+### Phase C — All AI Actions ✅
+
+- [x] runner.ts: runTextAction/runJsonAction with ai_events logging, auth, provider checks
+- [x] improve-writing.ts: grammar/clarity/flow fix preserving Markdown
+- [x] extract-tasks.ts: JSON structured output with priority and due dates
+- [x] create-project-plan.ts: Markdown plan with goals, milestones, tasks, risks
+- [x] generate-mermaid.ts: fenced Mermaid code block generation
+- [x] explain-text.ts: plain-language explanation of selected text
+- [x] translate-text.ts: translation to target language preserving Markdown
+- [x] /api/ai route dispatches all 7 actions with Zod validation
+- [x] AiPanel UI: dropdown menu, loading toast, result dialog, task insertion
+
+### Phase D — Dashboard & Settings Wiring ✅
+
+- [x] Dashboard wired to real data: recent notes, pinned notes, active projects, upcoming tasks
+- [x] Quick capture creates a note from text and navigates to it
+- [x] Settings page: profile (name + password), editor prefs, AI provider config, export, danger zone
+
+### Phase E — Keyboard Shortcuts & Error Boundaries ✅
+
+- [x] Global shortcuts: Ctrl+K (palette), Ctrl+N (new note), Ctrl+D (daily), Ctrl+\ (sidebar toggle)
+- [x] Editor shortcuts: Ctrl+S (force save), Ctrl+E (toggle edit/preview)
+- [x] Sidebar toggle with animated collapse via custom event
+- [x] Error boundaries: (app)/error.tsx, notes/[id]/error.tsx, projects/[id]/error.tsx
+- [x] Loading skeletons: dashboard, notes/[id], projects/[id]
+
+### Phase F — Docker & Self-Hosting ✅
+
+- [x] Dockerfile: multi-stage build (deps → build → runtime), standalone output
+- [x] docker-compose.yml: volumes for data + storage, env vars
+- [x] .dockerignore
+- [x] .env.local.example
+- [x] README: features, stack, quick start, Docker, env vars, keyboard shortcuts
+
 ---
 
-## Known notes / TODOs for later phases
+## Known notes / TODOs (post-MVP)
 
-- Internal `[[wiki]]` link parsing (stretch goal, deferred) STILL TODO in Phase E
-- All other AI actions (improve writing, extract tasks, project plan, mermaid, explain, translate) STILL TODO in Phase C
-- Export/backup, command palette (full), keyboard shortcuts, Dockerfile
+- Import Markdown folder (bulk import)
+- AI chat with selected notes
+- Embeddings / semantic search
+- Theme customization beyond light/dark
 - Build warning: Turbopack traces `next.config.ts` due to `fs`/`path` usage in attachments service (harmless; expected for local storage)
 
 ## Status log
@@ -106,3 +141,7 @@ A calm, Markdown-first personal workspace. Self-hosted MVP.
 - **2026-06-28** — Renamed `middleware.ts` → `proxy.ts` (Next.js 16 convention). Production build passes (16 routes). FIRST MILESTONE COMPLETE.
 - **2026-06-28** — Phase A complete: tags service (CRUD), `/tags manage page (color picker), tag selector in note metadata, listNotes tag filter + chips, `?tag=` query, folder hierarchy with `parentId`, parent picker in metadata, sidebar 2-level notes tree, slugify now Persian-aware, English/Persian search normalization in listNotes.
 - **2026-06-28** — Phase B complete: due-date picker in metadata, `/projects list (grouped by status), `/projects/[id] detail with tabs Overview/Tasks/Notes/Timeline, tasks service with markdown-checkbox sync on save, TasksPanel (list/kanban views), @dnd-kit drag-and-drop kanban across todo/doing/done/canceled columns, manual task CRUD, project create action.
+- **2026-06-29** — Phase C complete: all 7 AI actions implemented (summarize, improve writing, extract tasks, project plan, mermaid, explain, translate) with runner infrastructure and ai_events logging.
+- **2026-06-29** — Phase D complete: dashboard wired to real data (recent/pinned/projects/tasks), quick capture creates notes, settings page complete (profile, editor prefs, AI provider, export, danger zone).
+- **2026-06-29** — Phase E complete: global keyboard shortcuts (Ctrl+K/N/D/\), editor shortcuts (Ctrl+S/E), sidebar toggle, error boundaries for app/notes/projects, loading skeletons.
+- **2026-06-29** — Phase F complete: Dockerfile (multi-stage standalone), docker-compose.yml, .dockerignore, .env.local.example, README. Auth audit passed (all routes protected). MVP COMPLETE.

@@ -120,6 +120,37 @@ export function NoteEditor({
     };
   }, [title, content, note.id]);
 
+  const forceSave = React.useCallback(async () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSaveState("saving");
+    try {
+      await updateNoteAction(note.id, { title, contentMd: content });
+      setSaveState("saved");
+      setTimeout(() => setSaveState("idle"), 2000);
+    } catch {
+      setSaveState("idle");
+      toast.error("Failed to save note.");
+    }
+  }, [note.id, title, content]);
+
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const key = e.key.toLowerCase();
+
+      if (key === "s") {
+        e.preventDefault();
+        forceSave();
+      } else if (key === "e" && !e.shiftKey) {
+        e.preventDefault();
+        setMode((m) => (m === "edit" ? "preview" : "edit"));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [forceSave]);
+
   const onMetadataChange = async (
     field: string,
     value: string | boolean | null | Date,
@@ -204,6 +235,7 @@ export function NoteEditor({
               variant="ghost"
               size="sm"
               className="gap-1.5"
+              nativeButton={false}
               render={
                 <a
                   href={`/api/export/note/${note.id}`}
