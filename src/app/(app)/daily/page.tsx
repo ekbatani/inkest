@@ -1,13 +1,21 @@
-import { CalendarDays } from "lucide-react";
+import { redirect } from "next/navigation";
+import { getOrCreateDailyNote } from "@/server/notes/service";
 
-export default function DailyPage() {
-  return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-10 sm:px-8 sm:py-14">
-      <header className="flex items-center gap-2">
-        <CalendarDays className="size-5 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold tracking-tight">Daily</h1>
-      </header>
-      <p className="text-muted-foreground">Daily notes arrive in a later phase.</p>
-    </div>
-  );
+export default async function DailyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
+  const { date } = await searchParams;
+  const target = (() => {
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [y, m, d] = date.split("-").map(Number);
+      return new Date(y, m - 1, d);
+    }
+    return new Date();
+  })();
+  target.setHours(0, 0, 0, 0);
+
+  const note = await getOrCreateDailyNote(target);
+  redirect(`/notes/${note.id}`);
 }

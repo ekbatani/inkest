@@ -21,6 +21,7 @@ export const createNoteSchema = z.object({
   priority: notePriorityEnum.default("none"),
   dueDate: z.coerce.date().nullable().optional(),
   pinned: z.boolean().default(false),
+  parentId: z.string().nullable().optional(),
 });
 
 export const updateNoteSchema = z.object({
@@ -33,6 +34,7 @@ export const updateNoteSchema = z.object({
   dueDate: z.coerce.date().nullable().optional(),
   pinned: z.boolean().optional(),
   archived: z.boolean().optional(),
+  parentId: z.string().nullable().optional(),
 });
 
 export type CreateNoteInput = z.infer<typeof createNoteSchema>;

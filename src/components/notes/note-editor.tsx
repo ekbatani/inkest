@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Pin,
@@ -16,6 +17,7 @@ import {
   Check,
   PanelRightOpen,
   PanelRightClose,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Note } from "@/server/db/schema";
+import type { Tag } from "@/server/db/schema";
 import { updateNoteAction } from "@/server/notes/actions";
 import {
   archiveNoteAction,
@@ -45,12 +48,31 @@ import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import { ImageUploadButton } from "@/components/editor/image-upload-button";
 import { AiPanel } from "@/components/ai/ai-panel";
+import { TagSelector } from "@/components/notes/tag-selector";
+import { ParentPicker } from "@/components/notes/parent-picker";
+import { DueDatePicker } from "@/components/notes/due-date-picker";
+import { VersionHistoryButton } from "@/components/notes/version-history-button";
+import type { WikiLinkTarget } from "@/lib/markdown/wiki";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { cn } from "@/lib/utils";
 
 type EditorMode = "edit" | "preview" | "split" | "focus";
 
-export function NoteEditor({ note }: { note: Note }) {
+export function NoteEditor({
+  note,
+  allTags = [],
+  noteTagIds = [],
+  parentCandidates = [],
+  linkableNotes = [],
+  backlinks = [],
+}: {
+  note: Note;
+  allTags?: Tag[];
+  noteTagIds?: string[];
+  parentCandidates?: Pick<Note, "id" | "title">[];
+  linkableNotes?: WikiLinkTarget[];
+  backlinks?: { id: string; title: string }[];
+}) {
   const router = useRouter();
   const [title, setTitle] = React.useState(note.title);
   const [content, setContent] = React.useState(note.contentMd);
@@ -65,6 +87,8 @@ export function NoteEditor({ note }: { note: Note }) {
     status: note.status,
     priority: note.priority,
     pinned: note.pinned,
+    parentId: note.parentId,
+    dueDate: note.dueDate,
   });
 
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,7 +122,7 @@ export function NoteEditor({ note }: { note: Note }) {
 
   const onMetadataChange = async (
     field: string,
-    value: string | boolean,
+    value: string | boolean | null | Date,
   ) => {
     const newMetadata = { ...metadata, [field]: value };
     setMetadata(newMetadata);
@@ -174,6 +198,23 @@ export function NoteEditor({ note }: { note: Note }) {
               noteId={note.id}
               editorRef={editorRef}
             />
+          )}
+          {showEditor && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              render={
+                <a
+                  href={`/api/export/note/${note.id}`}
+                  aria-label="Download this note as Markdown"
+                  rel="noopener"
+                />
+              }
+            >
+              <Download className="size-4 text-muted-foreground" />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
           )}
 
           <div className="ml-auto flex items-center gap-1">
@@ -262,6 +303,7 @@ export function NoteEditor({ note }: { note: Note }) {
                 <MarkdownPreview
                   content={content}
                   direction={metadata.direction}
+                  linkableNotes={linkableNotes}
                 />
               </div>
             )}
@@ -277,6 +319,10 @@ export function NoteEditor({ note }: { note: Note }) {
               onChange={onMetadataChange}
               onArchive={onArchive}
               onDelete={onDelete}
+              allTags={allTags}
+              noteTagIds={noteTagIds}
+              parentCandidates={parentCandidates}
+              backlinks={backlinks}
             />
           </aside>
         )}
@@ -291,6 +337,10 @@ function MetadataPanel({
   onChange,
   onArchive,
   onDelete,
+  allTags,
+  noteTagIds,
+  parentCandidates,
+  backlinks,
 }: {
   note: Note;
   metadata: {
@@ -299,10 +349,16 @@ function MetadataPanel({
     status: string;
     priority: string;
     pinned: boolean;
+    parentId: string | null;
+    dueDate: Date | null;
   };
-  onChange: (field: string, value: string | boolean) => void;
+  onChange: (field: string, value: string | boolean | null | Date) => void;
   onArchive: () => void;
   onDelete: () => void;
+  allTags: Tag[];
+  noteTagIds: string[];
+  parentCandidates: Pick<Note, "id" | "title">[];
+  backlinks: { id: string; title: string }[];
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -382,8 +438,50 @@ function MetadataPanel({
               </SelectContent>
             </Select>
           </div>
+
+          <DueDatePicker
+            value={metadata.dueDate}
+            onChange={(d) => onChange("dueDate", d)}
+          />
+
+          <ParentPicker
+            value={metadata.parentId}
+            candidates={parentCandidates}
+            onChange={(v) => onChange("parentId", v)}
+          />
         </div>
       </div>
+
+      <Separator />
+
+      <TagSelector
+        noteId={note.id}
+        allTags={allTags}
+        selectedTagIds={noteTagIds}
+      />
+
+      {backlinks.length > 0 && (
+        <>
+          <Separator />
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Linked from
+            </h3>
+            <ul className="flex flex-col gap-1 text-xs">
+              {backlinks.map((b) => (
+                <li key={b.id}>
+                  <Link
+                    href={`/notes/${b.id}`}
+                    className="block truncate text-muted-foreground hover:text-foreground"
+                  >
+                    ← {b.title || "Untitled"}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
 
       <Separator />
 
@@ -416,6 +514,7 @@ function MetadataPanel({
         >
           <Trash2 className="size-4" /> Delete
         </Button>
+        <VersionHistoryButton noteId={note.id} />
       </div>
     </div>
   );

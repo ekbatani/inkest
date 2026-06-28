@@ -3,16 +3,20 @@
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import { useMermaidCodeComponent } from "./use-mermaid-code-component";
+import { transformWikiLinks, type WikiLinkTarget } from "@/lib/markdown/wiki";
 
 type Props = {
   content: string;
   direction?: "ltr" | "rtl" | "auto";
   className?: string;
   components?: Components;
+  /** Notes available for `[[wiki]]` link resolution. */
+  linkableNotes?: WikiLinkTarget[];
 };
 
 const sanitizeSchema = {
@@ -45,6 +49,7 @@ export function MarkdownPreview({
   direction = "auto",
   className,
   components: extraComponents,
+  linkableNotes,
 }: Props) {
   const dir = direction === "auto" ? undefined : direction;
   const mermaidComponents = useMermaidCodeComponent();
@@ -54,17 +59,25 @@ export function MarkdownPreview({
     [mermaidComponents, extraComponents],
   );
 
+  const processedContent = React.useMemo(
+    () =>
+      linkableNotes && linkableNotes.length > 0
+        ? transformWikiLinks(content, linkableNotes)
+        : content,
+    [content, linkableNotes],
+  );
+
   return (
     <div
       className={cn("inknest-prose", className)}
       dir={dir}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkBreaks]}
         rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
         components={components}
       >
-        {content}
+        {processedContent}
       </ReactMarkdown>
     </div>
   );

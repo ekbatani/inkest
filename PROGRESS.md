@@ -88,9 +88,8 @@ A calm, Markdown-first personal workspace. Self-hosted MVP.
 
 ## Known notes / TODOs for later phases
 
-- Internal `[[wiki]]` link parsing (stretch goal, deferred)
-- Tags CRUD UI, folder hierarchy, projects/tasks/kanban (Phase 7+ in spec)
-- All other AI actions (improve writing, extract tasks, project plan, mermaid, explain, translate)
+- Internal `[[wiki]]` link parsing (stretch goal, deferred) STILL TODO in Phase E
+- All other AI actions (improve writing, extract tasks, project plan, mermaid, explain, translate) STILL TODO in Phase C
 - Export/backup, command palette (full), keyboard shortcuts, Dockerfile
 - Build warning: Turbopack traces `next.config.ts` due to `fs`/`path` usage in attachments service (harmless; expected for local storage)
 
@@ -105,3 +104,5 @@ A calm, Markdown-first personal workspace. Self-hosted MVP.
 - **2026-06-28** — Phase 6 complete: attachments service (local filesystem storage), upload/serve API routes (auth + ownership), image upload button in editor, insert at cursor.
 - **2026-06-28** — Phase 7 (milestone-capped) complete: AI provider abstraction, summarize-note action, /api/ai route, AiPanel UI with review dialog (Insert/Replace/Copy/Discard), ai_events logging, graceful stub without API key.
 - **2026-06-28** — Renamed `middleware.ts` → `proxy.ts` (Next.js 16 convention). Production build passes (16 routes). FIRST MILESTONE COMPLETE.
+- **2026-06-28** — Phase A complete: tags service (CRUD), `/tags manage page (color picker), tag selector in note metadata, listNotes tag filter + chips, `?tag=` query, folder hierarchy with `parentId`, parent picker in metadata, sidebar 2-level notes tree, slugify now Persian-aware, English/Persian search normalization in listNotes.
+- **2026-06-28** — Phase B complete: due-date picker in metadata, `/projects list (grouped by status), `/projects/[id] detail with tabs Overview/Tasks/Notes/Timeline, tasks service with markdown-checkbox sync on save, TasksPanel (list/kanban views), @dnd-kit drag-and-drop kanban across todo/doing/done/canceled columns, manual task CRUD, project create action.

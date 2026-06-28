@@ -10,6 +10,8 @@ import {
   settingsNav,
   type NavItem,
 } from "@/components/app-shell/nav-items";
+import { NotesTree } from "@/components/app-shell/notes-tree";
+import type { NoteTreeNode } from "@/server/notes/service";
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -40,7 +42,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ notesTree = [] }: { notesTree?: NoteTreeNode[] }) {
   return (
     <div className="flex h-full flex-col">
       <Link
@@ -54,6 +56,7 @@ export function Sidebar() {
       </Link>
       <div className="flex-1 overflow-y-auto">
         <NavLinks />
+        <NotesTree nodes={notesTree} />
       </div>
       <div className="border-t px-3 py-2">
         {settingsNav.map((item) => (

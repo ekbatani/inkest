@@ -3,6 +3,7 @@ import OpenAI from "openai";
 export type AiProvider = {
   model: string;
   complete: (prompt: string, systemPrompt: string) => Promise<string>;
+  completeJson: (prompt: string, systemPrompt: string) => Promise<string>;
 };
 
 export function getAiProvider(): AiProvider | null {
@@ -24,6 +25,18 @@ export function getAiProvider(): AiProvider | null {
           { role: "user", content: prompt },
         ],
         temperature: 0.7,
+      });
+      return response.choices[0]?.message?.content ?? "";
+    },
+    completeJson: async (prompt: string, systemPrompt: string) => {
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.4,
+        response_format: { type: "json_object" },
       });
       return response.choices[0]?.message?.content ?? "";
     },

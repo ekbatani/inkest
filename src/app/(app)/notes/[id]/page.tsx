@@ -1,5 +1,11 @@
 import { notFound } from "next/navigation";
-import { getNoteById } from "@/server/notes/service";
+import {
+  getNoteById,
+  listParentCandidates,
+  listNotes,
+  getBacklinks,
+} from "@/server/notes/service";
+import { listTags, listTagsForNote } from "@/server/tags/service";
 import { NoteEditor } from "@/components/notes/note-editor";
 
 export default async function NoteDetailPage({
@@ -12,5 +18,25 @@ export default async function NoteDetailPage({
 
   if (!note) notFound();
 
-  return <NoteEditor note={note} />;
+  const [allTags, noteTags, parentCandidates, linkableNotes, backlinks] =
+    await Promise.all([
+      listTags(),
+      listTagsForNote(id),
+      listParentCandidates(id),
+      listNotes({ limit: 500 }).then((n) =>
+        n.map((x) => ({ id: x.id, slug: x.slug, title: x.title })),
+      ),
+      getBacklinks(id),
+    ]);
+
+  return (
+    <NoteEditor
+      note={note}
+      allTags={allTags}
+      noteTagIds={noteTags.map((t) => t.id)}
+      parentCandidates={parentCandidates}
+      linkableNotes={linkableNotes}
+      backlinks={backlinks.map((b) => ({ id: b.id, title: b.title }))}
+    />
+  );
 }

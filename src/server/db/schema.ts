@@ -14,6 +14,9 @@ export const users = sqliteTable("users", {
   name: text("name"),
   passwordHash: text("password_hash"),
   image: text("image"),
+  // JSON-encoded user settings, parsed by the service: editor prefs, AI
+  // provider overrides, etc. Stored as TEXT since SQLite has no native JSONB.
+  settings: text("settings"),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at")
     .notNull()
@@ -190,3 +193,4 @@ export type Tag = typeof tags.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;
 export type AiEvent = typeof aiEvents.$inferSelect;
+export type NoteVersion = typeof noteVersions.$inferSelect;
