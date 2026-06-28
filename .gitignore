@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# inknest
+/storage
+*.db
+*.db-shm
+*.db-wal
+/drizzle
