@@ -1,0 +1,14 @@
+- rename the applicaitoin to inkest
+- Add a landing page look in agnoOs landing and spotlight effect in hero section.
+- Add super fucos mode to read with spotlight :).
+- Add little animations to make it attractive
+- Use line seperated space to make it clean minimal and modern
+- Make it as fast as possible and as light and minimal as possible
+- The AI features must be in priority.
+- Keep the features minimal also.
+- Make it open source self hosted free and cloud base plans to get money
+- The goal is add something beautiful handy and enjoable to this world
+- Add openrouter as AI provider. Done.
+- Link to telegram and add notifications
+- Add help how users add their AI keys or connect to telegram
+- 

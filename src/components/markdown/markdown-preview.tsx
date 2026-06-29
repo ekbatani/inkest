@@ -44,6 +44,24 @@ const sanitizeSchema = {
   },
 };
 
+function normalizeMarkdownHeadings(content: string) {
+  const lines = content.split("\n");
+  let inFence = false;
+
+  return lines
+    .map((line) => {
+      if (/^\s*```/.test(line) || /^\s*~~~/.test(line)) {
+        inFence = !inFence;
+        return line;
+      }
+
+      if (inFence) return line;
+
+      return line.replace(/^(\s{0,3})(#{1,6})([^#\s].*)$/, "$1$2 $3");
+    })
+    .join("\n");
+}
+
 export function MarkdownPreview({
   content,
   direction = "auto",
@@ -61,9 +79,11 @@ export function MarkdownPreview({
 
   const processedContent = React.useMemo(
     () =>
-      linkableNotes && linkableNotes.length > 0
-        ? transformWikiLinks(content, linkableNotes)
-        : content,
+      normalizeMarkdownHeadings(
+        linkableNotes && linkableNotes.length > 0
+          ? transformWikiLinks(content, linkableNotes)
+          : content,
+      ),
     [content, linkableNotes],
   );
 

@@ -69,7 +69,7 @@ export function TagsManager({ initialTags }: { initialTags: TagWithCount[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-xl border bg-card p-4 sm:p-5">
+      <section className="surface-card flex flex-col gap-4 p-4 sm:p-5">
         <h2 className="text-sm font-semibold">New tag</h2>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1">
@@ -101,7 +101,7 @@ export function TagsManager({ initialTags }: { initialTags: TagWithCount[] }) {
         </div>
       </section>
 
-      <section className="rounded-xl border bg-card">
+      <section className="surface-card overflow-hidden">
         <header className="flex items-center justify-between border-b px-4 py-3 sm:px-5">
           <h2 className="text-sm font-semibold">Your tags</h2>
           <span className="text-xs text-muted-foreground">

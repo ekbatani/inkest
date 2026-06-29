@@ -18,6 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { AiBadge } from "@/components/ai/ai-badge";
 import { cn } from "@/lib/utils";
 import {
   createTaskAction,
@@ -123,7 +124,7 @@ export function TasksPanel({
       />
 
       {tasks.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+        <div className="surface-card-dashed p-8 text-center text-sm text-muted-foreground">
           No tasks yet. Add one above, or write markdown checkboxes inside the
           project note content.
         </div>
@@ -288,9 +289,7 @@ function TaskRow({
             </Badge>
           )}
           {task.source === "ai" && (
-            <Badge variant="ghost" className="text-[10px]">
-              ai
-            </Badge>
+            <AiBadge className="h-5 text-[10px]" label="AI" />
           )}
           {task.priority !== "none" && (
             <span
@@ -437,7 +436,7 @@ function KanbanCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group/card flex flex-col gap-1 rounded-lg border bg-card p-2 shadow-sm",
+        "surface-card group/card flex flex-col gap-1 p-2",
         isDragging && "opacity-50",
       )}
       {...attributes}
@@ -482,11 +481,13 @@ function KanbanCard({
         </div>
       )}
       {(task.source === "markdown" || task.source === "ai") && (
-        <span
-          className="ml-6 inline-flex w-fit rounded bg-muted px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground"
-        >
-          {task.source}
-        </span>
+        task.source === "ai" ? (
+          <AiBadge className="ml-6 text-[9px]" label="AI" />
+        ) : (
+          <span className="ml-6 inline-flex w-fit rounded bg-muted px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">
+            {task.source}
+          </span>
+        )
       )}
     </div>
   );

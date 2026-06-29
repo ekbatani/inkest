@@ -115,7 +115,7 @@ export function TagSelector({
   return (
     <div className="flex flex-col gap-1.5">
       <Label className="text-xs text-muted-foreground">Tags</Label>
-      <div className="flex min-h-9 flex-wrap gap-1.5 rounded-md border bg-card p-2">
+      <div className="surface-card flex min-h-9 flex-wrap gap-1.5 p-2">
         {selectedTags.length === 0 && (
           <span className="self-center text-xs text-muted-foreground">
             No tags

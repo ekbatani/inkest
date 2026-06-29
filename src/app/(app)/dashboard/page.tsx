@@ -8,25 +8,26 @@ import {
   Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { listNotes } from "@/server/notes/service";
-import { listUpcomingTasks } from "@/server/tasks/service";
-import { formatRelativeDate, formatDateShort } from "@/lib/dates";
+import { NoteStatusBadge } from "@/components/notes/note-status-badge";
+import { listDueTaskNotes, listNotes } from "@/server/notes/service";
+import { formatDateShort, formatRelativeDate } from "@/lib/dates";
+import type { Note } from "@/server/db/schema";
 import { QuickCapture } from "./quick-capture";
 
 export default async function DashboardPage() {
-  const [recentNotes, pinnedNotes, activeProjects, upcomingTasks] =
+  const [recentNotes, pinnedNotes, activeProjects, dueTasks] =
     await Promise.all([
       listNotes({ limit: 6 }),
       listNotes({ pinnedOnly: true, limit: 6 }),
       listNotes({ type: "project", limit: 4 }),
-      listUpcomingTasks(8),
+      listDueTaskNotes(6),
     ]);
 
   const activeProjectsFiltered = activeProjects.filter((p) =>
     ["todo", "doing", "paused"].includes(p.status),
   );
+  const hasDueTasks = dueTasks.overdue.length > 0 || dueTasks.upcoming.length > 0;
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-5 py-10 sm:px-8 sm:py-14">
@@ -98,26 +99,32 @@ export default async function DashboardPage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {activeProjectsFiltered.map((project) => (
-              <Card key={project.id} className="overflow-hidden">
-                <Link
-                  href={`/projects/${project.id}`}
-                  className="block transition-colors hover:bg-muted/40"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="truncate font-medium">{project.title}</h3>
-                      <Badge variant="secondary" className="shrink-0 text-xs capitalize">
-                        {project.status === "doing" ? "in progress" : project.status}
-                      </Badge>
-                    </div>
-                    {project.dueDate && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Due {formatDateShort(project.dueDate)}
-                      </p>
-                    )}
-                  </CardContent>
-                </Link>
-              </Card>
+              <Link
+                key={project.id}
+                href={`/projects/${project.id}`}
+                className="surface-card-interactive group block p-4"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="truncate font-medium">{project.title}</h3>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {formatRelativeDate(project.updatedAt)}
+                  </span>
+                </div>
+                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                  {stripMarkdown(project.contentMd).slice(0, 120) || "Empty project"}
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <NoteStatusBadge status={project.status} />
+                  {project.dueDate && (
+                    <Badge variant="outline" className="text-xs">
+                      Due {formatRelativeDate(project.dueDate)}
+                    </Badge>
+                  )}
+                  {project.pinned && (
+                    <Pin className="size-3 text-muted-foreground" />
+                  )}
+                </div>
+              </Link>
             ))}
           </div>
         )}
@@ -126,39 +133,27 @@ export default async function DashboardPage() {
       {/* Due tasks */}
       <section>
         <SectionHeader
-          title="Upcoming tasks"
+          title="Due tasks"
           icon={<CheckCircle2 className="size-4" />}
           actionHref="/notes"
         />
-        {upcomingTasks.length === 0 ? (
+        {!hasDueTasks ? (
           <EmptyRow
             label="Nothing due"
-            hint="Tasks you add to notes show up here."
+            hint="Task notes with due dates inside your projects show up here."
           />
         ) : (
-          <div className="flex flex-col gap-1">
-            {upcomingTasks.map((task) => (
-              <Link
-                key={task.id}
-                href={`/notes/${task.noteId}`}
-                className="flex items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-sm transition-colors hover:bg-muted/40"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <CheckCircle2 className="size-3.5 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{task.title}</span>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {task.noteTitle}
-                  </span>
-                  {task.dueDate && (
-                    <Badge variant="outline" className="text-xs">
-                      {formatDateShort(task.dueDate)}
-                    </Badge>
-                  )}
-                </div>
-              </Link>
-            ))}
+          <div className="grid gap-5 lg:grid-cols-2">
+            <TaskDueList
+              title="Delayed"
+              emptyLabel="No delayed tasks"
+              taskNotes={dueTasks.overdue}
+            />
+            <TaskDueList
+              title="Upcoming"
+              emptyLabel="No upcoming tasks"
+              taskNotes={dueTasks.upcoming}
+            />
           </div>
         )}
       </section>
@@ -187,6 +182,7 @@ function SectionHeader({
         variant="ghost"
         size="sm"
         className="gap-1 text-muted-foreground"
+        nativeButton={false}
         render={<Link href={actionHref} />}
       >
         View all <ArrowRight className="size-3.5" />
@@ -197,7 +193,7 @@ function SectionHeader({
 
 function EmptyRow({ label, hint }: { label: string; hint: string }) {
   return (
-    <div className="flex flex-col items-start gap-1 rounded-xl border border-dashed bg-muted/20 p-5 text-sm">
+    <div className="surface-card-dashed flex flex-col items-start gap-1 p-5 text-sm">
       <div className="flex items-center gap-2 font-medium">
         <Plus className="size-4 text-muted-foreground" />
         {label}
@@ -207,33 +203,104 @@ function EmptyRow({ label, hint }: { label: string; hint: string }) {
   );
 }
 
-function NoteCard({ note }: { note: { id: string; title: string; excerpt: string | null; contentMd: string; updatedAt: Date } }) {
-  const preview = (note.excerpt || note.contentMd || "")
-    .replace(/[#*`>\-\[\]()!]/g, "")
-    .replace(/\n+/g, " ")
-    .trim()
-    .slice(0, 100);
+function NoteCard({ note }: { note: Note }) {
+  const excerpt =
+    note.excerpt ||
+    note.contentMd
+      .replace(/[#*`>\-\[\]()!]/g, "")
+      .replace(/\n+/g, " ")
+      .trim()
+      .slice(0, 120);
 
   return (
-    <Card className="overflow-hidden">
-      <Link
-        href={`/notes/${note.id}`}
-        className="block transition-colors hover:bg-muted/40"
-      >
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="truncate font-medium">{note.title}</h3>
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {formatRelativeDate(note.updatedAt)}
-            </span>
-          </div>
-          {preview && (
-            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-              {preview}
-            </p>
-          )}
-        </CardContent>
-      </Link>
-    </Card>
+    <Link
+      href={`/notes/${note.id}`}
+      className="surface-card-interactive group block p-4"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="truncate font-medium">{note.title}</h3>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {formatRelativeDate(note.updatedAt)}
+        </span>
+      </div>
+      {excerpt && (
+        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+          {excerpt}
+        </p>
+      )}
+      <div className="mt-2 flex items-center gap-2">
+        {note.type !== "note" && (
+          <Badge variant="secondary" className="text-xs">
+            {note.type}
+          </Badge>
+        )}
+        <NoteStatusBadge status={note.status} />
+        {note.pinned && <Pin className="size-3 text-muted-foreground" />}
+      </div>
+    </Link>
   );
+}
+
+function TaskDueList({
+  title,
+  emptyLabel,
+  taskNotes,
+}: {
+  title: string;
+  emptyLabel: string;
+  taskNotes: Array<{
+    id: string;
+    title: string;
+    projectTitle: string;
+    dueDate: Date | null;
+  }>;
+}) {
+  return (
+    <div className="surface-card flex flex-col gap-3 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          {title}
+        </h3>
+        <Badge variant="secondary" className="text-xs">
+          {taskNotes.length}
+        </Badge>
+      </div>
+
+      {taskNotes.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+      ) : (
+        <div className="flex flex-col gap-1">
+          {taskNotes.map((taskNote) => (
+            <Link
+              key={taskNote.id}
+              href={`/notes/${taskNote.id}`}
+              className="flex items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-sm transition-colors hover:bg-muted/40"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <CheckCircle2 className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">{taskNote.title}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {taskNote.projectTitle}
+                </span>
+                {taskNote.dueDate && (
+                  <Badge variant="outline" className="text-xs">
+                    {formatDateShort(taskNote.dueDate)}
+                  </Badge>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function stripMarkdown(value: string) {
+  return value
+    .replace(/[#*_`>~\-[\]()!]/g, "")
+    .replace(/\n+/g, " ")
+    .trim();
 }

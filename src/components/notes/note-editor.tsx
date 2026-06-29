@@ -65,6 +65,7 @@ export function NoteEditor({
   parentCandidates = [],
   linkableNotes = [],
   backlinks = [],
+  selectTitleOnMount = false,
 }: {
   note: Note;
   allTags?: Tag[];
@@ -72,6 +73,7 @@ export function NoteEditor({
   parentCandidates?: Pick<Note, "id" | "title">[];
   linkableNotes?: WikiLinkTarget[];
   backlinks?: { id: string; title: string }[];
+  selectTitleOnMount?: boolean;
 }) {
   const router = useRouter();
   const [title, setTitle] = React.useState(note.title);
@@ -94,6 +96,17 @@ export function NoteEditor({
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextSave = React.useRef(true);
   const editorRef = React.useRef<ReactCodeMirrorRef>(null);
+  const titleInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (!selectTitleOnMount) return;
+
+    const input = titleInputRef.current;
+    if (!input) return;
+
+    input.focus();
+    input.select();
+  }, [selectTitleOnMount]);
 
   React.useEffect(() => {
     if (skipNextSave.current) {
@@ -187,6 +200,41 @@ export function NoteEditor({
   const showPreview = mode === "preview" || mode === "split";
   const isFocus = mode === "focus";
 
+  const focusEditorStart = React.useCallback(() => {
+    const view = editorRef.current?.view;
+    if (!view) return;
+
+    view.dispatch({
+      selection: { anchor: 0 },
+    });
+    view.focus();
+  }, []);
+
+  const goBack = React.useCallback(() => {
+    if (typeof window === "undefined") {
+      router.push("/notes");
+      return;
+    }
+
+    const hasHistory = window.history.length > 1;
+    const hasInternalReferrer =
+      !!document.referrer &&
+      (() => {
+        try {
+          return new URL(document.referrer).origin === window.location.origin;
+        } catch {
+          return false;
+        }
+      })();
+
+    if (hasHistory && hasInternalReferrer) {
+      router.back();
+      return;
+    }
+
+    router.push("/notes");
+  }, [router]);
+
   return (
     <div className="flex h-full flex-col">
       {/* Toolbar */}
@@ -195,7 +243,7 @@ export function NoteEditor({
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => router.push("/notes")}
+            onClick={goBack}
             aria-label="Back to notes"
           >
             <ChevronLeft className="size-4" />
@@ -293,12 +341,28 @@ export function NoteEditor({
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Title */}
           <div className="px-6 pt-6 sm:px-10 sm:pt-8">
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Untitled"
-              className="border-0 px-0 text-2xl font-semibold tracking-tight shadow-none focus-visible:ring-0"
-            />
+            <div className="max-w-4xl">
+              <Label
+                htmlFor="note-title"
+                className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/75"
+              >
+                Note title
+              </Label>
+              <Input
+                id="note-title"
+                ref={titleInputRef}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  focusEditorStart();
+                }}
+                placeholder="Untitled"
+                className="h-auto border-0 bg-transparent px-0 py-0 font-sans text-4xl leading-[1.08] font-medium tracking-[-0.02em] text-foreground/92 shadow-none placeholder:text-muted-foreground/40 focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent sm:text-[3.15rem]"
+              />
+            </div>
+            <div className="mt-5 h-px w-full bg-border/80" />
           </div>
 
           {/* Content area */}
@@ -312,7 +376,7 @@ export function NoteEditor({
             {showEditor && (
               <div
                 className={cn(
-                  "flex min-h-0 flex-1 flex-col py-4",
+                  "flex min-h-0 flex-1 flex-col py-6",
                   showPreview && "border-r pr-4",
                 )}
               >
@@ -328,7 +392,7 @@ export function NoteEditor({
             {showPreview && (
               <div
                 className={cn(
-                  "min-h-0 flex-1 overflow-y-auto py-4",
+                  "min-h-0 flex-1 overflow-y-auto py-6",
                   showEditor && "pl-4",
                 )}
               >

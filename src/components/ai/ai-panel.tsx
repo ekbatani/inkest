@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -39,6 +40,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import { insertTextAtCursor } from "@/components/editor/markdown-editor";
+import { AiBadge, AiIcon } from "@/components/ai/ai-badge";
 import { createTaskAction } from "@/server/tasks/actions";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 
@@ -94,7 +96,7 @@ export function AiPanel({ noteId, editorRef }: Props) {
     action: ActionId,
     payload: Record<string, unknown>,
   ) => {
-    const label = ACTION_LABELS[action] ?? "Running AI…";
+    const label = ACTION_LABELS[action] ?? "Running AI...";
     setState({ status: "loading", label });
     try {
       const res = await fetch("/api/ai", {
@@ -137,10 +139,7 @@ export function AiPanel({ noteId, editorRef }: Props) {
       setPromptDialog({ action, needsLanguage: true, needsHint: false });
       return;
     }
-    if (
-      action === "create-project-plan" ||
-      action === "generate-mermaid"
-    ) {
+    if (action === "create-project-plan" || action === "generate-mermaid") {
       setPromptDialog({ action, needsLanguage: false, needsHint: true });
       return;
     }
@@ -225,41 +224,48 @@ export function AiPanel({ noteId, editorRef }: Props) {
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button variant="ghost" size="sm" className="gap-1.5" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-foreground/80 hover:text-foreground aria-expanded:text-foreground"
+            />
           }
         >
-          <Sparkles className="size-4 text-muted-foreground" />
-          <span className="hidden sm:inline">AI</span>
+          <Sparkles className="size-4 text-violet-400" />
+          <span className="hidden sm:inline text-violet-400">AI</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">
-          <DropdownMenuLabel>AI actions</DropdownMenuLabel>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>AI actions</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onPickAction("summarize")}>
+              <FileText className="size-4" /> Summarize note
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onPickAction("improve-writing")}>
+              <Wand2 className="size-4" /> Improve writing
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onPickAction("extract-tasks")}>
+              <ListChecks className="size-4" /> Extract tasks
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onPickAction("create-project-plan")}>
+              <FileText className="size-4" /> Create project plan...
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onPickAction("generate-mermaid")}>
+              <GitGraph className="size-4" /> Generate diagram...
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onPickAction("summarize")}>
-            <FileText className="size-4" /> Summarize note
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onPickAction("improve-writing")}>
-            <Wand2 className="size-4" /> Improve writing
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onPickAction("extract-tasks")}>
-            <ListChecks className="size-4" /> Extract tasks
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onPickAction("create-project-plan")}>
-            <FileText className="size-4" /> Create project plan…
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onPickAction("generate-mermaid")}>
-            <GitGraph className="size-4" /> Generate diagram…
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onPickAction("explain")}>
-            <HelpCircle className="size-4" /> Explain selection
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onPickAction("translate")}>
-            <Languages className="size-4" /> Translate selection…
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            <DropdownMenuItem onClick={() => onPickAction("explain")}>
+              <HelpCircle className="size-4" /> Explain selection
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onPickAction("translate")}>
+              <Languages className="size-4" /> Translate selection...
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Prompt dialog for actions needing extra input */}
       <Dialog
         open={Boolean(promptDialog)}
         onOpenChange={(open) => !open && setPromptDialog(null)}
@@ -279,7 +285,10 @@ export function AiPanel({ noteId, editorRef }: Props) {
           </DialogHeader>
           {promptDialog?.needsLanguage ? (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="ai-target-language" className="text-xs text-muted-foreground">
+              <Label
+                htmlFor="ai-target-language"
+                className="text-xs text-muted-foreground"
+              >
                 Target language
               </Label>
               <Input
@@ -325,7 +334,6 @@ export function AiPanel({ noteId, editorRef }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Result / error dialog */}
       <Dialog
         open={
           state.status === "result" ||
@@ -352,7 +360,7 @@ export function AiPanel({ noteId, editorRef }: Props) {
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  <Sparkles className="size-4" /> AI output
+                  <AiBadge label="AI output" />
                 </DialogTitle>
                 <DialogDescription>
                   Review before inserting into your note.
@@ -362,11 +370,21 @@ export function AiPanel({ noteId, editorRef }: Props) {
                 <MarkdownPreview content={state.output} />
               </ScrollArea>
               <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={onCopy} className="gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onCopy}
+                  className="gap-1.5"
+                >
                   {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
                   Copy
                 </Button>
-                <Button variant="outline" size="sm" onClick={onReplace} className="gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onReplace}
+                  className="gap-1.5"
+                >
                   <Replace className="size-4" /> Replace selection
                 </Button>
                 <Button size="sm" onClick={onInsert} className="gap-1.5">
@@ -420,9 +438,7 @@ export function AiPanel({ noteId, editorRef }: Props) {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const md = state.tasks
-                      .map((t) => `- [ ] ${t.title}`)
-                      .join("\n");
+                    const md = state.tasks.map((t) => `- [ ] ${t.title}`).join("\n");
                     insertTextAtCursor(editorRef, `\n${md}\n`);
                     toast.success("Inserted as Markdown checklist.");
                     close();
@@ -451,8 +467,11 @@ export function AiPanel({ noteId, editorRef }: Props) {
       </Dialog>
 
       {state.status === "loading" && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg border bg-card px-4 py-3 shadow-lg">
-          <Loader2 className="size-4 animate-spin" />
+        <div className="surface-card fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 shadow-lg">
+          <span className="relative">
+            <AiIcon />
+            <Loader2 className="absolute -right-1 -top-1 size-3 animate-spin rounded-full bg-background" />
+          </span>
           <span className="text-sm">{state.label}</span>
         </div>
       )}
@@ -461,11 +480,11 @@ export function AiPanel({ noteId, editorRef }: Props) {
 }
 
 const ACTION_LABELS: Record<ActionId, string> = {
-  summarize: "Summarizing…",
-  "improve-writing": "Improving writing…",
-  "extract-tasks": "Extracting tasks…",
-  "create-project-plan": "Planning project…",
-  "generate-mermaid": "Generating diagram…",
-  explain: "Explaining…",
-  translate: "Translating…",
+  summarize: "Summarizing...",
+  "improve-writing": "Improving writing...",
+  "extract-tasks": "Extracting tasks...",
+  "create-project-plan": "Planning project...",
+  "generate-mermaid": "Generating diagram...",
+  explain: "Explaining...",
+  translate: "Translating...",
 };

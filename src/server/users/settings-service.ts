@@ -1,11 +1,13 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { AI_PROVIDER_IDS } from "@/lib/ai/providers";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
 
 export const editorModeEnum = z.enum(["edit", "split", "preview", "focus"]);
 export const aiProviderSettingsSchema = z
   .object({
+    provider: z.enum(AI_PROVIDER_IDS).optional(),
     apiKey: z.string().optional(),
     baseURL: z.string().url().optional().or(z.literal("")),
     model: z.string().optional(),

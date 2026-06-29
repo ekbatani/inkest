@@ -81,9 +81,13 @@ docker run -p 3000:3000 \
 | `NEXTAUTH_SECRET` | Yes | -- | Auth.js secret (`openssl rand -base64 32`) |
 | `DATABASE_URL` | Yes | `file:local.db` | SQLite file path or Turso URL |
 | `DATABASE_AUTH_TOKEN` | No | -- | Turso auth token (if using remote DB) |
-| `OPENAI_API_KEY` | No | -- | API key for AI features |
-| `OPENAI_BASE_URL` | No | OpenAI default | Custom API endpoint |
-| `OPENAI_MODEL` | No | `gpt-4o-mini` | Model to use for AI actions |
+| `AI_PROVIDER` | No | `openai` | Default server-side AI provider (`openai`, `openrouter`, `custom`) |
+| `OPENAI_API_KEY` | No | -- | OpenAI or generic compatible provider API key |
+| `OPENAI_BASE_URL` | No | `https://api.openai.com/v1` | OpenAI or custom compatible endpoint |
+| `OPENAI_MODEL` | No | `gpt-4o-mini` | OpenAI or custom compatible model |
+| `OPENROUTER_API_KEY` | No | -- | OpenRouter API key when `AI_PROVIDER=openrouter` |
+| `OPENROUTER_BASE_URL` | No | `https://openrouter.ai/api/v1` | OpenRouter API endpoint |
+| `OPENROUTER_MODEL` | No | `openai/gpt-4o-mini` | OpenRouter model slug |
 
 ## Keyboard Shortcuts
 

@@ -82,6 +82,11 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --ai-start: oklch(0.78 0.14 192);
+  --ai-end: oklch(0.83 0.13 96);
+  --ai-ink: oklch(0.31 0.07 220);
+  --ai-border: color-mix(in oklch, var(--ai-start) 55%, white 45%);
+  --ai-surface: color-mix(in oklch, var(--ai-start) 10%, white 90%);
 }
 
 .dark {
@@ -116,6 +121,11 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --ai-start: oklch(0.71 0.11 194);
+  --ai-end: oklch(0.76 0.1 96);
+  --ai-ink: oklch(0.93 0.03 110);
+  --ai-border: color-mix(in oklch, var(--ai-start) 55%, black 45%);
+  --ai-surface: color-mix(in oklch, var(--ai-start) 16%, black 84%);
 }
 
 @layer base {
@@ -158,13 +168,13 @@
 /* Markdown preview typography — calm, generous, readable. */
 .inknest-prose {
   font-family: var(--font-serif), Georgia, "Times New Roman", serif;
-  font-size: 1.0625rem;
-  line-height: 1.75;
+  font-size: 1.125rem;
+  line-height: 1.82;
   color: var(--foreground);
   max-width: 70ch;
 }
 .inknest-prose > * + * {
-  margin-top: 1.1em;
+  margin-top: 1.2em;
 }
 .inknest-prose h1,
 .inknest-prose h2,
@@ -267,4 +277,47 @@
 /* RTL-aware tweak for prose */
 .inknest-prose[dir="rtl"] {
   font-family: var(--font-serif), "Vazirmatn", Tahoma, serif;
+}
+
+@layer components {
+  .ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: 9999px;
+    border: 1px solid var(--ai-border);
+    background:
+      linear-gradient(135deg, color-mix(in oklch, var(--ai-start) 18%, transparent), color-mix(in oklch, var(--ai-end) 20%, transparent)),
+      var(--ai-surface);
+    color: var(--ai-ink);
+    padding: 0.22rem 0.55rem 0.22rem 0.28rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    box-shadow: 0 1px 0 color-mix(in oklch, var(--ai-start) 20%, transparent);
+  }
+
+  .ai-badge__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, var(--ai-start), var(--ai-end));
+    color: oklch(0.2 0.04 230);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45);
+  }
+
+  .surface-card {
+    @apply rounded-2xl border border-border/70 bg-card text-card-foreground;
+  }
+
+  .surface-card-interactive {
+    @apply rounded-2xl border border-border/70 bg-card text-card-foreground transition-colors hover:bg-muted/25;
+  }
+
+  .surface-card-dashed {
+    @apply rounded-2xl border border-dashed border-border/70 bg-muted/15 text-card-foreground;
+  }
 }

@@ -9,6 +9,8 @@ import {
   unarchiveNote,
   deleteNoteSoft,
   togglePinned,
+  getNoteById,
+  moveNoteInTree,
 } from "./service";
 import { syncMarkdownTasks } from "@/server/tasks/service";
 
@@ -16,6 +18,22 @@ export async function createNoteAction() {
   const note = await createNote({ title: "Untitled" });
   revalidatePath("/notes");
   redirect(`/notes/${note.id}`);
+}
+
+export async function createProjectTaskNoteAction(
+  projectId: string,
+  title: string,
+) {
+  const note = await createNote({
+    title: title.trim() || "New task",
+    parentId: projectId,
+    status: "todo",
+  });
+  revalidatePath("/notes");
+  revalidatePath(`/notes/${note.id}`);
+  revalidatePath("/projects");
+  revalidatePath(`/projects/${projectId}`);
+  return note;
 }
 
 export async function updateNoteAction(
@@ -60,6 +78,32 @@ export async function togglePinnedAction(id: string) {
   await togglePinned(id);
   revalidatePath("/notes");
   revalidatePath(`/notes/${id}`);
+}
+
+export async function moveNoteInTreeAction(
+  noteId: string,
+  targetParentId: string | null,
+  beforeId: string | null = null,
+) {
+  const previous = await getNoteById(noteId);
+  const note = await moveNoteInTree(noteId, targetParentId, beforeId);
+  if (!note) {
+    throw new Error("NOTE_NOT_FOUND");
+  }
+
+  revalidatePath("/notes");
+  revalidatePath("/projects");
+  revalidatePath(`/notes/${noteId}`);
+  if (previous?.parentId) {
+    revalidatePath(`/projects/${previous.parentId}`);
+    revalidatePath(`/notes/${previous.parentId}`);
+  }
+  if (targetParentId) {
+    revalidatePath(`/projects/${targetParentId}`);
+    revalidatePath(`/notes/${targetParentId}`);
+  }
+
+  return note;
 }
 
 export type NoteSearchHit = {

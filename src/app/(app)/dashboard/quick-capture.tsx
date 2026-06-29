@@ -30,7 +30,7 @@ export function QuickCapture() {
   }
 
   return (
-    <section className="rounded-xl border bg-card p-4 sm:p-5">
+    <section className="rounded-xl border bg-transparent p-4 sm:p-5">
       <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
         <Sparkles className="size-4" />
         Quick capture
@@ -39,7 +39,7 @@ export function QuickCapture() {
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Jot down a thought..."
-        className="min-h-20 resize-none border-0 p-0 text-base shadow-none focus-visible:ring-0"
+        className="min-h-20 resize-none border-0 bg-transparent p-0 text-base shadow-none focus-visible:bg-transparent dark:bg-transparent focus-visible:ring-0"
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
             e.preventDefault();

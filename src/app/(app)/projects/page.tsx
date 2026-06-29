@@ -36,12 +36,13 @@ export default async function ProjectsPage() {
       </header>
 
       <p className="text-sm text-muted-foreground">
-        Projects are special notes with status, priority, and a due date. Markdown
-        checkboxes inside a project note show up as tasks.
+        Projects are special notes with status, priority, and a due date. Each
+        task in a project lives as its own child note, so the work stays fully
+        editable and linkable.
       </p>
 
       {projects.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center">
+        <div className="surface-card-dashed flex flex-col items-center gap-3 p-10 text-center">
           <div className="flex size-10 items-center justify-center rounded-full bg-muted">
             <FolderKanban className="size-5 text-muted-foreground" />
           </div>
@@ -68,7 +69,7 @@ export default async function ProjectsPage() {
                   <Link
                     key={p.id}
                     href={`/projects/${p.id}`}
-                    className="group block rounded-xl border bg-card p-4 transition-colors hover:bg-muted/40"
+                    className="surface-card-interactive group block p-4"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="truncate font-medium">{p.title}</h3>

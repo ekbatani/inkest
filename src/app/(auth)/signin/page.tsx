@@ -6,7 +6,7 @@ import { signupAction } from "@/server/auth/actions";
 
 export default function SignInPage() {
   return (
-    <div className="rounded-xl border bg-card p-6 shadow-sm">
+    <div className="surface-card p-6 shadow-sm">
       <div className="mb-6 flex flex-col items-center gap-2 text-center">
         <span className="flex size-9 items-center justify-center rounded-md bg-foreground text-background">
           <Feather className="size-5" />

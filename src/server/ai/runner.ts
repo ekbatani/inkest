@@ -9,7 +9,7 @@ export type AiActionResult<T = string> =
   | { ok: false; error: string; notConfigured?: boolean };
 
 export const AI_NOT_CONFIGURED_ERROR =
-  "AI is not configured. Set OPENAI_API_KEY in .env.local to enable AI actions.";
+  "AI is not configured. Add an AI provider in Settings or set the server AI environment variables.";
 
 export async function getCurrentUserOrError(): Promise<
   { ok: true; userId: string } | { ok: false; error: string }
@@ -19,8 +19,8 @@ export async function getCurrentUserOrError(): Promise<
   return { ok: true, userId: user.id };
 }
 
-export function getProviderOrUnconfigured() {
-  const provider = getAiProvider();
+export async function getProviderOrUnconfigured() {
+  const provider = await getAiProvider();
   if (!provider) {
     return {
       ok: false as const,
@@ -49,11 +49,11 @@ export async function runTextAction(args: {
   const user = await getCurrentUserOrError();
   if (!user.ok) return { ok: false, error: user.error };
 
-  const { ok, result, provider } = getProviderOrUnconfigured();
+  const { ok, result, provider } = await getProviderOrUnconfigured();
   if (!ok || !provider) return result;
 
   const inputHash = createHash("sha256").update(args.inputForAudit).digest("hex");
-  const providerName = process.env.AI_PROVIDER ?? "openai";
+  const providerName = provider.id;
 
   try {
     const output = await provider.complete(args.promptToModel, args.systemPrompt);
@@ -95,11 +95,11 @@ export async function runJsonAction<T>(args: {
   const user = await getCurrentUserOrError();
   if (!user.ok) return { ok: false, error: user.error };
 
-  const { ok, result, provider } = getProviderOrUnconfigured();
+  const { ok, result, provider } = await getProviderOrUnconfigured();
   if (!ok || !provider) return result;
 
   const inputHash = createHash("sha256").update(args.inputForAudit).digest("hex");
-  const providerName = process.env.AI_PROVIDER ?? "openai";
+  const providerName = provider.id;
 
   try {
     const raw = await provider.completeJson(args.promptToModel, args.systemPrompt);

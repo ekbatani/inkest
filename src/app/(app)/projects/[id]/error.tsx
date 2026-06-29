@@ -25,7 +25,12 @@ export default function ProjectError({
         have access.
       </p>
       <div className="flex gap-2">
-        <Button variant="outline" render={<Link href="/projects" />} className="gap-2">
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link href="/projects" />}
+          className="gap-2"
+        >
           <ArrowLeft className="size-4" /> Back to projects
         </Button>
         <Button onClick={unstable_retry} className="gap-2">

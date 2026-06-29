@@ -8,9 +8,13 @@ services:
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-changeme-generate-with-openssl-rand-base64-32}
       # Optional: uncomment and set your API key for AI features
+      # - AI_PROVIDER=openai
       # - OPENAI_API_KEY=
       # - OPENAI_BASE_URL=
       # - OPENAI_MODEL=
+      # - OPENROUTER_API_KEY=
+      # - OPENROUTER_BASE_URL=
+      # - OPENROUTER_MODEL=
     volumes:
       - inknest-data:/app/data
       - inknest-storage:/app/storage

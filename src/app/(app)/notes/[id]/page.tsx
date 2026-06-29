@@ -10,10 +10,13 @@ import { NoteEditor } from "@/components/notes/note-editor";
 
 export default async function NoteDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ focus?: string }>;
 }) {
   const { id } = await params;
+  const { focus } = await searchParams;
   const note = await getNoteById(id);
 
   if (!note) notFound();
@@ -37,6 +40,7 @@ export default async function NoteDetailPage({
       parentCandidates={parentCandidates}
       linkableNotes={linkableNotes}
       backlinks={backlinks.map((b) => ({ id: b.id, title: b.title }))}
+      selectTitleOnMount={focus === "title"}
     />
   );
 }

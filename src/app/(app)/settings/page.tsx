@@ -24,18 +24,21 @@ export default async function SettingsPage() {
       <ProfileSection email={user?.email ?? ""} name={user?.name} />
 
       <EditorPrefsSection
+        key={`editor:${settings.editor?.defaultMode}:${settings.editor?.autosaveDelayMs}:${settings.editor?.showLineNumbers}`}
         defaultMode={settings.editor?.defaultMode}
         autosaveDelayMs={settings.editor?.autosaveDelayMs}
         showLineNumbers={settings.editor?.showLineNumbers}
       />
 
       <AiProviderSection
+        key={`ai:${settings.ai?.provider}:${settings.ai?.apiKey ? "set" : "unset"}:${settings.ai?.baseURL ?? ""}:${settings.ai?.model ?? ""}`}
+        provider={settings.ai?.provider}
         apiKey={settings.ai?.apiKey}
         baseURL={settings.ai?.baseURL}
         model={settings.ai?.model}
       />
 
-      <section className="flex flex-col gap-3 rounded-xl border bg-card p-5">
+      <section className="surface-card flex flex-col gap-3 p-5">
         <header className="flex items-center gap-2">
           <Archive className="size-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Export & backup</h2>
@@ -45,7 +48,11 @@ export default async function SettingsPage() {
           zip archive you can save offline.
         </p>
         <div>
-          <Button render={<Link href="/api/export/all" />} className="gap-1.5">
+          <Button
+            nativeButton={false}
+            render={<Link href="/api/export/all" />}
+            className="gap-1.5"
+          >
             <Download className="size-4" /> Export everything
           </Button>
         </div>

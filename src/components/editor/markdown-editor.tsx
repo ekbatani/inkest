@@ -29,16 +29,20 @@ export function MarkdownEditor({
       Prec.highest(
         EditorView.theme({
           "&": {
-            fontSize: "14px",
+            fontSize: "15.5px",
             backgroundColor: "transparent",
+            color: "color-mix(in oklab, var(--foreground) 88%, transparent)",
+            minHeight: "100%",
           },
           ".cm-scroller": {
             fontFamily: "var(--font-mono)",
-            lineHeight: "1.7",
+            lineHeight: "1.82",
             overflow: "auto",
           },
           ".cm-content": {
             padding: "0",
+            paddingBottom: "2.5rem",
+            caretColor: "color-mix(in oklab, var(--foreground) 82%, transparent)",
           },
           ".cm-gutters": {
             display: "none",
@@ -46,11 +50,16 @@ export function MarkdownEditor({
           "&.cm-focused": {
             outline: "none",
           },
+          ".cm-selectionBackground, .cm-content ::selection": {
+            backgroundColor:
+              "color-mix(in oklab, var(--muted) 82%, var(--foreground) 18%) !important",
+          },
           ".cm-cursor, .cm-dropCursor": {
-            borderLeftColor: "var(--foreground)",
+            borderLeftColor:
+              "color-mix(in oklab, var(--foreground) 78%, transparent)",
           },
           ".cm-editor": {
-            height: "100%",
+            minHeight: "100%",
           },
         }),
       ),

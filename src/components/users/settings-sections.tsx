@@ -2,6 +2,11 @@
 
 import * as React from "react";
 import { toast } from "sonner";
+import {
+  AI_PROVIDERS,
+  getAiProviderDefinition,
+  type AiProviderId,
+} from "@/lib/ai/providers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +21,7 @@ import {
   updateProfileAction,
   changePasswordAction,
 } from "@/server/users/settings-actions";
+import { AiBadge } from "@/components/ai/ai-badge";
 
 export function ProfileSection({
   email,
@@ -60,7 +66,7 @@ export function ProfileSection({
   };
 
   return (
-    <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
+    <section className="surface-card flex flex-col gap-4 p-5">
       <h2 className="text-sm font-semibold">Profile</h2>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
@@ -138,12 +144,6 @@ export function EditorPrefsSection({
   const [lineNumbers, setLineNumbers] = React.useState(!!showLineNumbers);
   const [saving, setSaving] = React.useState(false);
 
-  React.useEffect(() => {
-    setMode(defaultMode ?? "edit");
-    setDelay(String(autosaveDelayMs ?? 1500));
-    setLineNumbers(!!showLineNumbers);
-  }, [defaultMode, autosaveDelayMs, showLineNumbers]);
-
   const save = async () => {
     setSaving(true);
     try {
@@ -166,7 +166,7 @@ export function EditorPrefsSection({
   };
 
   return (
-    <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
+    <section className="surface-card flex flex-col gap-4 p-5">
       <h2 className="text-sm font-semibold">Editor</h2>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1.5">
@@ -218,24 +218,37 @@ export function EditorPrefsSection({
 }
 
 export function AiProviderSection({
+  provider,
   apiKey,
   baseURL,
   model,
 }: {
+  provider?: AiProviderId;
   apiKey?: string;
   baseURL?: string;
   model?: string;
 }) {
+  const initialProvider = provider ?? "openai";
+  const [selectedProvider, setSelectedProvider] =
+    React.useState<AiProviderId>(initialProvider);
   const [key, setKey] = React.useState(apiKey ?? "");
   const [url, setUrl] = React.useState(baseURL ?? "");
   const [mdl, setMdl] = React.useState(model ?? "");
   const [saving, setSaving] = React.useState(false);
+  const providerDef = getAiProviderDefinition(selectedProvider);
 
-  React.useEffect(() => {
-    setKey(apiKey ?? "");
-    setUrl(baseURL ?? "");
-    setMdl(model ?? "");
-  }, [apiKey, baseURL, model]);
+  const onProviderChange = (nextProvider: AiProviderId) => {
+    const currentDef = getAiProviderDefinition(selectedProvider);
+    const nextDef = getAiProviderDefinition(nextProvider);
+    setSelectedProvider(nextProvider);
+
+    if (!url.trim() || url === currentDef.defaultBaseURL) {
+      setUrl(nextDef.defaultBaseURL);
+    }
+    if (!mdl.trim() || mdl === currentDef.defaultModel) {
+      setMdl(nextDef.defaultModel);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -243,6 +256,7 @@ export function AiProviderSection({
       await import("@/server/users/settings-actions").then((m) =>
         m.updateUserSettingsAction({
           ai: {
+            provider: selectedProvider,
             apiKey: key.trim() || undefined,
             baseURL: url.trim() || undefined,
             model: mdl.trim() || undefined,
@@ -258,21 +272,42 @@ export function AiProviderSection({
   };
 
   return (
-    <section className="flex flex-col gap-4 rounded-xl border bg-card p-5">
-      <h2 className="text-sm font-semibold">AI provider</h2>
+    <section className="surface-card flex flex-col gap-4 p-5">
+      <div className="flex items-center gap-2">
+        <AiBadge />
+        <h2 className="text-sm font-semibold">AI provider</h2>
+      </div>
       <p className="text-xs text-muted-foreground">
-        Optional per-user overrides. When unset, environment variables
-        (OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL) are used. The key is
-        stored locally in your self-hosted database.
+        Choose your provider and save your own API key. When these fields are
+        left empty, the app falls back to the server environment variables. The
+        key is stored locally in your self-hosted database.
       </p>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-4">
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Provider</Label>
+          <Select
+            value={selectedProvider}
+            onValueChange={(value) => onProviderChange(value as AiProviderId)}
+          >
+            <SelectTrigger className="h-9 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {AI_PROVIDERS.map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-muted-foreground">API key</Label>
           <Input
             type="password"
             value={key}
             onChange={(e) => setKey(e.target.value)}
-            placeholder="sk-..."
+            placeholder={providerDef.apiKeyPlaceholder}
             autoComplete="off"
           />
         </div>
@@ -281,7 +316,7 @@ export function AiProviderSection({
           <Input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://api.openai.com/v1"
+            placeholder={providerDef.defaultBaseURL}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -289,7 +324,7 @@ export function AiProviderSection({
           <Input
             value={mdl}
             onChange={(e) => setMdl(e.target.value)}
-            placeholder="gpt-4o-mini"
+            placeholder={providerDef.defaultModel}
           />
         </div>
       </div>
@@ -317,7 +352,7 @@ export function DangerZoneSection() {
     }
   };
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-5">
+    <section className="surface-card flex flex-col gap-3 border-destructive/40 bg-destructive/5 p-5">
       <h2 className="text-sm font-semibold text-destructive">Danger zone</h2>
       <p className="text-xs text-muted-foreground">
         Permanently delete your account and every note, task, tag, and attachment

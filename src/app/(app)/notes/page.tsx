@@ -61,10 +61,20 @@ export default async function NotesPage({
           <h1 className="text-2xl font-semibold tracking-tight">Notes</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" render={<Link href="/archive" />}>
+          <Button
+            size="sm"
+            variant="ghost"
+            nativeButton={false}
+            render={<Link href="/archive" />}
+          >
             <Archive className="size-4" /> Archive
           </Button>
-          <Button size="sm" className="gap-1.5" render={<Link href="/notes/new" />}>
+          <Button
+            size="sm"
+            className="gap-1.5"
+            nativeButton={false}
+            render={<Link href="/notes/new" />}
+          >
             <Plus className="size-4" /> New note
           </Button>
         </div>
@@ -192,7 +202,7 @@ function NoteCard({ note }: { note: Note }) {
   return (
     <Link
       href={`/notes/${note.id}`}
-      className="group block rounded-xl border bg-card p-4 transition-colors hover:bg-muted/40"
+      className="surface-card-interactive group block p-4"
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="truncate font-medium">{note.title}</h3>
@@ -226,7 +236,7 @@ function EmptyState({
   hasTagFilter?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center">
+    <div className="surface-card-dashed flex flex-col items-center gap-3 p-10 text-center">
       <div className="flex size-10 items-center justify-center rounded-full bg-muted">
         <NotebookPen className="size-5 text-muted-foreground" />
       </div>
@@ -243,7 +253,12 @@ function EmptyState({
         </p>
       </div>
       {!search && !hasTagFilter && (
-        <Button size="sm" className="gap-1.5" render={<Link href="/notes/new" />}>
+        <Button
+          size="sm"
+          className="gap-1.5"
+          nativeButton={false}
+          render={<Link href="/notes/new" />}
+        >
           <Plus className="size-4" /> New note
         </Button>
       )}

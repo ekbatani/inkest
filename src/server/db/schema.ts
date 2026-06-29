@@ -68,6 +68,7 @@ export const notes = sqliteTable("notes", {
     .notNull()
     .default("none"),
   dueDate: integer("due_date", { mode: "timestamp" }),
+  sortOrder: integer("sort_order"),
   pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
   archived: integer("archived", { mode: "boolean" }).notNull().default(false),
   deletedAt: integer("deleted_at", { mode: "timestamp" }),

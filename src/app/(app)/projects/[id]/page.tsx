@@ -1,13 +1,26 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Pencil, FileText, ListChecks, FolderClosed, Clock } from "lucide-react";
-import { getNoteById, listNotes } from "@/server/notes/service";
-import { listTasks } from "@/server/tasks/service";
+import {
+  ChevronLeft,
+  Pencil,
+  FileText,
+  ListChecks,
+  FolderClosed,
+  Clock,
+} from "lucide-react";
+import {
+  getNoteById,
+  isTaskNote,
+  listNotes,
+  listProjectTaskNotes,
+} from "@/server/notes/service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { ProjectTitleEditor } from "@/components/projects/project-title-editor";
 import { NoteStatusBadge } from "@/components/notes/note-status-badge";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
-import { TasksPanel } from "@/components/tasks/tasks-panel";
+import { ProjectTaskNotesPanel } from "@/components/projects/project-task-notes-panel";
 import { formatRelativeDate, formatDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -39,10 +52,11 @@ export default async function ProjectDetailPage({
     ? (rawTab as Tab)
     : "overview";
 
-  const [tasks, childNotes] = await Promise.all([
-    listTasks(id),
+  const [taskNotes, childNotes] = await Promise.all([
+    listProjectTaskNotes(id),
     listNotes({ parentId: id, limit: 100 }),
   ]);
+  const referenceNotes = childNotes.filter((note) => !isTaskNote(note));
 
   return (
     <div className="flex h-full flex-col">
@@ -50,12 +64,13 @@ export default async function ProjectDetailPage({
         <Button
           variant="ghost"
           size="icon-sm"
+          nativeButton={false}
           render={<Link href="/projects" />}
           aria-label="Back to projects"
         >
           <ChevronLeft className="size-4" />
         </Button>
-        <h1 className="truncate text-sm font-medium">{note.title}</h1>
+        <ProjectTitleEditor id={note.id} title={note.title} />
         <div className="ml-2 flex items-center gap-2">
           <NoteStatusBadge status={note.status} />
           {note.priority !== "none" && (
@@ -74,16 +89,14 @@ export default async function ProjectDetailPage({
             variant="outline"
             size="sm"
             className="gap-1.5"
-            render={
-              <Link href={`/notes/${note.id}`} aria-label="Edit as note" />
-            }
+            nativeButton={false}
+            render={<Link href={`/notes/${note.id}`} aria-label="Edit as note" />}
           >
             <Pencil className="size-4" /> Edit
           </Button>
         </div>
       </div>
 
-      {/* Tabs */}
       <nav className="flex shrink-0 items-center gap-1 border-b px-3 sm:px-4">
         {TABS.map((t) => {
           const Icon = t.icon;
@@ -102,14 +115,14 @@ export default async function ProjectDetailPage({
             >
               <Icon className="size-3.5" />
               {t.label}
-              {t.id === "tasks" && tasks.length > 0 && (
+              {t.id === "tasks" && taskNotes.length > 0 && (
                 <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  {tasks.length}
+                  {taskNotes.length}
                 </span>
               )}
-              {t.id === "notes" && childNotes.length > 0 && (
+              {t.id === "notes" && referenceNotes.length > 0 && (
                 <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  {childNotes.length}
+                  {referenceNotes.length}
                 </span>
               )}
             </Link>
@@ -120,9 +133,16 @@ export default async function ProjectDetailPage({
       <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-8">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
           {tab === "overview" && <OverviewTab note={note} />}
-          {tab === "tasks" && <TasksPanel noteId={note.id} initialTasks={tasks} />}
-          {tab === "notes" && <NotesTab childNotes={childNotes} projectId={id} />}
-          {tab === "timeline" && <TimelineTab notes={childNotes} tasks={tasks} />}
+          {tab === "tasks" && (
+            <ProjectTaskNotesPanel
+              projectId={note.id}
+              initialTaskNotes={taskNotes}
+            />
+          )}
+          {tab === "notes" && <NotesTab childNotes={referenceNotes} projectId={id} />}
+          {tab === "timeline" && (
+            <TimelineTab notes={childNotes} taskNotes={taskNotes} />
+          )}
         </div>
       </div>
     </div>
@@ -135,24 +155,36 @@ function OverviewTab({
   note: NonNullable<Awaited<ReturnType<typeof getNoteById>>>;
 }) {
   const isEmpty = note.contentMd.trim().length === 0;
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <span>Created {formatRelativeDate(note.createdAt)}</span>
-        <span>·</span>
-        <span>Updated {formatRelativeDate(note.updatedAt)}</span>
+
+  if (isEmpty) {
+    return (
+      <div className="surface-card-dashed p-10 text-center text-sm text-muted-foreground">
+        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border bg-background">
+          <FileText className="size-5" />
+        </div>
+        This project has no content yet. Use the Edit button to add Markdown,
+        then use the Tasks tab to create note-based tasks.
       </div>
-      {isEmpty ? (
-        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-          This project has no content yet. Use the Edit button to add Markdown,
-          then the Tasks tab will show your checkboxes.
-        </div>
-      ) : (
-        <div className="inknest-prose max-w-none border bg-card rounded-xl p-5 sm:p-7">
-          <MarkdownPreview content={note.contentMd} direction={note.direction} />
-        </div>
-      )}
-    </div>
+    );
+  }
+
+  return (
+    <section className="mx-auto w-full max-w-3xl">
+      <Card>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>Created {formatRelativeDate(note.createdAt)}</span>
+            <span>|</span>
+            <span>Updated {formatRelativeDate(note.updatedAt)}</span>
+          </div>
+          <MarkdownPreview
+            content={note.contentMd}
+            direction={note.direction}
+            className="max-w-none font-sans text-[0.98rem] leading-8 tracking-[-0.01em] text-foreground/90 sm:text-[1.02rem]"
+          />
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
@@ -173,19 +205,15 @@ function NotesTab({
           variant="outline"
           size="sm"
           className="gap-1.5"
-          render={
-            <Link
-              href={`/notes/new?parent=${projectId}`}
-              aria-label="Add linked note"
-            />
-          }
+          nativeButton={false}
+          render={<Link href={`/notes/new?parent=${projectId}`} aria-label="Add linked note" />}
         >
           Add note
         </Button>
       </div>
       {childNotes.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No notes linked to this project. Set a parent in a note’s metadata
+        <div className="surface-card-dashed p-8 text-center text-sm text-muted-foreground">
+          No notes linked to this project. Set a parent in a note&apos;s metadata
           panel to link it here.
         </div>
       ) : (
@@ -194,7 +222,7 @@ function NotesTab({
             <li key={n.id}>
               <Link
                 href={`/notes/${n.id}`}
-                className="block rounded-lg border bg-card p-3 transition-colors hover:bg-muted/40"
+                className="surface-card-interactive block p-3"
               >
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="truncate text-sm font-medium">{n.title}</h3>
@@ -226,31 +254,28 @@ type TimelineEvent = {
 
 function TimelineTab({
   notes,
-  tasks,
+  taskNotes,
 }: {
   notes: { id: string; title: string; updatedAt: Date }[];
-  tasks: { id: string; title: string; status: string; updatedAt: Date }[];
+  taskNotes: { id: string; title: string; status: string; updatedAt: Date }[];
 }) {
+  const taskIds = new Set(taskNotes.map((task) => task.id));
   const events: TimelineEvent[] = [
     ...notes.map((n) => ({
       id: n.id,
       title: n.title,
       at: n.updatedAt,
-      kind: "note" as const,
-    })),
-    ...tasks.map((t) => ({
-      id: t.id,
-      title: t.title,
-      at: t.updatedAt,
-      kind: "task" as const,
-      status: t.status,
+      kind: taskIds.has(n.id) ? ("task" as const) : ("note" as const),
+      status: taskIds.has(n.id)
+        ? taskNotes.find((task) => task.id === n.id)?.status
+        : undefined,
     })),
   ].sort((a, b) => b.at.getTime() - a.at.getTime());
 
   return (
     <div className="flex flex-col gap-2">
       {events.length === 0 ? (
-        <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+        <p className="surface-card-dashed p-8 text-center text-sm text-muted-foreground">
           No activity yet.
         </p>
       ) : (

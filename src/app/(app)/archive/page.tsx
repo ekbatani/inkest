@@ -15,7 +15,7 @@ export default async function ArchivePage() {
       </header>
 
       {archivedNotes.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center">
+        <div className="surface-card-dashed flex flex-col items-center gap-3 p-10 text-center">
           <div className="flex size-10 items-center justify-center rounded-full bg-muted">
             <Archive className="size-5 text-muted-foreground" />
           </div>
@@ -31,7 +31,7 @@ export default async function ArchivePage() {
           {archivedNotes.map((note) => (
             <div
               key={note.id}
-              className="rounded-xl border bg-card p-4 opacity-75"
+              className="surface-card p-4 opacity-75"
             >
               <div className="flex items-start justify-between gap-2">
                 <Link
@@ -49,7 +49,13 @@ export default async function ArchivePage() {
         </div>
       )}
 
-      <Button variant="ghost" size="sm" className="w-fit" render={<Link href="/notes" />}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-fit"
+        nativeButton={false}
+        render={<Link href="/notes" />}
+      >
         Back to notes
       </Button>
     </div>
