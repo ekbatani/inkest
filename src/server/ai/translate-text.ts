@@ -1,21 +1,28 @@
-import { runTextAction } from "./runner";
-
-const SYSTEM_PROMPT = `You translate a user's selected text into the target language.
-- Preserve Markdown structure.
-- Do not add commentary. Output only the translated text, in Markdown.`;
+import { type AiActionResult, runJsonAction } from "./runner";
+import {
+  buildAiSystemPrompt,
+  buildAiUserPrompt,
+  createMarkdownResponseParser,
+} from "./specs";
 
 export async function translateText(args: {
   noteId: string;
   noteTitle: string;
   selectedText: string;
   targetLanguage: string;
-}) {
-  const prompt = `Translate the following selection from the note titled "${args.noteTitle}" into ${args.targetLanguage}. Preserve Markdown structure.\n\n${args.selectedText}`;
-  return runTextAction({
+}): Promise<AiActionResult<string>> {
+  const result = await runJsonAction({
     noteId: args.noteId,
     action: "translate",
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: buildAiSystemPrompt("translate"),
     inputForAudit: args.selectedText,
-    promptToModel: prompt,
+    promptToModel: buildAiUserPrompt("translate", {
+      noteTitle: args.noteTitle,
+      selectedText: args.selectedText,
+      targetLanguage: args.targetLanguage,
+    }),
+    parse: createMarkdownResponseParser(),
   });
+
+  return result.ok ? { ...result, output: result.output.contentMd } : result;
 }

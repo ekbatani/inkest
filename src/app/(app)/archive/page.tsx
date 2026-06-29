@@ -3,6 +3,9 @@ import { Archive } from "lucide-react";
 import { listNotes } from "@/server/notes/service";
 import { Button } from "@/components/ui/button";
 import { formatDateShort } from "@/lib/dates";
+import { cn } from "@/lib/utils";
+import { usesRtlTitleFont } from "@/lib/text/rtl";
+import { ArchiveToggleButton } from "@/components/notes/archive-toggle-button";
 
 export default async function ArchivePage() {
   const archivedNotes = await listNotes({ archived: true, limit: 100 });
@@ -29,20 +32,29 @@ export default async function ArchivePage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {archivedNotes.map((note) => (
-            <div
-              key={note.id}
-              className="surface-card p-4 opacity-75"
-            >
+            <div key={note.id} className="surface-card p-4 opacity-75">
               <div className="flex items-start justify-between gap-2">
-                <Link
-                  href={`/notes/${note.id}`}
-                  className="truncate font-medium hover:underline"
-                >
-                  {note.title}
-                </Link>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {formatDateShort(note.updatedAt)}
-                </span>
+                <div className="min-w-0">
+                  <Link
+                    href={`/notes/${note.id}`}
+                    className={cn(
+                      "block truncate font-medium hover:underline",
+                      usesRtlTitleFont(note.title) && "rtl-vazir",
+                    )}
+                  >
+                    {note.title}
+                  </Link>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {formatDateShort(note.updatedAt)}
+                  </span>
+                </div>
+                <ArchiveToggleButton
+                  noteId={note.id}
+                  archived
+                  variant="outline"
+                  size="icon-sm"
+                  className="rounded-full"
+                />
               </div>
             </div>
           ))}

@@ -1,28 +1,32 @@
-import { runTextAction } from "./runner";
-
-const SYSTEM_PROMPT = `You are an expert writing editor. Improve the user's writing while preserving their meaning and intent.
-- Fix grammar, clarity, and flow.
-- Keep the Markdown structure (headings, lists, links) intact.
-- Do not invent new facts; only rephrase.
-- Respond in Markdown only, with no commentary.`;
+import { type AiActionResult, runJsonAction } from "./runner";
+import {
+  buildAiSystemPrompt,
+  buildAiUserPrompt,
+  createMarkdownResponseParser,
+} from "./specs";
 
 export async function improveWriting(args: {
   noteId: string;
   noteTitle: string;
   noteContent: string;
   selectedText?: string;
-}) {
+}): Promise<AiActionResult<string>> {
   const full = `# ${args.noteTitle}\n\n${args.noteContent}`;
   const hasSelection = Boolean(args.selectedText && args.selectedText.trim());
   const inputForAudit = hasSelection ? args.selectedText! : full;
-  const prompt = hasSelection
-    ? `Improve only this selection from the note titled "${args.noteTitle}" in place. Return the rewritten text only, in Markdown:\n\n${args.selectedText}`
-    : `Rewrite the following note in place. Return the rewritten note in Markdown only:\n\n${full}`;
-  return runTextAction({
+
+  const result = await runJsonAction({
     noteId: args.noteId,
     action: "improve-writing",
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: buildAiSystemPrompt("improve-writing"),
     inputForAudit,
-    promptToModel: prompt,
+    promptToModel: buildAiUserPrompt("improve-writing", {
+      noteTitle: args.noteTitle,
+      noteContent: args.noteContent,
+      selectedText: hasSelection ? args.selectedText : undefined,
+    }),
+    parse: createMarkdownResponseParser(),
   });
+
+  return result.ok ? { ...result, output: result.output.contentMd } : result;
 }

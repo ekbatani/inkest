@@ -6,6 +6,7 @@ import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { EditorView } from "@codemirror/view";
 import { Prec } from "@codemirror/state";
 import { cn } from "@/lib/utils";
+import { containsArabicScript } from "@/lib/text/rtl";
 
 type Props = {
   value: string;
@@ -22,6 +23,11 @@ export function MarkdownEditor({
   className,
   editorRef,
 }: Props) {
+  const usesRtlFont =
+    direction === "rtl" || (direction === "auto" && containsArabicScript(value));
+  const editorFontFamily =
+    usesRtlFont ? "var(--font-rtl)" : "var(--font-mono)";
+
   const extensions = React.useMemo(
     () => [
       markdown({ base: markdownLanguage }),
@@ -35,7 +41,7 @@ export function MarkdownEditor({
             minHeight: "100%",
           },
           ".cm-scroller": {
-            fontFamily: "var(--font-mono)",
+            fontFamily: editorFontFamily,
             lineHeight: "1.82",
             overflow: "auto",
           },
@@ -64,13 +70,13 @@ export function MarkdownEditor({
         }),
       ),
     ],
-    [],
+    [editorFontFamily],
   );
 
   const dir = direction === "auto" ? undefined : direction;
 
   return (
-    <div className={cn("h-full", className)} dir={dir}>
+    <div className={cn("h-full", usesRtlFont && "rtl-vazir", className)} dir={dir}>
       <CodeMirror
         ref={editorRef}
         value={value}

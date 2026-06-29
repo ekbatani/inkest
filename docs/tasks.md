@@ -1,6 +1,6 @@
 - rename the applicaitoin to inkest
 - Add a landing page look in agnoOs landing and spotlight effect in hero section.
-- Add super fucos mode to read with spotlight :).
+- Add super fucos mode to read with spotlight 
 - Add little animations to make it attractive
 - Use line seperated space to make it clean minimal and modern
 - Make it as fast as possible and as light and minimal as possible
@@ -11,4 +11,11 @@
 - Add openrouter as AI provider. Done.
 - Link to telegram and add notifications
 - Add help how users add their AI keys or connect to telegram
+- In Splite view the views should scroll together
+- The charts size and zoom functionality
+- full width content in editor
+- The size of the side bar should be editable
+- The links in the note should work both inner link with # and link to the other notes
+- exit from focus mode
+- in focus mode we should be able to switch preview and edit mode
 - 

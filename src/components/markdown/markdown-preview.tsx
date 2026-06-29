@@ -9,6 +9,7 @@ import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import { useMermaidCodeComponent } from "./use-mermaid-code-component";
 import { transformWikiLinks, type WikiLinkTarget } from "@/lib/markdown/wiki";
+import { containsArabicScript } from "@/lib/text/rtl";
 
 type Props = {
   content: string;
@@ -70,6 +71,8 @@ export function MarkdownPreview({
   linkableNotes,
 }: Props) {
   const dir = direction === "auto" ? undefined : direction;
+  const usesRtlFont =
+    direction === "rtl" || (direction === "auto" && containsArabicScript(content));
   const mermaidComponents = useMermaidCodeComponent();
 
   const components = React.useMemo(
@@ -89,7 +92,7 @@ export function MarkdownPreview({
 
   return (
     <div
-      className={cn("inknest-prose", className)}
+      className={cn("inknest-prose", usesRtlFont && "rtl-vazir", className)}
       dir={dir}
     >
       <ReactMarkdown

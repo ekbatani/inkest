@@ -8,6 +8,8 @@ import { listTags } from "@/server/tags/service";
 import { formatRelativeDate } from "@/lib/dates";
 import { NoteStatusBadge } from "@/components/notes/note-status-badge";
 import type { Note } from "@/server/db/schema";
+import { cn } from "@/lib/utils";
+import { usesRtlTitleFont } from "@/lib/text/rtl";
 
 export default async function NotesPage({
   searchParams,
@@ -198,6 +200,7 @@ function NoteCard({ note }: { note: Note }) {
       .replace(/\n+/g, " ")
       .trim()
       .slice(0, 120);
+  const excerptUsesRtlFont = usesRtlTitleFont(excerpt);
 
   return (
     <Link
@@ -205,13 +208,25 @@ function NoteCard({ note }: { note: Note }) {
       className="surface-card-interactive group block p-4"
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="truncate font-medium">{note.title}</h3>
+        <h3
+          className={cn(
+            "truncate font-medium",
+            usesRtlTitleFont(note.title) && "rtl-vazir",
+          )}
+        >
+          {note.title}
+        </h3>
         <span className="shrink-0 text-xs text-muted-foreground">
           {formatRelativeDate(note.updatedAt)}
         </span>
       </div>
       {excerpt && (
-        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+        <p
+          className={cn(
+            "mt-1 line-clamp-2 text-sm text-muted-foreground",
+            excerptUsesRtlFont && "rtl-vazir",
+          )}
+        >
           {excerpt}
         </p>
       )}

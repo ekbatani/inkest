@@ -14,6 +14,8 @@ import { listDueTaskNotes, listNotes } from "@/server/notes/service";
 import { formatDateShort, formatRelativeDate } from "@/lib/dates";
 import type { Note } from "@/server/db/schema";
 import { QuickCapture } from "./quick-capture";
+import { cn } from "@/lib/utils";
+import { usesRtlTitleFont } from "@/lib/text/rtl";
 
 export default async function DashboardPage() {
   const [recentNotes, pinnedNotes, activeProjects, dueTasks] =
@@ -105,7 +107,14 @@ export default async function DashboardPage() {
                 className="surface-card-interactive group block p-4"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="truncate font-medium">{project.title}</h3>
+                  <h3
+                    className={cn(
+                      "truncate font-medium",
+                      usesRtlTitleFont(project.title) && "rtl-vazir",
+                    )}
+                  >
+                    {project.title}
+                  </h3>
                   <span className="shrink-0 text-xs text-muted-foreground">
                     {formatRelativeDate(project.updatedAt)}
                   </span>
@@ -211,6 +220,7 @@ function NoteCard({ note }: { note: Note }) {
       .replace(/\n+/g, " ")
       .trim()
       .slice(0, 120);
+  const excerptUsesRtlFont = usesRtlTitleFont(excerpt);
 
   return (
     <Link
@@ -218,13 +228,25 @@ function NoteCard({ note }: { note: Note }) {
       className="surface-card-interactive group block p-4"
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="truncate font-medium">{note.title}</h3>
+        <h3
+          className={cn(
+            "truncate font-medium",
+            usesRtlTitleFont(note.title) && "rtl-vazir",
+          )}
+        >
+          {note.title}
+        </h3>
         <span className="shrink-0 text-xs text-muted-foreground">
           {formatRelativeDate(note.updatedAt)}
         </span>
       </div>
       {excerpt && (
-        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+        <p
+          className={cn(
+            "mt-1 line-clamp-2 text-sm text-muted-foreground",
+            excerptUsesRtlFont && "rtl-vazir",
+          )}
+        >
           {excerpt}
         </p>
       )}
@@ -278,7 +300,14 @@ function TaskDueList({
             >
               <div className="flex min-w-0 items-center gap-2">
                 <CheckCircle2 className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="truncate">{taskNote.title}</span>
+                <span
+                  className={cn(
+                    "truncate",
+                    usesRtlTitleFont(taskNote.title) && "rtl-vazir",
+                  )}
+                >
+                  {taskNote.title}
+                </span>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className="text-xs text-muted-foreground">

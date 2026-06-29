@@ -9,19 +9,10 @@ import { createProjectPlan } from "@/server/ai/create-project-plan";
 import { generateMermaid } from "@/server/ai/generate-mermaid";
 import { explainText } from "@/server/ai/explain-text";
 import { translateText } from "@/server/ai/translate-text";
-
-const ActionEnum = z.enum([
-  "summarize",
-  "improve-writing",
-  "extract-tasks",
-  "create-project-plan",
-  "generate-mermaid",
-  "explain",
-  "translate",
-]);
+import { NoteEditorActionSchema } from "@/server/ai/specs";
 
 const RequestSchema = z.object({
-  action: ActionEnum,
+  action: NoteEditorActionSchema,
   noteId: z.string(),
   selectedText: z.string().optional(),
   promptHint: z.string().optional(),

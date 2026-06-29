@@ -10,6 +10,7 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-serif: var(--font-serif);
+  --font-rtl-fallback: var(--font-rtl-fallback);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -87,6 +88,7 @@
   --ai-ink: oklch(0.31 0.07 220);
   --ai-border: color-mix(in oklch, var(--ai-start) 55%, white 45%);
   --ai-surface: color-mix(in oklch, var(--ai-start) 10%, white 90%);
+  --font-rtl: "Vazir", var(--font-rtl-fallback), Tahoma, sans-serif;
 }
 
 .dark {
@@ -275,8 +277,18 @@
 }
 
 /* RTL-aware tweak for prose */
-.inknest-prose[dir="rtl"] {
-  font-family: var(--font-serif), "Vazirmatn", Tahoma, serif;
+.inknest-prose[dir="rtl"],
+.inknest-prose.rtl-vazir {
+  font-family: var(--font-rtl);
+}
+
+.inknest-prose[dir="rtl"] :is(h1, h2, h3, h4),
+.inknest-prose.rtl-vazir :is(h1, h2, h3, h4) {
+  font-family: var(--font-rtl);
+}
+
+.rtl-vazir {
+  font-family: var(--font-rtl) !important;
 }
 
 @layer components {

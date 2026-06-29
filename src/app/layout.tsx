@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Lora } from "next/font/google";
+import { Geist, Geist_Mono, Lora, Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "@/components/providers/session-provider";
@@ -22,6 +22,12 @@ const lora = Lora({
   display: "swap",
 });
 
+const vazirmatn = Vazirmatn({
+  variable: "--font-rtl-fallback",
+  subsets: ["arabic"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "InkNest",
   description: "A calm, Markdown-first personal workspace.",
@@ -36,7 +42,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${lora.variable} ${vazirmatn.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider

@@ -1,21 +1,26 @@
-import { runTextAction } from "./runner";
-
-const SYSTEM_PROMPT = `You explain a user's selected text in clear, friendly Markdown.
-- Keep it short (3-6 sentences) unless the selection is complex.
-- Define any technical terms inline.
-- Respond in Markdown only.`;
+import { type AiActionResult, runJsonAction } from "./runner";
+import {
+  buildAiSystemPrompt,
+  buildAiUserPrompt,
+  createMarkdownResponseParser,
+} from "./specs";
 
 export async function explainText(args: {
   noteId: string;
   noteTitle: string;
   selectedText: string;
-}) {
-  const prompt = `Explain this selection from the note titled "${args.noteTitle}":\n\n${args.selectedText}`;
-  return runTextAction({
+}): Promise<AiActionResult<string>> {
+  const result = await runJsonAction({
     noteId: args.noteId,
     action: "explain",
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: buildAiSystemPrompt("explain"),
     inputForAudit: args.selectedText,
-    promptToModel: prompt,
+    promptToModel: buildAiUserPrompt("explain", {
+      noteTitle: args.noteTitle,
+      selectedText: args.selectedText,
+    }),
+    parse: createMarkdownResponseParser(),
   });
+
+  return result.ok ? { ...result, output: result.output.contentMd } : result;
 }

@@ -1,15 +1,11 @@
-import { runTextAction } from "./runner";
-
-const SYSTEM_PROMPT = `You generate a Mermaid diagram from a user's request.
-Rules:
-- Output ONLY a fenced Mermaid code block, e.g.:
-\`\`\`mermaid
-flowchart TD
-  A --> B
-\`\`\`
-- Use the simplest diagram type that fits (flowchart / sequence / state / gantt).
-- Keep node ids short; node labels in English unless the input is otherwise.
-- Do not add narrative text outside the code block.`;
+import { type AiActionResult, runJsonAction } from "./runner";
+import {
+  buildAiSystemPrompt,
+  buildAiUserPrompt,
+  createSchemaParser,
+  MermaidSchema,
+  renderMermaidMarkdown,
+} from "./specs";
 
 export async function generateMermaid(args: {
   noteId: string;
@@ -17,17 +13,25 @@ export async function generateMermaid(args: {
   noteContent: string;
   selectedText?: string;
   promptHint?: string;
-}) {
+}): Promise<AiActionResult<string>> {
   const full = `# ${args.noteTitle}\n\n${args.noteContent}`;
   const seed = args.selectedText?.trim() || full;
-  const prompt = args.promptHint?.trim()
-    ? `Generate a Mermaid diagram matching this request: ${args.promptHint}\n\nContext:\n${seed}`
-    : `Generate a Mermaid diagram that summarises the structure of:\n\n${seed}`;
-  return runTextAction({
+
+  const result = await runJsonAction({
     noteId: args.noteId,
     action: "generate-mermaid",
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: buildAiSystemPrompt("generate-mermaid"),
     inputForAudit: seed,
-    promptToModel: prompt,
+    promptToModel: buildAiUserPrompt("generate-mermaid", {
+      noteTitle: args.noteTitle,
+      noteContent: args.noteContent,
+      selectedText: args.selectedText,
+      promptHint: args.promptHint,
+    }),
+    parse: createSchemaParser(MermaidSchema),
   });
+
+  return result.ok
+    ? { ...result, output: renderMermaidMarkdown(result.output) }
+    : result;
 }

@@ -25,6 +25,8 @@ import {
   listRecentNotesAction,
   type NoteSearchHit,
 } from "@/server/notes/actions";
+import { cn } from "@/lib/utils";
+import { usesRtlTitleFont } from "@/lib/text/rtl";
 
 type Props = {
   open: boolean;
@@ -145,7 +147,14 @@ export function CommandMenu({ open, onOpenChange }: Props) {
                   >
                     <FileText className="size-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate">{n.title || "Untitled"}</div>
+                      <div
+                        className={cn(
+                          "truncate",
+                          usesRtlTitleFont(n.title) && "rtl-vazir",
+                        )}
+                      >
+                        {n.title || "Untitled"}
+                      </div>
                       {n.excerpt && (
                         <div className="truncate text-xs text-muted-foreground">
                           {n.excerpt}

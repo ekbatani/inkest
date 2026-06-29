@@ -17,11 +17,14 @@ export function AiBadge({
   labelClassName,
 }: AiBadgeProps) {
   return (
-    <span className={cn("ai-badge", className)}>
-      <span className={cn("ai-badge__icon", iconClassName)} aria-hidden="true">
-        <Sparkles className="size-3.5" />
-      </span>
-      {label ? <span className={cn(labelClassName)}>{label}</span> : null}
+    <span className={cn("inline-flex items-center gap-1.5", className)}>
+      <Sparkles
+        className={cn("size-4 text-violet-400", iconClassName)}
+        aria-hidden="true"
+      />
+      {label ? (
+        <span className={cn("text-violet-400", labelClassName)}>{label}</span>
+      ) : null}
     </span>
   );
 }
@@ -33,7 +36,7 @@ export function AiIcon({
   return (
     <AiBadge
       label={null}
-      className={cn("px-0 py-0 ring-0", className)}
+      className={className}
       iconClassName={iconClassName}
     />
   );

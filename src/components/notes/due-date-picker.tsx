@@ -5,6 +5,7 @@ import { Calendar, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function toDateInputValue(d: Date | null): string {
   if (!d) return "";
@@ -30,26 +31,33 @@ export function DueDatePicker({
   onChange: (d: Date | null) => void;
 }) {
   const id = "due-date-input";
+
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id} className="text-xs text-muted-foreground">
+    <div className="flex flex-col gap-2">
+      <Label
+        htmlFor={id}
+        className="text-[11px] font-medium text-muted-foreground"
+      >
         Due date
       </Label>
       <div className="relative">
-        <Calendar className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Calendar className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           id={id}
           type="date"
           value={toDateInputValue(value)}
           onChange={(e) => onChange(parseDateInputValue(e.target.value))}
-          className="h-8 pl-8 text-xs"
+          className={cn(
+            "h-10 rounded-xl border-border/70 bg-background pl-9 text-sm",
+            value ? "pr-10" : "pr-3",
+          )}
         />
         {value && (
           <Button
             type="button"
             size="icon-xs"
             variant="ghost"
-            className="absolute right-1 top-1/2 -translate-y-1/2"
+            className="absolute right-2 top-1/2 z-10 size-6 -translate-y-1/2 rounded-full text-muted-foreground hover:text-foreground"
             onClick={() => onChange(null)}
             aria-label="Clear due date"
           >

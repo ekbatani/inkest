@@ -20,7 +20,13 @@ import {
 } from "@/server/notes/versions-actions";
 import type { NoteVersion } from "@/server/db/schema";
 
-export function VersionHistoryButton({ noteId }: { noteId: string }) {
+export function VersionHistoryButton({
+  noteId,
+  iconOnly = false,
+}: {
+  noteId: string;
+  iconOnly?: boolean;
+}) {
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [versions, setVersions] = React.useState<NoteVersion[]>([]);
@@ -70,12 +76,14 @@ export function VersionHistoryButton({ noteId }: { noteId: string }) {
     <>
       <Button
         variant="outline"
-        size="sm"
-        className="w-full justify-start gap-2"
+        size={iconOnly ? "icon-sm" : "sm"}
+        className={iconOnly ? "rounded-full" : "w-full justify-start gap-2"}
         aria-label="Open version history"
+        title="Version history"
         onClick={() => void open_()}
       >
-        <History className="size-4" /> Version history
+        <History className="size-4" />
+        {!iconOnly && "Version history"}
       </Button>
       <Dialog open={open} onOpenChange={(o) => (o ? void open_() : setOpen(false))}>
       <DialogContent className="sm:max-w-3xl">

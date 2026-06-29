@@ -24,6 +24,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { moveNoteInTreeAction } from "@/server/notes/actions";
 import { cn } from "@/lib/utils";
 import type { NoteTreeNode } from "@/server/notes/service";
+import { usesRtlTitleFont } from "@/lib/text/rtl";
 
 type TreeItem = NoteTreeNode;
 type TreeChild = NoteTreeNode["children"][number];
@@ -463,7 +464,14 @@ function TreeRow({
           )}
         >
           <Icon className="size-3 shrink-0" />
-          <span className="truncate">{title || "Untitled"}</span>
+          <span
+            className={cn(
+              "truncate",
+              usesRtlTitleFont(title) && "rtl-vazir",
+            )}
+          >
+            {title || "Untitled"}
+          </span>
         </Link>
       </div>
     </div>

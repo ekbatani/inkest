@@ -1,29 +1,34 @@
-import { runTextAction } from "./runner";
-
-const SYSTEM_PROMPT = `You create a project plan in Markdown based on the user's input.
-Structure:
-- "## Goal" — 1-2 sentences
-- "## Scope" — bullet list of in/out of scope
-- "## Milestones" — numbered milestones with short descriptions
-- "## Tasks" — markdown task list (- [ ] ...) grouped under milestones
-- "## Risks" — bullet list
-Respond in Markdown only.`;
+import { type AiActionResult, runJsonAction } from "./runner";
+import {
+  buildAiSystemPrompt,
+  buildAiUserPrompt,
+  createSchemaParser,
+  ProjectPlanSchema,
+  renderProjectPlanMarkdown,
+} from "./specs";
 
 export async function createProjectPlan(args: {
   noteId: string;
   noteTitle: string;
   noteContent: string;
   promptHint?: string;
-}) {
+}): Promise<AiActionResult<string>> {
   const full = `# ${args.noteTitle}\n\n${args.noteContent}`;
-  const prompt = args.promptHint?.trim()
-    ? `Create a project plan from these goals. Seed content:\n${full}\n\nAdditional request: ${args.promptHint}`
-    : `Create a project plan from this note:\n\n${full}`;
-  return runTextAction({
+
+  const result = await runJsonAction({
     noteId: args.noteId,
     action: "create-project-plan",
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: buildAiSystemPrompt("create-project-plan"),
     inputForAudit: full,
-    promptToModel: prompt,
+    promptToModel: buildAiUserPrompt("create-project-plan", {
+      noteTitle: args.noteTitle,
+      noteContent: args.noteContent,
+      promptHint: args.promptHint,
+    }),
+    parse: createSchemaParser(ProjectPlanSchema),
   });
+
+  return result.ok
+    ? { ...result, output: renderProjectPlanMarkdown(result.output) }
+    : result;
 }

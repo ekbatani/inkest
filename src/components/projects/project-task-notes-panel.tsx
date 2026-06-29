@@ -31,6 +31,7 @@ import { createProjectTaskNoteAction, updateNoteAction } from "@/server/notes/ac
 import type { Note } from "@/server/db/schema";
 import { formatRelativeDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { usesRtlTitleFont } from "@/lib/text/rtl";
 
 type TaskNote = Note;
 type TaskStatus = Extract<Note["status"], "todo" | "doing" | "done" | "paused">;
@@ -180,7 +181,10 @@ function TaskNotesList({
               <div className="flex items-center gap-2">
                 <Link
                   href={`/notes/${taskNote.id}`}
-                  className="truncate text-sm font-medium hover:underline"
+                  className={cn(
+                    "truncate text-sm font-medium hover:underline",
+                    usesRtlTitleFont(taskNote.title) && "rtl-vazir",
+                  )}
                 >
                   {taskNote.title}
                 </Link>
@@ -374,6 +378,7 @@ function TaskNoteCard({
             onClick={(e) => e.stopPropagation()}
             className={cn(
               "block text-xs hover:underline",
+              usesRtlTitleFont(taskNote.title) && "rtl-vazir",
               taskNote.status === "done" && "text-muted-foreground line-through",
             )}
           >
