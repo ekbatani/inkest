@@ -25,4 +25,4 @@
 - design icons and logo
 - animate icons
 - animation of the application in the landing page, focused on AI functoinality.
-- 
+- Clean log the content of the note is loged!
