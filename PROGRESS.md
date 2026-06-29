@@ -1,4 +1,4 @@
-# InkNest — Implementation Progress
+# inkest — Implementation Progress
 
 A calm, Markdown-first personal workspace. Self-hosted MVP.
 
@@ -25,7 +25,7 @@ A calm, Markdown-first personal workspace. Self-hosted MVP.
 - [x] Scaffold Next.js (TS, Tailwind v4, App Router, src/, @/* alias, Turbopack)
 - [x] shadcn/ui init (base-nova, neutral, RTL) + 19 components
 - [x] next-themes + lucide-react
-- [x] Renamed package → inknest; added scripts (typecheck, db:*)
+- [x] Renamed package → inkest; added scripts (typecheck, db:*)
 - [x] ThemeProvider + light/dark toggle; font variables fixed; serif (Lora) for preview
 - [x] App shell: sidebar, topbar (search, command palette, new note, theme toggle), responsive Sheet drawer
 - [x] Route groups (app) + (auth); root / redirects to /dashboard
@@ -59,7 +59,7 @@ A calm, Markdown-first personal workspace. Self-hosted MVP.
 - [x] react-markdown + remark-gfm (GFM tables, task lists, strikethrough)
 - [x] rehype-sanitize with custom schema (no raw HTML, no event handlers, allow dir + className)
 - [x] RTL direction support (dir attribute on editor + preview from note.direction)
-- [x] Writing-studio typography (.inknest-prose CSS with serif font, generous spacing)
+- [x] Writing-studio typography (.inkest-prose CSS with serif font, generous spacing)
 
 ### Phase 5 — Mermaid support ✅
 - [x] MermaidRenderer client-only (next/dynamic ssr:false), securityLevel: "strict"

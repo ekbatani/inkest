@@ -1,6 +1,6 @@
 # AI Instruction Contracts
 
-InkNest now defines every AI feature through a shared action spec in `src/server/ai/specs.ts`.
+inkest now defines every AI feature through a shared action spec in `src/server/ai/specs.ts`.
 
 Each action spec is responsible for:
 

@@ -1,4 +1,4 @@
-# InkNest
+# inkest
 
 A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and lightweight AI actions -- all self-hosted.
 
@@ -64,13 +64,13 @@ Open [http://localhost:3000](http://localhost:3000) and create an account to get
 docker compose up -d
 
 # Or build manually
-docker build -t inknest .
+docker build -t inkest .
 docker run -p 3000:3000 \
   -e NEXTAUTH_SECRET=$(openssl rand -base64 32) \
   -e DATABASE_URL=file:/app/data/local.db \
-  -v inknest-data:/app/data \
-  -v inknest-storage:/app/storage \
-  inknest
+  -v inkest-data:/app/data \
+  -v inkest-storage:/app/storage \
+  inkest
 ```
 
 ## Environment Variables

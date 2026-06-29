@@ -113,7 +113,7 @@ export function CommandMenu({ open, onOpenChange }: Props) {
         <DialogHeader className="sr-only">
           <DialogTitle>Command menu</DialogTitle>
           <DialogDescription>
-            Search notes and navigate InkNest.
+            Search notes and navigate inkest.
           </DialogDescription>
         </DialogHeader>
         <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-input]]:h-12">

@@ -29,7 +29,7 @@ const vazirmatn = Vazirmatn({
 });
 
 export const metadata: Metadata = {
-  title: "InkNest",
+  title: "inkest",
   description: "A calm, Markdown-first personal workspace.",
 };
 

@@ -18,4 +18,10 @@
 - The links in the note should work both inner link with # and link to the other notes
 - exit from focus mode
 - in focus mode we should be able to switch preview and edit mode
+- Undo and redo functionality and integrate with note history
+- More focus on the AI functionlities
+- Performance check 
+- loading
+- design icons and logo
+- animate icons
 - 

@@ -194,7 +194,7 @@ export function buildAiSystemPrompt(action: AiActionId) {
   const spec = AI_ACTION_SPECS[action];
 
   return [
-    `You are executing the InkNest AI action "${action}".`,
+    `You are executing the inkest AI action "${action}".`,
     spec.goal,
     "",
     "The user request context will be supplied as a JSON object.",

@@ -213,7 +213,7 @@ export async function buildExportArchive(): Promise<{
   // metadata.json
   const metadata = {
     exportedAt: new Date().toISOString(),
-    app: "InkNest",
+    app: "inkest",
     version: 1,
     user: { id: user.id, email: user.email, name: user.name ?? null },
     notes: notes.map((n) => ({
@@ -251,7 +251,7 @@ export async function buildExportArchive(): Promise<{
   const buffer = Buffer.concat(chunks);
 
   const stamp = new Date().toISOString().slice(0, 10);
-  return { buffer, fileName: `inknest-export-${stamp}.zip` };
+  return { buffer, fileName: `inkest-export-${stamp}.zip` };
 }
 
 export async function buildSingleNoteMarkdown(

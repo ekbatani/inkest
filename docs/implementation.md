@@ -1,7 +1,7 @@
 
 Use this as the master prompt for your coding agent.
 
-You are implementing a minimal, beautiful, English-first personal notes and lightweight project-management application called InkNest.
+You are implementing a minimal, beautiful, English-first personal notes and lightweight project-management application called inkest.
 
 Product goal:
 Build a private Markdown-first workspace for notes, personal knowledge, project planning, Mermaid diagrams, image attachments, and simple explicit AI actions. The app must be self-hostable and use local filesystem storage for uploaded files in the MVP.

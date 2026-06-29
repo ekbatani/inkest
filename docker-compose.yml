@@ -16,10 +16,10 @@ services:
       # - OPENROUTER_BASE_URL=
       # - OPENROUTER_MODEL=
     volumes:
-      - inknest-data:/app/data
-      - inknest-storage:/app/storage
+      - inkest-data:/app/data
+      - inkest-storage:/app/storage
     restart: unless-stopped
 
 volumes:
-  inknest-data:
-  inknest-storage:
+  inkest-data:
+  inkest-storage:

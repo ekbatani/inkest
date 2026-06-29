@@ -52,7 +52,7 @@ export function Sidebar({ notesTree = [] }: { notesTree?: NoteTreeNode[] }) {
         <span className="flex size-7 items-center justify-center rounded-md bg-foreground text-background">
           <Feather className="size-4" />
         </span>
-        <span>InkNest</span>
+        <span>inkest</span>
       </Link>
       <div className="flex-1 overflow-y-auto">
         <NavLinks />

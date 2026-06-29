@@ -40,7 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# inknest
+# inkest
 /storage
 *.db
 *.db-shm

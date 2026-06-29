@@ -14,8 +14,8 @@ export function SidebarToggleWrapper({
 
   React.useEffect(() => {
     const handler = () => setCollapsed((v) => !v);
-    document.addEventListener("inknest:toggle-sidebar", handler);
-    return () => document.removeEventListener("inknest:toggle-sidebar", handler);
+    document.addEventListener("inkest:toggle-sidebar", handler);
+    return () => document.removeEventListener("inkest:toggle-sidebar", handler);
   }, []);
 
   return (

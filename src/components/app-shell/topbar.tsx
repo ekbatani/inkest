@@ -35,7 +35,7 @@ export function Topbar() {
         router.push("/daily");
       } else if (key === "\\") {
         e.preventDefault();
-        document.dispatchEvent(new CustomEvent("inknest:toggle-sidebar"));
+        document.dispatchEvent(new CustomEvent("inkest:toggle-sidebar"));
       }
     };
     window.addEventListener("keydown", onKey);

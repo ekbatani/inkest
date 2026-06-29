@@ -60,7 +60,7 @@ export function AuthForm({
         return;
       }
 
-      toast.success(mode === "signup" ? "Welcome to InkNest!" : "Welcome back!");
+      toast.success(mode === "signup" ? "Welcome to inkest!" : "Welcome back!");
       router.push(callbackUrl);
       router.refresh();
     } finally {

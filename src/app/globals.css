@@ -168,20 +168,20 @@
 }
 
 /* Markdown preview typography — calm, generous, readable. */
-.inknest-prose {
+.inkest-prose {
   font-family: var(--font-serif), Georgia, "Times New Roman", serif;
   font-size: 1.125rem;
   line-height: 1.82;
   color: var(--foreground);
   max-width: 70ch;
 }
-.inknest-prose > * + * {
+.inkest-prose > * + * {
   margin-top: 1.2em;
 }
-.inknest-prose h1,
-.inknest-prose h2,
-.inknest-prose h3,
-.inknest-prose h4 {
+.inkest-prose h1,
+.inkest-prose h2,
+.inkest-prose h3,
+.inkest-prose h4 {
   font-family: var(--font-sans);
   line-height: 1.25;
   font-weight: 600;
@@ -190,53 +190,53 @@
   margin-top: 2em;
   margin-bottom: 0.6em;
 }
-.inknest-prose h1 {
+.inkest-prose h1 {
   font-size: 1.875rem;
   margin-top: 0.5em;
 }
-.inknest-prose h2 {
+.inkest-prose h2 {
   font-size: 1.5rem;
 }
-.inknest-prose h3 {
+.inkest-prose h3 {
   font-size: 1.25rem;
 }
-.inknest-prose h4 {
+.inkest-prose h4 {
   font-size: 1.0625rem;
 }
-.inknest-prose a {
+.inkest-prose a {
   color: var(--foreground);
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
 }
-.inknest-prose a:hover {
+.inkest-prose a:hover {
   text-decoration-thickness: 2px;
 }
-.inknest-prose ul,
-.inknest-prose ol {
+.inkest-prose ul,
+.inkest-prose ol {
   padding-inline-start: 1.5em;
 }
-.inknest-prose li {
+.inkest-prose li {
   margin-top: 0.35em;
 }
-.inknest-prose li > input[type="checkbox"] {
+.inkest-prose li > input[type="checkbox"] {
   margin-inline-end: 0.5em;
   vertical-align: middle;
 }
-.inknest-prose blockquote {
+.inkest-prose blockquote {
   border-inline-start: 3px solid var(--border);
   padding-inline-start: 1em;
   color: var(--muted-foreground);
   font-style: italic;
 }
-.inknest-prose code {
+.inkest-prose code {
   font-family: var(--font-mono);
   font-size: 0.9em;
   background: var(--muted);
   padding: 0.15em 0.4em;
   border-radius: 0.375rem;
 }
-.inknest-prose pre {
+.inkest-prose pre {
   font-family: var(--font-mono);
   font-size: 0.9em;
   background: var(--muted);
@@ -244,46 +244,46 @@
   border-radius: 0.625rem;
   overflow-x: auto;
 }
-.inknest-prose pre code {
+.inkest-prose pre code {
   background: transparent;
   padding: 0;
   font-size: inherit;
 }
-.inknest-prose table {
+.inkest-prose table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.95em;
 }
-.inknest-prose th,
-.inknest-prose td {
+.inkest-prose th,
+.inkest-prose td {
   border: 1px solid var(--border);
   padding: 0.55em 0.85em;
   text-align: start;
 }
-.inknest-prose th {
+.inkest-prose th {
   background: var(--muted);
   font-weight: 600;
 }
-.inknest-prose img {
+.inkest-prose img {
   max-width: 100%;
   height: auto;
   border-radius: 0.5rem;
   border: 1px solid var(--border);
 }
-.inknest-prose hr {
+.inkest-prose hr {
   border: none;
   border-top: 1px solid var(--border);
   margin: 2em 0;
 }
 
 /* RTL-aware tweak for prose */
-.inknest-prose[dir="rtl"],
-.inknest-prose.rtl-vazir {
+.inkest-prose[dir="rtl"],
+.inkest-prose.rtl-vazir {
   font-family: var(--font-rtl);
 }
 
-.inknest-prose[dir="rtl"] :is(h1, h2, h3, h4),
-.inknest-prose.rtl-vazir :is(h1, h2, h3, h4) {
+.inkest-prose[dir="rtl"] :is(h1, h2, h3, h4),
+.inkest-prose.rtl-vazir :is(h1, h2, h3, h4) {
   font-family: var(--font-rtl);
 }
 

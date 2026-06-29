@@ -4,7 +4,7 @@ You are not building a Notion clone. You are building a **beautiful, fast, Markd
 
 ## Product definition
 
-**InkNest** is an English-first personal notes and lightweight project-management app. It stores notes as Markdown, supports Mermaid diagrams, images, local filesystem storage, RTL writing when needed, and small explicit AI actions for summarizing, rewriting, extracting tasks, and generating project plans.
+**inkest** is an English-first personal notes and lightweight project-management app. It stores notes as Markdown, supports Mermaid diagrams, images, local filesystem storage, RTL writing when needed, and small explicit AI actions for summarizing, rewriting, extracting tasks, and generating project plans.
 
 ## Core principles
 

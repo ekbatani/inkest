@@ -13,7 +13,7 @@ export default function SignInPage() {
         </span>
         <h1 className="text-lg font-semibold">Welcome back</h1>
         <p className="text-sm text-muted-foreground">
-          Sign in to your InkNest workspace.
+          Sign in to your inkest workspace.
         </p>
       </div>
       <Suspense>

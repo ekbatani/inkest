@@ -92,7 +92,7 @@ export function MarkdownPreview({
 
   return (
     <div
-      className={cn("inknest-prose", usesRtlFont && "rtl-vazir", className)}
+      className={cn("inkest-prose", usesRtlFont && "rtl-vazir", className)}
       dir={dir}
     >
       <ReactMarkdown
