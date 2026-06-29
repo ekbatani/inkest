@@ -328,6 +328,7 @@ function KanbanBoard({
   noteId: string;
   onUpdate: (id: string, next: Partial<Task>) => void;
 }) {
+  const dndContextId = React.useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor),
@@ -349,6 +350,7 @@ function KanbanBoard({
 
   return (
     <DndContext
+      id={dndContextId}
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragEnd={handleDragEnd}

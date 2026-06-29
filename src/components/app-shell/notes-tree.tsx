@@ -207,6 +207,7 @@ function isDropTargetActive(activeId: string | null, overId: string, over: strin
 export function NotesTree({ nodes }: { nodes: NoteTreeNode[] }) {
   const pathname = usePathname();
   const router = useRouter();
+  const dndContextId = React.useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
@@ -287,6 +288,7 @@ export function NotesTree({ nodes }: { nodes: NoteTreeNode[] }) {
       </div>
 
       <DndContext
+        id={dndContextId}
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={(event) =>

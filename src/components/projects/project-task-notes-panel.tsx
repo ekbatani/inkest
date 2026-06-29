@@ -236,6 +236,7 @@ function TaskNotesKanban({
     patch: Partial<Pick<TaskNote, "status" | "priority" | "title">>,
   ) => void;
 }) {
+  const dndContextId = React.useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor),
@@ -253,6 +254,7 @@ function TaskNotesKanban({
 
   return (
     <DndContext
+      id={dndContextId}
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragEnd={handleDragEnd}
