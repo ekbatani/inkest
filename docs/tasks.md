@@ -1,6 +1,6 @@
 - rename the applicaitoin to inkest
 - Add a landing page look in agnoOs landing and spotlight effect in hero section.
-- Add super fucos mode to read with spotlight 
+- Add super fucos mode to read with spotlight
 - Add little animations to make it attractive
 - Use line seperated space to make it clean minimal and modern
 - Make it as fast as possible and as light and minimal as possible
@@ -20,9 +20,22 @@
 - in focus mode we should be able to switch preview and edit mode
 - Undo and redo functionality and integrate with note history
 - More focus on the AI functionlities
-- Performance check 
+- Performance check
 - loading
 - design icons and logo
 - animate icons
 - animation of the application in the landing page, focused on AI functoinality.
 - Clean log the content of the note is loged!
+- Add help with AI
+- Add highlight and comment to text
+- Add comment with AI
+- Add check list
+- Add font functionalities like size bold italic and other styles
+- Speech to text functionalities and text to speech
+- add folder in in notes tree and also note and sub-notes
+- the tag filter in notes should be or not and
+- add pdf to files and notes
+- notification in desktop and mobile and alerts
+- Calendar note and sync with google calendar
+- Login with google
+-
