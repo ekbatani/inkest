@@ -8,6 +8,8 @@ export const NoteEditorActionSchema = z.enum([
   "generate-mermaid",
   "explain",
   "translate",
+  "comment-selection",
+  "apply-comments",
 ]);
 
 export type NoteEditorActionId = z.infer<typeof NoteEditorActionSchema>;
@@ -141,6 +143,31 @@ const AI_ACTION_SPECS: Record<AiActionId, ActionSpec> = {
       "Preserve Markdown structure and formatting.",
       "Do not add commentary or translator notes.",
       "Keep proper nouns and product names unchanged unless the target language convention strongly requires translation.",
+    ],
+    outputSchema: MarkdownResponseSchema,
+  },
+  "comment-selection": {
+    goal: "Add a concise AI review comment to selected note text.",
+    contextKeys: ["noteTitle", "noteContent", "selectedText", "promptHint"],
+    rules: [
+      "Return the selectedText as a Markdown link using exactly this annotation shape: [selected text](inkest-comment:URL_ENCODED_COMMENT).",
+      "URL_ENCODED_COMMENT must be a concise review comment encoded with percent encoding.",
+      "Do not rewrite selectedText unless the user explicitly asks for a suggested replacement in promptHint.",
+      "Keep the comment grounded in the note context and selection.",
+      "Do not wrap the output in a code fence.",
+    ],
+    outputSchema: MarkdownResponseSchema,
+  },
+  "apply-comments": {
+    goal: "Revise note Markdown by reading inline Inkest comments and applying useful edits.",
+    contextKeys: ["noteTitle", "noteContent", "promptHint"],
+    rules: [
+      "Read inline comments encoded as [text](inkest-comment:URL_ENCODED_COMMENT).",
+      "Apply comments that clearly improve the note while preserving the author's intent.",
+      "Remove comment annotations after applying them.",
+      "Preserve unrelated Markdown structure, links, highlights, checklists, code fences, and wiki links.",
+      "If a comment is unclear or should not be applied, keep the original text and remove only the comment annotation.",
+      "Return the complete revised note body, not a summary.",
     ],
     outputSchema: MarkdownResponseSchema,
   },

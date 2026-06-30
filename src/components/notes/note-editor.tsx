@@ -7,8 +7,6 @@ import {
   Pin,
   PinOff,
   Trash2,
-  Eye,
-  EyeOff,
   Columns2,
   Maximize,
   ChevronLeft,
@@ -43,6 +41,7 @@ import { deleteNoteAction, togglePinnedAction } from "@/server/notes/actions";
 import { ArchiveToggleButton } from "@/components/notes/archive-toggle-button";
 import { formatDate } from "@/lib/dates";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
+import { FloatingMarkdownFormatToolbar } from "@/components/editor/markdown-format-toolbar";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import { ImageUploadButton } from "@/components/editor/image-upload-button";
 import { AiPanel } from "@/components/ai/ai-panel";
@@ -55,7 +54,7 @@ import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
 
-type EditorMode = "edit" | "preview" | "split" | "focus";
+type EditorMode = "write" | "split" | "focus";
 
 export function NoteEditor({
   note,
@@ -77,7 +76,7 @@ export function NoteEditor({
   const router = useRouter();
   const [title, setTitle] = React.useState(note.title);
   const [content, setContent] = React.useState(note.contentMd);
-  const [mode, setMode] = React.useState<EditorMode>("edit");
+  const [mode, setMode] = React.useState<EditorMode>("write");
   const [showPanel, setShowPanel] = React.useState(true);
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">(
     "idle",
@@ -157,7 +156,7 @@ export function NoteEditor({
         forceSave();
       } else if (key === "e" && !e.shiftKey) {
         e.preventDefault();
-        setMode((m) => (m === "edit" ? "preview" : "edit"));
+        setMode((m) => (m === "split" ? "write" : "split"));
       }
     };
     window.addEventListener("keydown", onKey);
@@ -191,8 +190,8 @@ export function NoteEditor({
     setMetadata((m) => ({ ...m, pinned: !m.pinned }));
   };
 
-  const showEditor = mode === "edit" || mode === "split" || mode === "focus";
-  const showPreview = mode === "preview" || mode === "split";
+  const showEditor = mode === "write" || mode === "split" || mode === "focus";
+  const showPreview = mode === "split";
   const isFocus = mode === "focus";
   const titleUsesRtlFont =
     metadata.direction === "rtl" ||
@@ -246,21 +245,13 @@ export function NoteEditor({
             <ChevronLeft className="size-4" />
           </Button>
           <ToggleGroup
-            value={[mode]}
-            onValueChange={(v) => v[0] && setMode(v[0] as EditorMode)}
+            value={mode === "write" ? [] : [mode]}
+            onValueChange={(v) => setMode((v[0] as EditorMode | undefined) ?? "write")}
             className="ml-1"
           >
-            <ToggleGroupItem value="edit" aria-label="Edit mode">
-              <EyeOff className="size-3.5" />
-              <span className="ml-1 hidden sm:inline">Edit</span>
-            </ToggleGroupItem>
             <ToggleGroupItem value="split" aria-label="Split mode">
               <Columns2 className="size-3.5" />
               <span className="ml-1 hidden sm:inline">Split</span>
-            </ToggleGroupItem>
-            <ToggleGroupItem value="preview" aria-label="Preview mode">
-              <Eye className="size-3.5" />
-              <span className="ml-1 hidden sm:inline">Preview</span>
             </ToggleGroupItem>
             <ToggleGroupItem value="focus" aria-label="Focus mode">
               <Maximize className="size-3.5" />
@@ -350,7 +341,7 @@ export function NoteEditor({
                 }}
                 placeholder="Untitled"
                 className={cn(
-                  "h-auto border-0 bg-transparent px-0 py-0 font-sans text-4xl leading-[1.08] font-medium tracking-[-0.02em] text-foreground/92 shadow-none placeholder:text-muted-foreground/40 focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent sm:text-[3.15rem]",
+                  "h-auto border-0 bg-transparent px-1 py-0 font-sans text-4xl leading-[1.08] font-medium tracking-[-0.02em] text-foreground/92 shadow-none placeholder:text-muted-foreground/40 focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent sm:text-[3.15rem]",
                   titleUsesRtlFont && "rtl-vazir",
                 )}
               />
@@ -379,6 +370,7 @@ export function NoteEditor({
                   className="flex-1"
                   editorRef={editorRef}
                 />
+                <FloatingMarkdownFormatToolbar editorRef={editorRef} />
               </div>
             )}
             {showPreview && (

@@ -33,6 +33,7 @@ const sanitizeSchema = {
       ...(defaultSchema.attributes?.["*"] ?? []),
       "className",
       "class",
+      "title",
     ],
   },
   tagNames: [
@@ -41,6 +42,12 @@ const sanitizeSchema = {
   ],
   protocols: {
     ...defaultSchema.protocols,
+    href: [
+      ...(defaultSchema.protocols?.href ?? []),
+      "inkest-highlight",
+      "inkest-comment",
+      "inkest-size",
+    ],
     src: ["http", "https", "data"],
   },
 };
@@ -76,7 +83,59 @@ export function MarkdownPreview({
   const mermaidComponents = useMermaidCodeComponent();
 
   const components = React.useMemo(
-    () => ({ ...mermaidComponents, ...extraComponents }),
+    (): Components => ({
+      ...mermaidComponents,
+      ...extraComponents,
+      a: ({
+        href,
+        children,
+        ...props
+      }: React.ComponentPropsWithoutRef<"a">) => {
+        if (href === "inkest-highlight:") {
+          return <mark className="inkest-highlight">{children}</mark>;
+        }
+
+        if (href?.startsWith("inkest-size:")) {
+          const size = href.slice("inkest-size:".length);
+          return (
+            <span
+              className={cn(
+                size === "small" && "inkest-text-small",
+                size === "large" && "inkest-text-large",
+                size === "huge" && "inkest-text-huge",
+              )}
+            >
+              {children}
+            </span>
+          );
+        }
+
+        if (href?.startsWith("inkest-comment:")) {
+          const rawComment = href.slice("inkest-comment:".length);
+          let comment = rawComment || "";
+          try {
+            comment = decodeURIComponent(comment);
+          } catch {
+            comment = rawComment;
+          }
+
+          return (
+            <span className="inkest-comment" title={comment}>
+              <span className="inkest-comment__text">{children}</span>
+              <span className="inkest-comment__badge" aria-label={`Comment: ${comment}`}>
+                Comment
+              </span>
+            </span>
+          );
+        }
+
+        return (
+          <a href={href} {...props}>
+            {children}
+          </a>
+        );
+      },
+    }),
     [mermaidComponents, extraComponents],
   );
 

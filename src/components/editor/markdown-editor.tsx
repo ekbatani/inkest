@@ -3,8 +3,12 @@
 import * as React from "react";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { EditorView } from "@codemirror/view";
-import { Prec } from "@codemirror/state";
+import {
+  Decoration,
+  EditorView,
+  WidgetType,
+} from "@codemirror/view";
+import { Prec, type Range } from "@codemirror/state";
 import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
 
@@ -26,27 +30,33 @@ export function MarkdownEditor({
   const usesRtlFont =
     direction === "rtl" || (direction === "auto" && containsArabicScript(value));
   const editorFontFamily =
-    usesRtlFont ? "var(--font-rtl)" : "var(--font-mono)";
+    usesRtlFont ? "var(--font-rtl)" : "var(--font-serif), Georgia, serif";
 
   const extensions = React.useMemo(
     () => [
       markdown({ base: markdownLanguage }),
       EditorView.lineWrapping,
+      EditorView.decorations.of(buildFencedBlockDecorations),
+      EditorView.decorations.of(buildStyledMarkdownDecorations),
       Prec.highest(
         EditorView.theme({
           "&": {
-            fontSize: "15.5px",
+            fontSize: "16.5px",
             backgroundColor: "transparent",
             color: "color-mix(in oklab, var(--foreground) 88%, transparent)",
             minHeight: "100%",
           },
           ".cm-scroller": {
             fontFamily: editorFontFamily,
-            lineHeight: "1.82",
+            lineHeight: "1.62",
             overflow: "auto",
           },
+          ".cm-line": {
+            padding: "0.08rem 0",
+          },
           ".cm-content": {
-            padding: "0",
+            paddingBlock: "0",
+            paddingInline: "0.18rem",
             paddingBottom: "2.5rem",
             caretColor: "color-mix(in oklab, var(--foreground) 82%, transparent)",
           },
@@ -63,9 +73,145 @@ export function MarkdownEditor({
           ".cm-cursor, .cm-dropCursor": {
             borderLeftColor:
               "color-mix(in oklab, var(--foreground) 78%, transparent)",
+            zIndex: "3",
           },
           ".cm-editor": {
             minHeight: "100%",
+          },
+          ".cm-placeholder": {
+            color: "color-mix(in oklab, var(--muted-foreground) 70%, transparent)",
+          },
+          ".cm-md-heading-1": {
+            fontFamily: "var(--font-sans)",
+            fontSize: "1.72em",
+            fontWeight: "650",
+            lineHeight: "1.22",
+            paddingTop: "0.45rem",
+            paddingBottom: "0.18rem",
+          },
+          ".cm-md-heading-2": {
+            fontFamily: "var(--font-sans)",
+            fontSize: "1.38em",
+            fontWeight: "650",
+            lineHeight: "1.28",
+            paddingTop: "0.38rem",
+            paddingBottom: "0.14rem",
+          },
+          ".cm-md-heading-3": {
+            fontFamily: "var(--font-sans)",
+            fontSize: "1.16em",
+            fontWeight: "650",
+            paddingTop: "0.28rem",
+          },
+          ".cm-md-bold": {
+            fontWeight: "700",
+            color: "var(--foreground)",
+          },
+          ".cm-md-italic": {
+            fontStyle: "italic",
+          },
+          ".cm-md-strike": {
+            textDecoration: "line-through",
+            color: "color-mix(in oklab, var(--foreground) 68%, transparent)",
+          },
+          ".cm-md-code": {
+            borderRadius: "0.35rem",
+            backgroundColor: "var(--muted)",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.92em",
+            padding: "0.08em 0.24em",
+          },
+          ".cm-md-code-line": {
+            borderRadius: "0.35rem",
+            backgroundColor: "var(--muted)",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.92em",
+          },
+          ".cm-md-fenced-block": {
+            position: "relative",
+            margin: "0.55rem 0",
+            border: "1px solid var(--border)",
+            borderRadius: "0.5rem",
+            backgroundColor: "color-mix(in oklch, var(--muted) 42%, transparent)",
+            overflow: "hidden",
+          },
+          ".cm-md-fenced-toolbar": {
+            position: "absolute",
+            insetBlockStart: "0.35rem",
+            insetInlineEnd: "0.35rem",
+            zIndex: "1",
+            display: "flex",
+            gap: "0.25rem",
+          },
+          ".cm-md-fenced-button": {
+            border: "1px solid var(--border)",
+            borderRadius: "0.35rem",
+            backgroundColor: "var(--background)",
+            color: "var(--foreground)",
+            cursor: "pointer",
+            fontFamily: "var(--font-sans)",
+            fontSize: "0.72rem",
+            fontWeight: "600",
+            padding: "0.16rem 0.45rem",
+          },
+          ".cm-md-fenced-body": {
+            padding: "1rem",
+            paddingBlockStart: "2.2rem",
+            overflowX: "auto",
+          },
+          ".cm-md-fenced-code": {
+            margin: "0",
+            whiteSpace: "pre",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.84rem",
+            lineHeight: "1.55",
+          },
+          ".cm-md-mermaid": {
+            display: "flex",
+            justifyContent: "center",
+            minHeight: "5rem",
+          },
+          ".cm-md-mermaid svg": {
+            maxWidth: "100%",
+            height: "auto",
+          },
+          ".cm-md-fenced-error": {
+            color: "var(--destructive)",
+            whiteSpace: "pre-wrap",
+          },
+          ".cm-md-quote-line": {
+            borderInlineStart: "3px solid var(--border)",
+            color: "var(--muted-foreground)",
+            fontStyle: "italic",
+            paddingInlineStart: "0.8rem",
+          },
+          ".cm-md-task-checkbox": {
+            display: "inline-flex",
+            width: "1rem",
+            height: "1rem",
+            marginInlineEnd: "0.45rem",
+            verticalAlign: "-0.12rem",
+            accentColor: "var(--foreground)",
+            pointerEvents: "none",
+          },
+          ".cm-md-highlight": {
+            borderRadius: "0.25rem",
+            backgroundColor: "color-mix(in oklch, var(--ai-end) 32%, transparent)",
+            padding: "0.04em 0.2em",
+          },
+          ".cm-md-comment": {
+            borderBottom: "1px dotted color-mix(in oklch, var(--ai-start) 70%, var(--foreground) 30%)",
+            backgroundColor: "color-mix(in oklch, var(--ai-start) 12%, transparent)",
+          },
+          ".cm-md-small": {
+            fontSize: "0.86em",
+          },
+          ".cm-md-large": {
+            fontSize: "1.18em",
+          },
+          ".cm-md-huge": {
+            fontSize: "1.42em",
+            lineHeight: "1.32",
           },
         }),
       ),
@@ -100,6 +246,408 @@ export function MarkdownEditor({
   );
 }
 
+function selectionTouches(view: EditorView, from: number, to: number) {
+  return view.state.selection.ranges.some(
+    (range) => range.from <= to && range.to >= from,
+  );
+}
+
+function hideIfIdle(
+  ranges: Range<Decoration>[],
+  view: EditorView,
+  from: number,
+  to: number,
+) {
+  if (from >= to || selectionTouches(view, from, to)) return;
+  ranges.push(Decoration.replace({}).range(from, to));
+}
+
+class TaskCheckboxWidget extends WidgetType {
+  constructor(private readonly checked: boolean) {
+    super();
+  }
+
+  eq(widget: TaskCheckboxWidget) {
+    return widget.checked === this.checked;
+  }
+
+  toDOM() {
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = this.checked;
+    checkbox.disabled = true;
+    checkbox.className = "cm-md-task-checkbox";
+    checkbox.ariaLabel = this.checked ? "Checked task" : "Unchecked task";
+    return checkbox;
+  }
+
+  ignoreEvent() {
+    return false;
+  }
+}
+
+let mermaidPreviewId = 0;
+
+class FencedBlockWidget extends WidgetType {
+  constructor(
+    private readonly lang: string,
+    private readonly code: string,
+    private readonly rawMarkdown: string,
+    private readonly from: number,
+    private readonly to: number,
+  ) {
+    super();
+  }
+
+  eq(widget: FencedBlockWidget) {
+    return (
+      widget.lang === this.lang &&
+      widget.code === this.code &&
+      widget.rawMarkdown === this.rawMarkdown &&
+      widget.from === this.from &&
+      widget.to === this.to
+    );
+  }
+
+  toDOM(view: EditorView) {
+    const root = document.createElement("div");
+    root.className = "cm-md-fenced-block";
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "cm-md-fenced-toolbar";
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "cm-md-fenced-button";
+
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "cm-md-fenced-button";
+    edit.textContent = "Edit";
+    edit.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      view.dispatch({ selection: { anchor: this.from, head: this.to } });
+      view.focus();
+    });
+
+    const body = document.createElement("div");
+    body.className = "cm-md-fenced-body";
+
+    let showingCode = false;
+    let renderVersion = 0;
+
+    const renderCode = () => {
+      showingCode = true;
+      toggle.textContent = "Preview";
+      body.className = "cm-md-fenced-body";
+      body.textContent = "";
+      const pre = document.createElement("pre");
+      pre.className = "cm-md-fenced-code";
+      pre.textContent = this.rawMarkdown;
+      pre.title = "Click Edit to modify this Markdown block";
+      body.append(pre);
+    };
+
+    const renderPreview = () => {
+      showingCode = false;
+      toggle.textContent = "Code";
+      body.textContent = "";
+
+      if (this.lang.toLowerCase() !== "mermaid") {
+        const pre = document.createElement("pre");
+        pre.className = "cm-md-fenced-code";
+        pre.textContent = this.code;
+        body.append(pre);
+        return;
+      }
+
+      const version = ++renderVersion;
+      body.className = "cm-md-fenced-body cm-md-mermaid";
+      body.textContent = "Rendering diagram...";
+
+      void import("mermaid")
+        .then((module) => {
+          if (version !== renderVersion) return;
+          const mermaid = module.default;
+          mermaid.initialize({
+            startOnLoad: false,
+            securityLevel: "strict",
+            theme: "default",
+          });
+          return mermaid.render(`editor-mermaid-${++mermaidPreviewId}`, this.code);
+        })
+        .then((result) => {
+          if (!result || version !== renderVersion) return;
+          body.innerHTML = result.svg;
+        })
+        .catch((error: unknown) => {
+          if (version !== renderVersion) return;
+          body.className = "cm-md-fenced-body cm-md-fenced-error";
+          body.textContent =
+            error instanceof Error ? error.message : "Invalid Mermaid diagram.";
+        });
+    };
+
+    toggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (showingCode) {
+        renderPreview();
+      } else {
+        renderCode();
+      }
+    });
+
+    toolbar.append(toggle, edit);
+    root.append(toolbar, body);
+    renderPreview();
+    return root;
+  }
+
+  ignoreEvent() {
+    return false;
+  }
+}
+
+function replaceWithWidgetIfIdle(
+  ranges: Range<Decoration>[],
+  view: EditorView,
+  from: number,
+  to: number,
+  widget: WidgetType,
+) {
+  if (from >= to || selectionTouches(view, from, to)) return;
+  ranges.push(Decoration.replace({ widget }).range(from, to));
+}
+
+function decorateInlinePattern(
+  ranges: Range<Decoration>[],
+  view: EditorView,
+  lineFrom: number,
+  text: string,
+  pattern: RegExp,
+  className: string,
+) {
+  for (const match of text.matchAll(pattern)) {
+    if (match.index === undefined || !match[1]) continue;
+
+    const openFrom = lineFrom + match.index;
+    const delimiter = match[2] ? match[1] : pattern.source.startsWith("(?<!") ? "*" : match[1];
+    const contentFrom = openFrom + delimiter.length;
+    const contentTo = openFrom + match[0].length - delimiter.length;
+    const closeTo = openFrom + match[0].length;
+
+    ranges.push(Decoration.mark({ class: className }).range(contentFrom, contentTo));
+    hideIfIdle(ranges, view, openFrom, contentFrom);
+    hideIfIdle(ranges, view, contentTo, closeTo);
+  }
+}
+
+type FencedBlock = {
+  from: number;
+  to: number;
+  lang: string;
+  code: string;
+  rawMarkdown: string;
+};
+
+function findFencedBlocks(view: EditorView) {
+  const blocks: FencedBlock[] = [];
+  const doc = view.state.doc;
+
+  for (let lineNo = 1; lineNo <= doc.lines; lineNo++) {
+    const startLine = doc.line(lineNo);
+    const startMatch = startLine.text.match(/^\s*```(\S*)\s*$/);
+    if (!startMatch) continue;
+
+    const codeLines: string[] = [];
+    let endLine = startLine;
+    let foundEnd = false;
+
+    for (let innerLineNo = lineNo + 1; innerLineNo <= doc.lines; innerLineNo++) {
+      const line = doc.line(innerLineNo);
+      if (/^\s*```\s*$/.test(line.text)) {
+        endLine = line;
+        foundEnd = true;
+        lineNo = innerLineNo;
+        break;
+      }
+      codeLines.push(line.text);
+      endLine = line;
+    }
+
+    if (!foundEnd) {
+      lineNo = endLine.number;
+    }
+
+    blocks.push({
+      from: startLine.from,
+      to: endLine.to,
+      lang: startMatch[1] ?? "",
+      code: codeLines.join("\n"),
+      rawMarkdown: doc.sliceString(startLine.from, endLine.to),
+    });
+  }
+
+  return blocks;
+}
+
+function rangeIntersectsVisible(view: EditorView, from: number, to: number) {
+  return view.visibleRanges.some((range) => from <= range.to && to >= range.from);
+}
+
+function blockContainingLine(blocks: FencedBlock[], lineFrom: number, lineTo: number) {
+  return blocks.find((block) => block.from <= lineFrom && block.to >= lineTo);
+}
+
+function buildStyledMarkdownDecorations(view: EditorView) {
+  const ranges: Range<Decoration>[] = [];
+  const fencedBlocks = findFencedBlocks(view);
+
+  for (const { from, to } of view.visibleRanges) {
+    let pos = from;
+    while (pos <= to) {
+      const line = view.state.doc.lineAt(pos);
+      const text = line.text;
+      const fencedBlock = blockContainingLine(fencedBlocks, line.from, line.to);
+      if (fencedBlock && !selectionTouches(view, fencedBlock.from, fencedBlock.to)) {
+        if (line.to + 1 > to) break;
+        pos = line.to + 1;
+        continue;
+      }
+
+      const heading = text.match(/^(#{1,6})\s*(?=\S)/);
+      const task = text.match(/^(\s*[-*]\s+\[([ xX])]\s+)/);
+
+      if (fencedBlock) {
+        ranges.push(
+          Decoration.line({ class: "cm-md-code-line" }).range(line.from),
+        );
+      } else if (task) {
+        replaceWithWidgetIfIdle(
+          ranges,
+          view,
+          line.from,
+          line.from + task[1].length,
+          new TaskCheckboxWidget(task[2].toLowerCase() === "x"),
+        );
+      } else if (heading) {
+        const level = Math.min(heading[1].length, 3);
+        ranges.push(
+          Decoration.line({ class: `cm-md-heading-${level}` }).range(line.from),
+        );
+        hideIfIdle(ranges, view, line.from, line.from + heading[0].length);
+      }
+
+      const quote = text.match(/^(\s*>\s*)/);
+      if (!fencedBlock && quote) {
+        ranges.push(
+          Decoration.line({ class: "cm-md-quote-line" }).range(line.from),
+        );
+        hideIfIdle(ranges, view, line.from, line.from + quote[1].length);
+      }
+
+      if (fencedBlock) {
+        if (line.to + 1 > to) break;
+        pos = line.to + 1;
+        continue;
+      }
+
+      decorateInlinePattern(
+        ranges,
+        view,
+        line.from,
+        text,
+        /(\*\*|__)(?!\s)(.+?)(?<!\s)\1/g,
+        "cm-md-bold",
+      );
+      decorateInlinePattern(
+        ranges,
+        view,
+        line.from,
+        text,
+        /(~~)(?!\s)(.+?)(?<!\s)~~/g,
+        "cm-md-strike",
+      );
+      decorateInlinePattern(
+        ranges,
+        view,
+        line.from,
+        text,
+        /(`)([^`\n]+?)`/g,
+        "cm-md-code",
+      );
+      decorateInlinePattern(
+        ranges,
+        view,
+        line.from,
+        text,
+        /(?<!\*)\*(?!\s|\*)(.+?)(?<!\s)\*(?!\*)/g,
+        "cm-md-italic",
+      );
+
+      for (const match of text.matchAll(/\[([^\]\n]+)]\((inkest-[^)]+)\)/g)) {
+        if (match.index === undefined || !match[1] || !match[2]) continue;
+
+        const openFrom = line.from + match.index;
+        const contentFrom = openFrom + 1;
+        const contentTo = contentFrom + match[1].length;
+        const closeTo = openFrom + match[0].length;
+        const annotation = match[2];
+        const className = annotation.startsWith("inkest-highlight:")
+          ? "cm-md-highlight"
+          : annotation.startsWith("inkest-comment:")
+            ? "cm-md-comment"
+            : annotation === "inkest-size:small"
+              ? "cm-md-small"
+              : annotation === "inkest-size:large"
+                ? "cm-md-large"
+                : annotation === "inkest-size:huge"
+                  ? "cm-md-huge"
+                  : null;
+
+        if (!className) continue;
+
+        ranges.push(
+          Decoration.mark({ class: className }).range(contentFrom, contentTo),
+        );
+        hideIfIdle(ranges, view, openFrom, contentFrom);
+        hideIfIdle(ranges, view, contentTo, closeTo);
+      }
+
+      if (line.to + 1 > to) break;
+      pos = line.to + 1;
+    }
+  }
+
+  return ranges.length > 0 ? Decoration.set(ranges, true) : Decoration.none;
+}
+
+function buildFencedBlockDecorations(view: EditorView) {
+  const ranges: Range<Decoration>[] = [];
+
+  for (const block of findFencedBlocks(view)) {
+    if (!rangeIntersectsVisible(view, block.from, block.to)) continue;
+    if (selectionTouches(view, block.from, block.to)) continue;
+
+    ranges.push(
+      Decoration.replace({
+        block: true,
+        widget: new FencedBlockWidget(
+          block.lang,
+          block.code,
+          block.rawMarkdown,
+          block.from,
+          block.to,
+        ),
+      }).range(block.from, block.to),
+    );
+  }
+
+  return ranges.length > 0 ? Decoration.set(ranges, true) : Decoration.none;
+}
+
 export function insertTextAtCursor(
   ref: React.RefObject<ReactCodeMirrorRef | null>,
   text: string,
@@ -110,6 +658,154 @@ export function insertTextAtCursor(
   view.dispatch({
     changes: { from: sel.from, to: sel.to, insert: text },
     selection: { anchor: sel.from + text.length },
+  });
+  view.focus();
+}
+
+export type MarkdownFormat =
+  | "bold"
+  | "italic"
+  | "strikethrough"
+  | "inline-code"
+  | "heading-1"
+  | "heading-2"
+  | "heading-3"
+  | "quote"
+  | "bullet-list"
+  | "numbered-list"
+  | "check-list"
+  | "highlight"
+  | "comment"
+  | "small"
+  | "large"
+  | "huge";
+
+const INLINE_FORMATS: Partial<
+  Record<MarkdownFormat, { before: string; after: string; placeholder: string }>
+> = {
+  bold: { before: "**", after: "**", placeholder: "bold text" },
+  italic: { before: "*", after: "*", placeholder: "italic text" },
+  strikethrough: { before: "~~", after: "~~", placeholder: "struck text" },
+  "inline-code": { before: "`", after: "`", placeholder: "code" },
+};
+
+function lineFormat(
+  value: string,
+  format: MarkdownFormat,
+  selectionFrom: number,
+  selectionTo: number,
+) {
+  const lineStart = value.lastIndexOf("\n", Math.max(0, selectionFrom - 1)) + 1;
+  const nextNewline = value.indexOf("\n", selectionTo);
+  const lineEnd = nextNewline === -1 ? value.length : nextNewline;
+  const selectedLines = value.slice(lineStart, lineEnd);
+  const lines = selectedLines.length > 0 ? selectedLines.split("\n") : [""];
+
+  const formatted = lines
+    .map((line, index) => {
+      const stripped = line.replace(
+        /^\s*(#{1,6}\s+|>\s+|- \[ \]\s+|- \s+|\d+\.\s+)/,
+        "",
+      );
+      if (format === "heading-1") return `# ${stripped}`;
+      if (format === "heading-2") return `## ${stripped}`;
+      if (format === "heading-3") return `### ${stripped}`;
+      if (format === "quote") return `> ${stripped}`;
+      if (format === "bullet-list") return `- ${stripped}`;
+      if (format === "numbered-list") return `${index + 1}. ${stripped}`;
+      return `- [ ] ${stripped}`;
+    })
+    .join("\n");
+
+  return { from: lineStart, to: lineEnd, insert: formatted };
+}
+
+function encodedAnnotation(
+  format: MarkdownFormat,
+  selectedText: string,
+  comment?: string,
+) {
+  const fallback =
+    format === "comment" ? "commented text" : format === "highlight" ? "highlight" : "sized text";
+  const text = (selectedText || fallback).replaceAll("[", "\\[").replaceAll("]", "\\]");
+
+  if (format === "highlight") return `[${text}](inkest-highlight:)`;
+  if (format === "small") return `[${text}](inkest-size:small)`;
+  if (format === "large") return `[${text}](inkest-size:large)`;
+  if (format === "huge") return `[${text}](inkest-size:huge)`;
+
+  const encoded = encodeURIComponent(comment?.trim() || "Add a comment here.");
+  return `[${text}](inkest-comment:${encoded})`;
+}
+
+export function applyMarkdownFormat(
+  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  format: MarkdownFormat,
+  options?: { comment?: string },
+) {
+  const view = ref.current?.view;
+  if (!view) return;
+
+  const sel = view.state.selection.main;
+  const selectedText = view.state.sliceDoc(sel.from, sel.to);
+  const inline = INLINE_FORMATS[format];
+
+  if (inline) {
+    const text = selectedText || inline.placeholder;
+    const insert = `${inline.before}${text}${inline.after}`;
+    view.dispatch({
+      changes: { from: sel.from, to: sel.to, insert },
+      selection: selectedText
+        ? { anchor: sel.from + insert.length }
+        : { anchor: sel.from + inline.before.length, head: sel.from + inline.before.length + text.length },
+    });
+    view.focus();
+    return;
+  }
+
+  if (
+    format === "heading-1" ||
+    format === "heading-2" ||
+    format === "heading-3" ||
+    format === "quote" ||
+    format === "bullet-list" ||
+    format === "numbered-list" ||
+    format === "check-list"
+  ) {
+    const change = lineFormat(view.state.doc.toString(), format, sel.from, sel.to);
+    view.dispatch({
+      changes: change,
+      selection: { anchor: change.from + change.insert.length },
+    });
+    view.focus();
+    return;
+  }
+
+  const insert = encodedAnnotation(format, selectedText, options?.comment);
+  view.dispatch({
+    changes: { from: sel.from, to: sel.to, insert },
+    selection: { anchor: sel.from + insert.length },
+  });
+  view.focus();
+}
+
+export function getSelectedEditorText(ref: React.RefObject<ReactCodeMirrorRef | null>) {
+  const view = ref.current?.view;
+  if (!view) return null;
+  const sel = view.state.selection.main;
+  if (sel.from === sel.to) return null;
+  return view.state.sliceDoc(sel.from, sel.to).trim() || null;
+}
+
+export function replaceEntireEditorContent(
+  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  text: string,
+) {
+  const view = ref.current?.view;
+  if (!view) return;
+  view.dispatch({
+    changes: { from: 0, to: view.state.doc.length, insert: text },
+    selection: { anchor: text.length },
   });
   view.focus();
 }

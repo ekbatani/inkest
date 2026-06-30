@@ -15,6 +15,8 @@ import {
   HelpCircle,
   Languages,
   FileText,
+  MessageSquarePlus,
+  MessagesSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -39,7 +41,11 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
-import { insertTextAtCursor } from "@/components/editor/markdown-editor";
+import {
+  getSelectedEditorText,
+  insertTextAtCursor,
+  replaceEntireEditorContent,
+} from "@/components/editor/markdown-editor";
 import { AiBadge, AiIcon } from "@/components/ai/ai-badge";
 import { createTaskAction } from "@/server/tasks/actions";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
@@ -56,7 +62,9 @@ type ActionId =
   | "create-project-plan"
   | "generate-mermaid"
   | "explain"
-  | "translate";
+  | "translate"
+  | "comment-selection"
+  | "apply-comments";
 
 type AiState =
   | { status: "idle" }
@@ -70,7 +78,11 @@ type ExtractedTask = {
   priority: "none" | "low" | "medium" | "high";
 };
 
-const SELECTION_ONLY_ACTIONS: ActionId[] = ["explain", "translate"];
+const SELECTION_ONLY_ACTIONS: ActionId[] = [
+  "explain",
+  "translate",
+  "comment-selection",
+];
 
 export function AiPanel({ noteId, editorRef }: Props) {
   const [state, setState] = React.useState<AiState>({ status: "idle" });
@@ -84,13 +96,7 @@ export function AiPanel({ noteId, editorRef }: Props) {
   const [promptHint, setPromptHint] = React.useState("");
   const [insertingTasks, setInsertingTasks] = React.useState(false);
 
-  const getSelection = (): string | null => {
-    const view = editorRef.current?.view;
-    if (!view) return null;
-    const sel = view.state.selection.main;
-    if (sel.from === sel.to) return null;
-    return view.state.sliceDoc(sel.from, sel.to).trim() || null;
-  };
+  const getSelection = (): string | null => getSelectedEditorText(editorRef);
 
   const runAction = async (
     action: ActionId,
@@ -139,7 +145,12 @@ export function AiPanel({ noteId, editorRef }: Props) {
       setPromptDialog({ action, needsLanguage: true, needsHint: false });
       return;
     }
-    if (action === "create-project-plan" || action === "generate-mermaid") {
+    if (
+      action === "create-project-plan" ||
+      action === "generate-mermaid" ||
+      action === "comment-selection" ||
+      action === "apply-comments"
+    ) {
       setPromptDialog({ action, needsLanguage: false, needsHint: true });
       return;
     }
@@ -189,6 +200,13 @@ export function AiPanel({ noteId, editorRef }: Props) {
       selection: { anchor: sel.from + state.output.length },
     });
     toast.success("Selection replaced with AI output.");
+    close();
+  };
+
+  const onReplaceNote = () => {
+    if (state.status !== "result") return;
+    replaceEntireEditorContent(editorRef, state.output);
+    toast.success("Note replaced with AI revision.");
     close();
   };
 
@@ -262,6 +280,12 @@ export function AiPanel({ noteId, editorRef }: Props) {
             <DropdownMenuItem onClick={() => onPickAction("translate")}>
               <Languages className="size-4" /> Translate selection...
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onPickAction("comment-selection")}>
+              <MessageSquarePlus className="size-4" /> Add AI comment...
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onPickAction("apply-comments")}>
+              <MessagesSquare className="size-4" /> Apply comments...
+            </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -316,7 +340,11 @@ export function AiPanel({ noteId, editorRef }: Props) {
                 value={promptHint}
                 onChange={(e) => setPromptHint(e.target.value)}
                 placeholder={
-                  promptDialog?.action === "generate-mermaid"
+                  promptDialog?.action === "comment-selection"
+                    ? "e.g. focus on clarity and missing context"
+                    : promptDialog?.action === "apply-comments"
+                      ? "e.g. keep the tone casual"
+                      : promptDialog?.action === "generate-mermaid"
                     ? "e.g. show the timeline as a gantt chart"
                     : "e.g. focus on shipping MVP in 4 weeks"
                 }
@@ -387,6 +415,16 @@ export function AiPanel({ noteId, editorRef }: Props) {
                 >
                   <Replace className="size-4" /> Replace selection
                 </Button>
+                {state.action === "apply-comments" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onReplaceNote}
+                    className="gap-1.5"
+                  >
+                    <Replace className="size-4" /> Replace note
+                  </Button>
+                )}
                 <Button size="sm" onClick={onInsert} className="gap-1.5">
                   <Plus className="size-4" /> Insert
                 </Button>
@@ -487,4 +525,6 @@ const ACTION_LABELS: Record<ActionId, string> = {
   "generate-mermaid": "Generating diagram...",
   explain: "Explaining...",
   translate: "Translating...",
+  "comment-selection": "Writing comment...",
+  "apply-comments": "Applying comments...",
 };

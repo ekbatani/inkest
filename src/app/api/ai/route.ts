@@ -9,6 +9,8 @@ import { createProjectPlan } from "@/server/ai/create-project-plan";
 import { generateMermaid } from "@/server/ai/generate-mermaid";
 import { explainText } from "@/server/ai/explain-text";
 import { translateText } from "@/server/ai/translate-text";
+import { commentOnSelection } from "@/server/ai/comment-selection";
+import { applyInlineComments } from "@/server/ai/apply-comments";
 import { NoteEditorActionSchema } from "@/server/ai/specs";
 
 const RequestSchema = z.object({
@@ -67,6 +69,18 @@ export async function POST(request: NextRequest) {
   if (action === "translate" && !targetLanguage?.trim()) {
     return NextResponse.json(
       { error: "Choose a target language." },
+      { status: 400 },
+    );
+  }
+  if (action === "comment-selection" && !selection) {
+    return NextResponse.json(
+      { error: "Select text for the AI to comment on." },
+      { status: 400 },
+    );
+  }
+  if (action === "apply-comments" && !note.contentMd.includes("inkest-comment:")) {
+    return NextResponse.json(
+      { error: "This note does not have any inline comments to apply." },
       { status: 400 },
     );
   }
@@ -152,6 +166,37 @@ export async function POST(request: NextRequest) {
       noteTitle: note.title,
       selectedText: selection!,
       targetLanguage: targetLanguage!,
+    });
+    if (!r.ok)
+      return NextResponse.json(
+        { error: r.error, notConfigured: r.notConfigured },
+        { status: statusFor(r) },
+      );
+    return NextResponse.json({ kind: "text", output: r.output });
+  }
+
+  if (action === "comment-selection") {
+    const r = await commentOnSelection({
+      noteId: note.id,
+      noteTitle: note.title,
+      noteContent: note.contentMd,
+      selectedText: selection!,
+      promptHint,
+    });
+    if (!r.ok)
+      return NextResponse.json(
+        { error: r.error, notConfigured: r.notConfigured },
+        { status: statusFor(r) },
+      );
+    return NextResponse.json({ kind: "text", output: r.output });
+  }
+
+  if (action === "apply-comments") {
+    const r = await applyInlineComments({
+      noteId: note.id,
+      noteTitle: note.title,
+      noteContent: note.contentMd,
+      promptHint,
     });
     if (!r.ok)
       return NextResponse.json(

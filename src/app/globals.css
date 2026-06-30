@@ -229,6 +229,45 @@
   color: var(--muted-foreground);
   font-style: italic;
 }
+.inkest-prose .inkest-highlight {
+  border-radius: 0.25rem;
+  background: color-mix(in oklch, var(--ai-end) 32%, transparent);
+  box-decoration-break: clone;
+  padding: 0.04em 0.22em;
+  color: inherit;
+}
+.inkest-prose .inkest-comment {
+  display: inline;
+  border-radius: 0.25rem;
+  background: color-mix(in oklch, var(--ai-start) 15%, transparent);
+  box-decoration-break: clone;
+  padding: 0.04em 0.18em;
+}
+.inkest-prose .inkest-comment__text {
+  border-bottom: 1px dotted color-mix(in oklch, var(--ai-start) 70%, var(--foreground) 30%);
+}
+.inkest-prose .inkest-comment__badge {
+  margin-inline-start: 0.35em;
+  border-radius: 9999px;
+  border: 1px solid var(--ai-border);
+  background: var(--ai-surface);
+  color: var(--ai-ink);
+  padding: 0.05em 0.45em;
+  font-family: var(--font-sans);
+  font-size: 0.62em;
+  font-weight: 650;
+  vertical-align: 0.12em;
+}
+.inkest-prose .inkest-text-small {
+  font-size: 0.86em;
+}
+.inkest-prose .inkest-text-large {
+  font-size: 1.18em;
+}
+.inkest-prose .inkest-text-huge {
+  font-size: 1.42em;
+  line-height: 1.32;
+}
 .inkest-prose code {
   font-family: var(--font-mono);
   font-size: 0.9em;

@@ -1,3 +1,5 @@
+Todo tasks:
+
 - rename the applicaitoin to inkest
 - Add a landing page look in agnoOs landing and spotlight effect in hero section.
 - Add super fucos mode to read with spotlight
@@ -8,7 +10,7 @@
 - Keep the features minimal also.
 - Make it open source self hosted free and cloud base plans to get money
 - The goal is add something beautiful handy and enjoable to this world
-- Add openrouter as AI provider. Done.
+- Add openCode as AI provider.
 - Link to telegram and add notifications
 - Add help how users add their AI keys or connect to telegram
 - In Splite view the views should scroll together
@@ -27,10 +29,6 @@
 - animation of the application in the landing page, focused on AI functoinality.
 - Clean log the content of the note is loged!
 - Add help with AI
-- Add highlight and comment to text
-- Add comment with AI
-- Add check list
-- Add font functionalities like size bold italic and other styles
 - Speech to text functionalities and text to speech
 - add folder in in notes tree and also note and sub-notes
 - the tag filter in notes should be or not and
@@ -38,4 +36,15 @@
 - notification in desktop and mobile and alerts
 - Calendar note and sync with google calendar
 - Login with google
--
+- The note title size and style has some issues
+- In the preview mode when we click on the check box it should be checked
+
+
+
+
+Done tasks:
+
+- Add check list
+- Add font functionalities like size bold italic and other styles
+- Add highlight and comment to text
+- Add comment with AI
