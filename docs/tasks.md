@@ -4,7 +4,6 @@ Todo tasks:
 - Add a landing page look in agnoOs landing and spotlight effect in hero section.
 - Add super fucos mode to read with spotlight
 - Add little animations to make it attractive
-- Use line seperated space to make it clean minimal and modern
 - Make it as fast as possible and as light and minimal as possible
 - The AI features must be in priority.
 - Keep the features minimal also.
@@ -13,13 +12,10 @@ Todo tasks:
 - Add openCode as AI provider.
 - Link to telegram and add notifications
 - Add help how users add their AI keys or connect to telegram
-- In Splite view the views should scroll together
 - The charts size and zoom functionality
-- full width content in editor
 - The size of the side bar should be editable
 - The links in the note should work both inner link with # and link to the other notes
 - exit from focus mode
-- in focus mode we should be able to switch preview and edit mode
 - Undo and redo functionality and integrate with note history
 - More focus on the AI functionlities
 - Performance check
@@ -36,8 +32,11 @@ Todo tasks:
 - notification in desktop and mobile and alerts
 - Calendar note and sync with google calendar
 - Login with google
-- The note title size and style has some issues
 - In the preview mode when we click on the check box it should be checked
+- Remove split view
+- Add copy the md format button 
+- check paste functionality of the big md format file
+- 
 
 
 

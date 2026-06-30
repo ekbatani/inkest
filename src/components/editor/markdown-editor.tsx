@@ -8,7 +8,7 @@ import {
   EditorView,
   WidgetType,
 } from "@codemirror/view";
-import { Prec, type Range } from "@codemirror/state";
+import { Prec, StateField, type EditorState, type Range } from "@codemirror/state";
 import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
 
@@ -36,7 +36,7 @@ export function MarkdownEditor({
     () => [
       markdown({ base: markdownLanguage }),
       EditorView.lineWrapping,
-      EditorView.decorations.of(buildFencedBlockDecorations),
+      fencedBlockField,
       EditorView.decorations.of(buildStyledMarkdownDecorations),
       Prec.highest(
         EditorView.theme({
@@ -246,8 +246,8 @@ export function MarkdownEditor({
   );
 }
 
-function selectionTouches(view: EditorView, from: number, to: number) {
-  return view.state.selection.ranges.some(
+function selectionTouches(state: EditorState, from: number, to: number) {
+  return state.selection.ranges.some(
     (range) => range.from <= to && range.to >= from,
   );
 }
@@ -258,7 +258,7 @@ function hideIfIdle(
   from: number,
   to: number,
 ) {
-  if (from >= to || selectionTouches(view, from, to)) return;
+  if (from >= to || selectionTouches(view.state, from, to)) return;
   ranges.push(Decoration.replace({}).range(from, to));
 }
 
@@ -417,7 +417,7 @@ function replaceWithWidgetIfIdle(
   to: number,
   widget: WidgetType,
 ) {
-  if (from >= to || selectionTouches(view, from, to)) return;
+  if (from >= to || selectionTouches(view.state, from, to)) return;
   ranges.push(Decoration.replace({ widget }).range(from, to));
 }
 
@@ -452,9 +452,9 @@ type FencedBlock = {
   rawMarkdown: string;
 };
 
-function findFencedBlocks(view: EditorView) {
+function findFencedBlocks(state: EditorState) {
   const blocks: FencedBlock[] = [];
-  const doc = view.state.doc;
+  const doc = state.doc;
 
   for (let lineNo = 1; lineNo <= doc.lines; lineNo++) {
     const startLine = doc.line(lineNo);
@@ -493,17 +493,13 @@ function findFencedBlocks(view: EditorView) {
   return blocks;
 }
 
-function rangeIntersectsVisible(view: EditorView, from: number, to: number) {
-  return view.visibleRanges.some((range) => from <= range.to && to >= range.from);
-}
-
 function blockContainingLine(blocks: FencedBlock[], lineFrom: number, lineTo: number) {
   return blocks.find((block) => block.from <= lineFrom && block.to >= lineTo);
 }
 
 function buildStyledMarkdownDecorations(view: EditorView) {
   const ranges: Range<Decoration>[] = [];
-  const fencedBlocks = findFencedBlocks(view);
+  const fencedBlocks = findFencedBlocks(view.state);
 
   for (const { from, to } of view.visibleRanges) {
     let pos = from;
@@ -511,7 +507,7 @@ function buildStyledMarkdownDecorations(view: EditorView) {
       const line = view.state.doc.lineAt(pos);
       const text = line.text;
       const fencedBlock = blockContainingLine(fencedBlocks, line.from, line.to);
-      if (fencedBlock && !selectionTouches(view, fencedBlock.from, fencedBlock.to)) {
+      if (fencedBlock && !selectionTouches(view.state, fencedBlock.from, fencedBlock.to)) {
         if (line.to + 1 > to) break;
         pos = line.to + 1;
         continue;
@@ -624,12 +620,11 @@ function buildStyledMarkdownDecorations(view: EditorView) {
   return ranges.length > 0 ? Decoration.set(ranges, true) : Decoration.none;
 }
 
-function buildFencedBlockDecorations(view: EditorView) {
+function buildFencedBlockDecorations(state: EditorState) {
   const ranges: Range<Decoration>[] = [];
 
-  for (const block of findFencedBlocks(view)) {
-    if (!rangeIntersectsVisible(view, block.from, block.to)) continue;
-    if (selectionTouches(view, block.from, block.to)) continue;
+  for (const block of findFencedBlocks(state)) {
+    if (selectionTouches(state, block.from, block.to)) continue;
 
     ranges.push(
       Decoration.replace({
@@ -647,6 +642,17 @@ function buildFencedBlockDecorations(view: EditorView) {
 
   return ranges.length > 0 ? Decoration.set(ranges, true) : Decoration.none;
 }
+
+const fencedBlockField = StateField.define({
+  create(state) {
+    return buildFencedBlockDecorations(state);
+  },
+  update(value, tr) {
+    if (!tr.docChanged && !tr.selection) return value;
+    return buildFencedBlockDecorations(tr.state);
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
 
 export function insertTextAtCursor(
   ref: React.RefObject<ReactCodeMirrorRef | null>,

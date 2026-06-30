@@ -30,7 +30,11 @@ export function MermaidRenderer({ code }: Props) {
       try {
         const { svg: rendered } = await mermaid.render(id, code);
         if (!cancelled) {
-          setSvg(rendered);
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(rendered, "image/svg+xml");
+          doc.querySelectorAll(".version, [class*='version']").forEach((el) => el.remove());
+          const cleanSvg = new XMLSerializer().serializeToString(doc.documentElement);
+          setSvg(cleanSvg);
           setLoading(false);
         }
       } catch (err) {
