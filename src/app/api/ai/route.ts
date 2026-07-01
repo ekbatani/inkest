@@ -12,6 +12,7 @@ import { translateText } from "@/server/ai/translate-text";
 import { commentOnSelection } from "@/server/ai/comment-selection";
 import { applyInlineComments } from "@/server/ai/apply-comments";
 import { NoteEditorActionSchema } from "@/server/ai/specs";
+import { notifyAiActionResult } from "@/server/notifications/telegram";
 
 const RequestSchema = z.object({
   action: NoteEditorActionSchema,
@@ -26,6 +27,43 @@ function statusFor(actionReturn: {
   notConfigured?: boolean;
 }): number {
   return actionReturn.notConfigured ? 503 : 500;
+}
+
+function formatTasksForNotification(
+  tasks: Array<{
+    title: string;
+    description?: string | null;
+    priority?: string | null;
+    dueDate?: string | null;
+    sourceQuote?: string | null;
+  }>,
+) {
+  if (tasks.length === 0) return "No tasks were extracted.";
+
+  return tasks
+    .map((task, index) => {
+      const details = [
+        task.description ? `Description: ${task.description}` : null,
+        task.priority && task.priority !== "none"
+          ? `Priority: ${task.priority}`
+          : null,
+        task.dueDate ? `Due: ${task.dueDate}` : null,
+        task.sourceQuote ? `Source: ${task.sourceQuote}` : null,
+      ].filter(Boolean);
+
+      return [`${index + 1}. ${task.title}`, ...details].join("\n");
+    })
+    .join("\n\n");
+}
+
+async function notifySuccessfulAiAction(args: {
+  action: string;
+  noteTitle: string;
+  output: string;
+  model?: string;
+  provider?: string;
+}) {
+  await notifyAiActionResult(args);
 }
 
 export async function POST(request: NextRequest) {
@@ -97,6 +135,13 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
+    await notifySuccessfulAiAction({
+      action,
+      noteTitle: note.title,
+      output: r.output,
+      model: r.model,
+      provider: r.provider,
+    });
     return NextResponse.json({ kind: "text", output: r.output });
   }
 
@@ -112,6 +157,13 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
+    await notifySuccessfulAiAction({
+      action,
+      noteTitle: note.title,
+      output: r.output,
+      model: r.model,
+      provider: r.provider,
+    });
     return NextResponse.json({ kind: "text", output: r.output });
   }
 
@@ -127,6 +179,13 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
+    await notifySuccessfulAiAction({
+      action,
+      noteTitle: note.title,
+      output: r.output,
+      model: r.model,
+      provider: r.provider,
+    });
     return NextResponse.json({ kind: "text", output: r.output });
   }
 
@@ -143,6 +202,13 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
+    await notifySuccessfulAiAction({
+      action,
+      noteTitle: note.title,
+      output: r.output,
+      model: r.model,
+      provider: r.provider,
+    });
     return NextResponse.json({ kind: "text", output: r.output });
   }
 
@@ -157,6 +223,13 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
+    await notifySuccessfulAiAction({
+      action,
+      noteTitle: note.title,
+      output: r.output,
+      model: r.model,
+      provider: r.provider,
+    });
     return NextResponse.json({ kind: "text", output: r.output });
   }
 
@@ -172,6 +245,13 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
+    await notifySuccessfulAiAction({
+      action,
+      noteTitle: note.title,
+      output: r.output,
+      model: r.model,
+      provider: r.provider,
+    });
     return NextResponse.json({ kind: "text", output: r.output });
   }
 
@@ -188,6 +268,13 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
+    await notifySuccessfulAiAction({
+      action,
+      noteTitle: note.title,
+      output: r.output,
+      model: r.model,
+      provider: r.provider,
+    });
     return NextResponse.json({ kind: "text", output: r.output });
   }
 
@@ -203,6 +290,13 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
+    await notifySuccessfulAiAction({
+      action,
+      noteTitle: note.title,
+      output: r.output,
+      model: r.model,
+      provider: r.provider,
+    });
     return NextResponse.json({ kind: "text", output: r.output });
   }
 
@@ -218,6 +312,13 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
+    await notifySuccessfulAiAction({
+      action,
+      noteTitle: note.title,
+      output: formatTasksForNotification(r.output.tasks),
+      model: r.model,
+      provider: r.provider,
+    });
     return NextResponse.json({ kind: "tasks", tasks: r.output.tasks });
   }
 
