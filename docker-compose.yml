@@ -6,7 +6,7 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: file:/app/data/local.db
-      NEXTAUTH_URL: ${NEXTAUTH_URL:http://localhost:3000}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-changeme-generate-with-openssl-rand-base64-32}
       ATTACHMENT_STORAGE_DRIVER: ${ATTACHMENT_STORAGE_DRIVER:-local}
       LOCAL_STORAGE_ROOT: ${LOCAL_STORAGE_ROOT:-/app/storage}
