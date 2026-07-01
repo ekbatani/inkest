@@ -46,6 +46,7 @@ export function AuthForm({
         email,
         password,
         redirect: false,
+        callbackUrl,
       });
 
       if (result?.error) {
@@ -61,8 +62,8 @@ export function AuthForm({
       }
 
       toast.success(mode === "signup" ? "Welcome to inkest!" : "Welcome back!");
-      router.push(callbackUrl);
-      router.refresh();
+      const destination = result?.url ?? callbackUrl;
+      window.location.assign(destination);
     } finally {
       setLoading(false);
     }
