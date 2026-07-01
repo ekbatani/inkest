@@ -50,7 +50,7 @@ import { ArchiveToggleButton } from "@/components/notes/archive-toggle-button";
 import { formatDate } from "@/lib/dates";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { FloatingMarkdownFormatToolbar } from "@/components/editor/markdown-format-toolbar";
-import { ImageUploadButton } from "@/components/editor/image-upload-button";
+import { AttachmentUploadButton } from "@/components/editor/image-upload-button";
 import { SpeechToTextButton } from "@/components/editor/speech-to-text-button";
 import { AiPanel } from "@/components/ai/ai-panel";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
@@ -58,10 +58,12 @@ import { TagSelector } from "@/components/notes/tag-selector";
 import { ParentPicker } from "@/components/notes/parent-picker";
 import { DueDatePicker } from "@/components/notes/due-date-picker";
 import { VersionHistoryButton } from "@/components/notes/version-history-button";
+import { DailyNoteCalendarPanel } from "@/components/calendar/daily-note-calendar-panel";
 import type { WikiLinkTarget } from "@/lib/markdown/wiki";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
+import type { GoogleCalendarEvent } from "@/server/db/schema";
 
 type EditorMode = "write" | "focus";
 type NoteSnapshot = {
@@ -81,6 +83,7 @@ export function NoteEditor({
   linkableNotes = [],
   backlinks = [],
   selectTitleOnMount = false,
+  dailyAgenda,
 }: {
   note: Note;
   allTags?: Tag[];
@@ -89,6 +92,16 @@ export function NoteEditor({
   linkableNotes?: WikiLinkTarget[];
   backlinks?: { id: string; title: string }[];
   selectTitleOnMount?: boolean;
+  dailyAgenda?: {
+    dateKey: string;
+    events: GoogleCalendarEvent[];
+    status: {
+      configured: boolean;
+      connected: boolean;
+      googleEmail: string | null;
+      lastSyncedAt: Date | null;
+    };
+  };
 }) {
   const router = useRouter();
   const [title, setTitle] = React.useState(note.title);
@@ -465,7 +478,7 @@ export function NoteEditor({
             </ToggleGroupItem>
           </ToggleGroup>
 
-          {showEditor && <ImageUploadButton editorRef={editorRef} />}
+          {showEditor && <AttachmentUploadButton editorRef={editorRef} />}
           {showEditor && <SpeechToTextButton editorRef={editorRef} />}
           {showEditor && <AiPanel noteId={note.id} editorRef={editorRef} />}
           {showEditor && (
@@ -651,6 +664,7 @@ export function NoteEditor({
               noteTagIds={noteTagIds}
               parentCandidates={parentCandidates}
               backlinks={backlinks}
+              dailyAgenda={dailyAgenda}
               draft={{ title, contentMd: content }}
               canUndo={canUndo}
               canRedo={canRedo}
@@ -681,6 +695,7 @@ function MetadataPanel({
   noteTagIds,
   parentCandidates,
   backlinks,
+  dailyAgenda,
   draft,
   canUndo,
   canRedo,
@@ -704,6 +719,16 @@ function MetadataPanel({
   noteTagIds: string[];
   parentCandidates: Pick<Note, "id" | "title" | "type">[];
   backlinks: { id: string; title: string }[];
+  dailyAgenda?: {
+    dateKey: string;
+    events: GoogleCalendarEvent[];
+    status: {
+      configured: boolean;
+      connected: boolean;
+      googleEmail: string | null;
+      lastSyncedAt: Date | null;
+    };
+  };
   draft: { title: string; contentMd: string };
   canUndo: boolean;
   canRedo: boolean;
@@ -801,6 +826,14 @@ function MetadataPanel({
           allTags={allTags}
           selectedTagIds={noteTagIds}
         />
+
+        {metadata.type === "daily" && dailyAgenda && (
+          <DailyNoteCalendarPanel
+            dateKey={dailyAgenda.dateKey}
+            events={dailyAgenda.events}
+            status={dailyAgenda.status}
+          />
+        )}
 
         {backlinks.length > 0 && (
           <div className="rounded-2xl border border-border/70 p-3">

@@ -9,9 +9,10 @@ A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and lig
 - **Projects & tasks** -- project notes with status, priority, due dates, and a kanban board
 - **Tags & hierarchy** -- color-coded tags, parent-child note tree
 - **Daily notes** -- one note per day, auto-created
+- **Calendar sync** -- month view plus Google Calendar events inside daily notes
 - **AI actions** -- summarize, improve writing, extract tasks, generate diagrams, translate (OpenAI-compatible)
 - **Speech to text** -- record short voice notes and transcribe them with Google Speech-to-Text
-- **Image uploads** -- local filesystem storage, private serving
+- **Private attachments** -- images, PDFs, DOC/DOCX, EPUB via local storage or MinIO
 - **Version history** -- automatic snapshots with one-click restore
 - **Wiki links** -- `[[Note Title]]` linking with backlinks
 - **Export** -- full workspace ZIP or single-note Markdown
@@ -29,7 +30,7 @@ A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and lig
 | Database | Drizzle ORM + libSQL/Turso |
 | Editor | CodeMirror 6 |
 | Preview | react-markdown + remark-gfm + rehype-sanitize |
-| Auth | Auth.js (next-auth) with Credentials |
+| Auth | Auth.js (next-auth) with Credentials + Google Calendar OAuth connect |
 | AI | OpenAI SDK (any compatible provider) |
 | Runtime | Bun |
 
@@ -69,7 +70,7 @@ docker compose pull
 docker compose up -d
 ```
 
-The container runs pending Drizzle migrations automatically on startup, so a fresh deploy initializes the schema on first boot. The SQLite database and uploaded files live on named volumes (`inkest-data`, `inkest-storage`) mounted at `/app/data` and `/app/storage`, so they persist across `docker compose pull && up -d` redeploys.
+The container runs pending Drizzle migrations automatically on startup, so a fresh deploy initializes the schema on first boot. With the default local storage driver, the SQLite database and uploaded files live on named volumes (`inkest-data`, `inkest-storage`) mounted at `/app/data` and `/app/storage`, so they persist across `docker compose pull && up -d` redeploys.
 
 ```bash
 # Or build the image locally instead of pulling
@@ -99,7 +100,27 @@ docker run -p 3000:3000 \
 | `OPENROUTER_MODEL` | No | `openai/gpt-4o-mini` | OpenRouter model slug |
 | `GOOGLE_SPEECH_TO_TEXT_API_KEY` | No | -- | Google Cloud Speech-to-Text API key for voice transcription |
 | `GOOGLE_SPEECH_TO_TEXT_BASE_URL` | No | `https://speech.googleapis.com/v1` | Override the Google Speech-to-Text REST endpoint |
+| `GOOGLE_OAUTH_CLIENT_ID` | No | -- | Google OAuth client ID used for Calendar sync |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | No | -- | Google OAuth client secret used for Calendar sync |
 | `MAX_SPEECH_UPLOAD_SIZE_MB` | No | `10` | Max uploaded recording size accepted by the speech route |
+| `ATTACHMENT_STORAGE_DRIVER` | No | `local` | Attachment backend: `local` or `minio` |
+| `LOCAL_STORAGE_ROOT` | No | `./storage` | Local attachment root when using `local` storage |
+| `MAX_UPLOAD_SIZE_MB` | No | `20` | Max uploaded attachment size |
+| `ALLOWED_UPLOAD_TYPES` | No | built-in allowlist | Comma-separated MIME types for attachments |
+| `MINIO_ENDPOINT` | No | -- | MinIO/S3-compatible endpoint, e.g. `http://minio:9000` |
+| `MINIO_BUCKET` | No | -- | Bucket used when `ATTACHMENT_STORAGE_DRIVER=minio` |
+| `MINIO_REGION` | No | `us-east-1` | Region used for S3 signature calculation |
+| `MINIO_ACCESS_KEY` | No | -- | MinIO access key |
+| `MINIO_SECRET_KEY` | No | -- | MinIO secret key |
+
+## Attachments
+
+The editor attachment button inserts:
+
+- Markdown images for image files
+- Markdown links for PDFs, DOC/DOCX, and EPUB files
+
+All attachments remain private and are served through `/api/attachments/[id]` with per-user authorization. To move attachment storage from the local filesystem to MinIO, set `ATTACHMENT_STORAGE_DRIVER=minio` and the `MINIO_*` variables above.
 
 ## Keyboard Shortcuts
 

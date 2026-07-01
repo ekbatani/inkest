@@ -1,12 +1,9 @@
 import { eq, and, isNull } from "drizzle-orm";
-import path from "node:path";
-import fs from "node:fs/promises";
 import { ZipArchive } from "archiver";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
 import type { Note, Tag } from "@/server/db/schema";
-
-const STORAGE_ROOT = process.env.LOCAL_STORAGE_ROOT ?? "./storage";
+import { readAttachmentData } from "@/server/attachments/storage";
 
 async function getContext() {
   const user = await getCurrentUser();
@@ -200,9 +197,9 @@ export async function buildExportArchive(): Promise<{
   // Attachments: include if file exists on disk
   const attachmentsKept: typeof attachments = [];
   for (const a of attachments) {
-    const fullPath = path.join(STORAGE_ROOT, a.storagePath);
     try {
-      const buf = await fs.readFile(fullPath);
+      const buf = await readAttachmentData(a.storagePath);
+      if (!buf) continue;
       archive.append(buf, { name: `attachments/${a.id}-${a.fileName}` });
       attachmentsKept.push(a);
     } catch {

@@ -184,6 +184,69 @@ export const aiEvents = sqliteTable("ai_events", {
   createdAt: timestamp("created_at").notNull(),
 });
 
+// -- google_calendar_connections ---------------------------------------------
+export const googleCalendarConnections = sqliteTable(
+  "google_calendar_connections",
+  {
+    id: idCol(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" })
+      .unique(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    googleEmail: text("google_email"),
+    calendarId: text("calendar_id").notNull().default("primary"),
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token"),
+    tokenType: text("token_type"),
+    scope: text("scope"),
+    accessTokenExpiresAt: integer("access_token_expires_at", {
+      mode: "timestamp",
+    }),
+    lastSyncedAt: integer("last_synced_at", { mode: "timestamp" }),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+);
+
+// -- google_calendar_events --------------------------------------------------
+export const googleCalendarEvents = sqliteTable("google_calendar_events", {
+  id: idCol(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  connectionId: text("connection_id").references(
+    () => googleCalendarConnections.id,
+    {
+      onDelete: "set null",
+    },
+  ),
+  externalKey: text("external_key").notNull().unique(),
+  googleEventId: text("google_event_id").notNull(),
+  calendarId: text("calendar_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  location: text("location"),
+  htmlLink: text("html_link"),
+  status: text("status"),
+  startsAt: integer("starts_at", { mode: "timestamp" }).notNull(),
+  endsAt: integer("ends_at", { mode: "timestamp" }).notNull(),
+  allDay: integer("all_day", { mode: "boolean" }).notNull().default(false),
+  sourceUpdatedAt: text("source_updated_at"),
+  syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 // ── Type exports ─────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -195,3 +258,6 @@ export type Task = typeof tasks.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;
 export type AiEvent = typeof aiEvents.$inferSelect;
 export type NoteVersion = typeof noteVersions.$inferSelect;
+export type GoogleCalendarConnection =
+  typeof googleCalendarConnections.$inferSelect;
+export type GoogleCalendarEvent = typeof googleCalendarEvents.$inferSelect;

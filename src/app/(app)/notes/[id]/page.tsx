@@ -5,6 +5,11 @@ import {
   listNotes,
   getBacklinks,
 } from "@/server/notes/service";
+import {
+  getGoogleCalendarStatus,
+  listCalendarEventsForDay,
+  parseDateKey,
+} from "@/server/calendar/service";
 import { listTags, listTagsForNote } from "@/server/tags/service";
 import { NoteEditor } from "@/components/notes/note-editor";
 
@@ -21,7 +26,17 @@ export default async function NoteDetailPage({
 
   if (!note) notFound();
 
-  const [allTags, noteTags, parentCandidates, linkableNotes, backlinks] =
+  const dailyDate = note.type === "daily" ? parseDateKey(note.slug) : null;
+
+  const [
+    allTags,
+    noteTags,
+    parentCandidates,
+    linkableNotes,
+    backlinks,
+    calendarStatus,
+    dailyEvents,
+  ] =
     await Promise.all([
       listTags(),
       listTagsForNote(id),
@@ -30,6 +45,8 @@ export default async function NoteDetailPage({
         n.map((x) => ({ id: x.id, slug: x.slug, title: x.title })),
       ),
       getBacklinks(id),
+      dailyDate ? getGoogleCalendarStatus() : Promise.resolve(null),
+      dailyDate ? listCalendarEventsForDay(dailyDate) : Promise.resolve([]),
     ]);
 
   return (
@@ -41,6 +58,15 @@ export default async function NoteDetailPage({
       linkableNotes={linkableNotes}
       backlinks={backlinks.map((b) => ({ id: b.id, title: b.title }))}
       selectTitleOnMount={focus === "title"}
+      dailyAgenda={
+        dailyDate && calendarStatus
+          ? {
+              dateKey: note.slug,
+              status: calendarStatus,
+              events: dailyEvents,
+            }
+          : undefined
+      }
     />
   );
 }

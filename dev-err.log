@@ -1,0 +1,9 @@
+⚠ Port 3000 is in use by process 39764, using available port 3001 instead.
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          39764
+- Dir:          C:\Users\a.ekbatani\source\personal\inknest
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 39764 /F to stop it.

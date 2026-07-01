@@ -29,6 +29,15 @@ export const userSettingsSchema = z.object({
       preference: z.enum(["system", "light", "dark"]).optional(),
     })
     .optional(),
+  googleCalendar: z
+    .object({
+      accessToken: z.string().optional(),
+      refreshToken: z.string().optional(),
+      expiresAt: z.number().optional(),
+      scope: z.string().optional(),
+      connectedEmail: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type UserSettings = z.infer<typeof userSettingsSchema>;
@@ -41,6 +50,7 @@ const DEFAULTS: UserSettings = {
   },
   ai: {},
   theme: { preference: "system" },
+  googleCalendar: {},
 };
 
 function mergeWithDefaults(raw: UserSettings | null): UserSettings {
@@ -49,6 +59,10 @@ function mergeWithDefaults(raw: UserSettings | null): UserSettings {
     editor: { ...DEFAULTS.editor, ...raw.editor },
     ai: { ...DEFAULTS.ai, ...raw.ai },
     theme: { ...DEFAULTS.theme, ...raw.theme },
+    googleCalendar: {
+      ...DEFAULTS.googleCalendar,
+      ...raw.googleCalendar,
+    },
   };
 }
 
@@ -82,6 +96,10 @@ export async function updateUserSettings(patch: Partial<UserSettings>): Promise<
     editor: { ...current.editor, ...patch.editor },
     ai: { ...current.ai, ...patch.ai },
     theme: { ...current.theme, ...patch.theme },
+    googleCalendar: {
+      ...current.googleCalendar,
+      ...patch.googleCalendar,
+    },
   };
 
   await db

@@ -5,26 +5,44 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=file:/app/data/local.db
-      - NEXTAUTH_URL=${NEXTAUTH_URL:http://localhost:3000}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-changeme-generate-with-openssl-rand-base64-32}
-      # Optional: uncomment and set your API key for AI features
-      - AI_PROVIDER=openrouter
-      # - OPENAI_API_KEY=
-      # - OPENAI_BASE_URL=
-      # - OPENAI_MODEL=
-      - OPENROUTER_API_KEY= ${OPENROUTER_API_KEY:-}
-      - OPENROUTER_BASE_URL=
-      - OPENROUTER_MODEL= ${OPENROUTER_MODEL:-}
+      DATABASE_URL: file:/app/data/local.db
+      NEXTAUTH_URL: ${NEXTAUTH_URL:http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-changeme-generate-with-openssl-rand-base64-32}
+      ATTACHMENT_STORAGE_DRIVER: ${ATTACHMENT_STORAGE_DRIVER:-local}
+      LOCAL_STORAGE_ROOT: ${LOCAL_STORAGE_ROOT:-/app/storage}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-}
+      MINIO_BUCKET: ${MINIO_BUCKET:-}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-}
+      AI_PROVIDER: openrouter
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_BASE_URL:
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
       # Optional: uncomment and set your API key for speech-to-text
-      - GOOGLE_SPEECH_TO_TEXT_API_KEY=${GOOGLE_SPEECH_TO_TEXT_API_KEY:-}
-      # - GOOGLE_SPEECH_TO_TEXT_BASE_URL=
-      # - MAX_SPEECH_UPLOAD_SIZE_MB=10
+      GOOGLE_SPEECH_TO_TEXT_API_KEY: ${GOOGLE_SPEECH_TO_TEXT_API_KEY:-}
+      # - GOOGLE_SPEECH_TO_TEXT_BASE_URL:
+      # - MAX_SPEECH_UPLOAD_SIZE_MB:10
     volumes:
       - inkest-data:/app/data
       - inkest-storage:/app/storage
+    restart: unless-stopped
+  minio:
+    image: minio/minio:RELEASE.2026-06-13T11-33-47Z
+    profiles:
+      - storage
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - inkest-minio:/data
     restart: unless-stopped
 
 volumes:
   inkest-data:
   inkest-storage:
+  inkest-minio:

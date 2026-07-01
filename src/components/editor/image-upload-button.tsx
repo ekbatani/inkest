@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ImagePlus, Loader2 } from "lucide-react";
+import { Loader2, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
@@ -11,7 +11,23 @@ type Props = {
   editorRef: React.RefObject<ReactCodeMirrorRef | null>;
 };
 
-export function ImageUploadButton({ editorRef }: Props) {
+const ACCEPTED_FILE_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+  "image/svg+xml",
+  "application/pdf",
+  "application/epub+zip",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".pdf",
+  ".epub",
+  ".doc",
+  ".docx",
+].join(",");
+
+export function AttachmentUploadButton({ editorRef }: Props) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
 
@@ -36,7 +52,7 @@ export function ImageUploadButton({ editorRef }: Props) {
 
       const { markdown } = await res.json();
       insertTextAtCursor(editorRef, `\n${markdown}\n`);
-      toast.success("Image inserted.");
+      toast.success("Attachment inserted.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed.");
     } finally {
@@ -50,7 +66,7 @@ export function ImageUploadButton({ editorRef }: Props) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+        accept={ACCEPTED_FILE_TYPES}
         className="hidden"
         onChange={onFileChange}
       />
@@ -64,9 +80,9 @@ export function ImageUploadButton({ editorRef }: Props) {
         {uploading ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (
-          <ImagePlus className="size-4" />
+          <Paperclip className="size-4" />
         )}
-        <span className="hidden sm:inline">Image</span>
+        <span className="hidden sm:inline">Attach</span>
       </Button>
     </>
   );
