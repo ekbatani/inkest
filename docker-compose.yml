@@ -1,6 +1,7 @@
 services:
   app:
-    build: .
+    image: ghcr.io/ekbatani/inkest:latest
+    pull_policy: always
     ports:
       - "3000:3000"
     environment:

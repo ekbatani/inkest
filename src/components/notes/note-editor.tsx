@@ -7,7 +7,6 @@ import {
   Pin,
   PinOff,
   Trash2,
-  Columns2,
   Maximize,
   ChevronLeft,
   Loader2,
@@ -42,7 +41,6 @@ import { ArchiveToggleButton } from "@/components/notes/archive-toggle-button";
 import { formatDate } from "@/lib/dates";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { FloatingMarkdownFormatToolbar } from "@/components/editor/markdown-format-toolbar";
-import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import { ImageUploadButton } from "@/components/editor/image-upload-button";
 import { AiPanel } from "@/components/ai/ai-panel";
 import { TagSelector } from "@/components/notes/tag-selector";
@@ -54,7 +52,7 @@ import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
 
-type EditorMode = "write" | "split" | "focus";
+type EditorMode = "write" | "focus";
 
 export function NoteEditor({
   note,
@@ -154,9 +152,6 @@ export function NoteEditor({
       if (key === "s") {
         e.preventDefault();
         forceSave();
-      } else if (key === "e" && !e.shiftKey) {
-        e.preventDefault();
-        setMode((m) => (m === "split" ? "write" : "split"));
       }
     };
     window.addEventListener("keydown", onKey);
@@ -190,8 +185,7 @@ export function NoteEditor({
     setMetadata((m) => ({ ...m, pinned: !m.pinned }));
   };
 
-  const showEditor = mode === "write" || mode === "split" || mode === "focus";
-  const showPreview = mode === "split";
+  const showEditor = mode === "write" || mode === "focus";
   const isFocus = mode === "focus";
   const titleUsesRtlFont =
     metadata.direction === "rtl" ||
@@ -249,10 +243,6 @@ export function NoteEditor({
             onValueChange={(v) => setMode((v[0] as EditorMode | undefined) ?? "write")}
             className="ml-1"
           >
-            <ToggleGroupItem value="split" aria-label="Split mode">
-              <Columns2 className="size-3.5" />
-              <span className="ml-1 hidden sm:inline">Split</span>
-            </ToggleGroupItem>
             <ToggleGroupItem value="focus" aria-label="Focus mode">
               <Maximize className="size-3.5" />
               <span className="ml-1 hidden sm:inline">Focus</span>
@@ -357,12 +347,7 @@ export function NoteEditor({
             dir={metadata.direction}
           >
             {showEditor && (
-              <div
-                className={cn(
-                  "flex min-h-0 flex-1 flex-col py-6",
-                  showPreview && "border-r pr-4",
-                )}
-              >
+              <div className="flex min-h-0 flex-1 flex-col py-6">
                 <MarkdownEditor
                   value={content}
                   onChange={setContent}
@@ -371,20 +356,6 @@ export function NoteEditor({
                   editorRef={editorRef}
                 />
                 <FloatingMarkdownFormatToolbar editorRef={editorRef} />
-              </div>
-            )}
-            {showPreview && (
-              <div
-                className={cn(
-                  "min-h-0 flex-1 overflow-y-auto py-6",
-                  showEditor && "pl-4",
-                )}
-              >
-                <MarkdownPreview
-                  content={content}
-                  direction={metadata.direction}
-                  linkableNotes={linkableNotes}
-                />
               </div>
             )}
           </div>

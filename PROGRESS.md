@@ -6,7 +6,7 @@ A calm, Markdown-first personal workspace. Self-hosted MVP.
 
 - **Runtime / package manager:** Bun 1.3.13
 - **Auth:** Auth.js (next-auth v4) Credentials — email + password, argon2 hash
-- **DB:** Drizzle ORM + @libsql/client, local file:local.db (Turso-ready)
+- **DB:** Drizzle ORM + @libsql/client, local file:./data/local.db (Turso-ready)
 - **Editor:** CodeMirror 6 via @uiw/react-codemirror
 - **Preview:** react-markdown + remark-gfm + rehype-sanitize; Mermaid strict client-side
 - **AI:** OpenAI-compatible; Summarize action with graceful stub (no key = clear message)

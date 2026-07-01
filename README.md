@@ -59,11 +59,19 @@ Open [http://localhost:3000](http://localhost:3000) and create an account to get
 
 ## Docker
 
-```bash
-# Build and run
-docker compose up -d
+Every push to `main` builds the image via GitHub Actions ([.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml)) and publishes it to GitHub Container Registry at `ghcr.io/ekbatani/inkest`.
 
-# Or build manually
+```bash
+# Deploy the published image (pulls the latest build, no local build needed)
+docker login ghcr.io -u <your-github-username>   # if the package is private
+docker compose pull
+docker compose up -d
+```
+
+The container runs pending Drizzle migrations automatically on startup, so a fresh deploy initializes the schema on first boot. The SQLite database and uploaded files live on named volumes (`inkest-data`, `inkest-storage`) mounted at `/app/data` and `/app/storage`, so they persist across `docker compose pull && up -d` redeploys.
+
+```bash
+# Or build the image locally instead of pulling
 docker build -t inkest .
 docker run -p 3000:3000 \
   -e NEXTAUTH_SECRET=$(openssl rand -base64 32) \
@@ -79,7 +87,7 @@ docker run -p 3000:3000 \
 |----------|----------|---------|-------------|
 | `NEXTAUTH_URL` | Yes | -- | App URL (e.g. `http://localhost:3000`) |
 | `NEXTAUTH_SECRET` | Yes | -- | Auth.js secret (`openssl rand -base64 32`) |
-| `DATABASE_URL` | Yes | `file:local.db` | SQLite file path or Turso URL |
+| `DATABASE_URL` | Yes | `file:./data/local.db` | SQLite file path or Turso URL |
 | `DATABASE_AUTH_TOKEN` | No | -- | Turso auth token (if using remote DB) |
 | `AI_PROVIDER` | No | `openai` | Default server-side AI provider (`openai`, `openrouter`, `custom`) |
 | `OPENAI_API_KEY` | No | -- | OpenAI or generic compatible provider API key |
