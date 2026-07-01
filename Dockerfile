@@ -14,7 +14,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DATABASE_URL=file:./data/local.db
+ENV DATABASE_URL=file:/app/data/local.db
+RUN mkdir -p /app/data /app/storage
+RUN node scripts/migrate.mjs
 RUN bun run build
 
 # ── Runtime ───────────────────────────────────────────────────────────────
