@@ -20,6 +20,17 @@ export async function createNoteAction() {
   redirect(`/notes/${note.id}`);
 }
 
+export async function createProjectAction() {
+  const note = await createNote({
+    title: "New project",
+    type: "project",
+    status: "todo",
+  });
+  revalidatePath("/projects");
+  revalidatePath("/notes");
+  redirect(`/projects/${note.id}`);
+}
+
 export async function createProjectTaskNoteAction(
   projectId: string,
   title: string,

@@ -51,6 +51,7 @@ import { formatDate } from "@/lib/dates";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { FloatingMarkdownFormatToolbar } from "@/components/editor/markdown-format-toolbar";
 import { ImageUploadButton } from "@/components/editor/image-upload-button";
+import { SpeechToTextButton } from "@/components/editor/speech-to-text-button";
 import { AiPanel } from "@/components/ai/ai-panel";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import { TagSelector } from "@/components/notes/tag-selector";
@@ -465,6 +466,7 @@ export function NoteEditor({
           </ToggleGroup>
 
           {showEditor && <ImageUploadButton editorRef={editorRef} />}
+          {showEditor && <SpeechToTextButton editorRef={editorRef} />}
           {showEditor && <AiPanel noteId={note.id} editorRef={editorRef} />}
           {showEditor && (
             <>

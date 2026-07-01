@@ -6,16 +6,20 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=file:/app/data/local.db
-      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_URL=${NEXTAUTH_URL:http://localhost:3000}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-changeme-generate-with-openssl-rand-base64-32}
       # Optional: uncomment and set your API key for AI features
-      # - AI_PROVIDER=openai
+      - AI_PROVIDER=openrouter
       # - OPENAI_API_KEY=
       # - OPENAI_BASE_URL=
       # - OPENAI_MODEL=
-      # - OPENROUTER_API_KEY=
-      # - OPENROUTER_BASE_URL=
-      # - OPENROUTER_MODEL=
+      - OPENROUTER_API_KEY= ${OPENROUTER_API_KEY:-}
+      - OPENROUTER_BASE_URL=
+      - OPENROUTER_MODEL= ${OPENROUTER_MODEL:-}
+      # Optional: uncomment and set your API key for speech-to-text
+      - GOOGLE_SPEECH_TO_TEXT_API_KEY=${GOOGLE_SPEECH_TO_TEXT_API_KEY:-}
+      # - GOOGLE_SPEECH_TO_TEXT_BASE_URL=
+      # - MAX_SPEECH_UPLOAD_SIZE_MB=10
     volumes:
       - inkest-data:/app/data
       - inkest-storage:/app/storage

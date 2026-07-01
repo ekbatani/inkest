@@ -10,6 +10,7 @@ A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and lig
 - **Tags & hierarchy** -- color-coded tags, parent-child note tree
 - **Daily notes** -- one note per day, auto-created
 - **AI actions** -- summarize, improve writing, extract tasks, generate diagrams, translate (OpenAI-compatible)
+- **Speech to text** -- record short voice notes and transcribe them with Google Speech-to-Text
 - **Image uploads** -- local filesystem storage, private serving
 - **Version history** -- automatic snapshots with one-click restore
 - **Wiki links** -- `[[Note Title]]` linking with backlinks
@@ -96,6 +97,9 @@ docker run -p 3000:3000 \
 | `OPENROUTER_API_KEY` | No | -- | OpenRouter API key when `AI_PROVIDER=openrouter` |
 | `OPENROUTER_BASE_URL` | No | `https://openrouter.ai/api/v1` | OpenRouter API endpoint |
 | `OPENROUTER_MODEL` | No | `openai/gpt-4o-mini` | OpenRouter model slug |
+| `GOOGLE_SPEECH_TO_TEXT_API_KEY` | No | -- | Google Cloud Speech-to-Text API key for voice transcription |
+| `GOOGLE_SPEECH_TO_TEXT_BASE_URL` | No | `https://speech.googleapis.com/v1` | Override the Google Speech-to-Text REST endpoint |
+| `MAX_SPEECH_UPLOAD_SIZE_MB` | No | `10` | Max uploaded recording size accepted by the speech route |
 
 ## Keyboard Shortcuts
 

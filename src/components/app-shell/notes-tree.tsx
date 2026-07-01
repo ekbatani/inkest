@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Folder,
   FileText,
+  FolderPlus,
   Plus,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,7 +22,7 @@ import {
 } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { moveNoteInTreeAction } from "@/server/notes/actions";
+import { createProjectAction, moveNoteInTreeAction } from "@/server/notes/actions";
 import { cn } from "@/lib/utils";
 import type { NoteTreeNode } from "@/server/notes/service";
 import { usesRtlTitleFont } from "@/lib/text/rtl";
@@ -278,13 +279,26 @@ export function NotesTree({ nodes }: { nodes: NoteTreeNode[] }) {
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Notes Tree
         </span>
-        <Link
-          href="/notes"
-          className="text-muted-foreground hover:text-foreground"
-          aria-label="All notes"
-        >
-          <Plus className="size-3.5" />
-        </Link>
+        <div className="flex items-center gap-0.5">
+          <form action={createProjectAction}>
+            <button
+              type="submit"
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Create project"
+              title="Create project"
+            >
+              <FolderPlus className="size-3.5" />
+            </button>
+          </form>
+          <Link
+            href="/notes/new"
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Create note"
+            title="Create note"
+          >
+            <Plus className="size-3.5" />
+          </Link>
+        </div>
       </div>
 
       <DndContext

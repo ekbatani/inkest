@@ -26,9 +26,7 @@ Todo tasks:
 - check paste functionality of the big md format file, If a user paste a big md format it should immidiately see it in preview mode.
   
 - 
-- Add speech to text functionalities, We use google speech to text api for now
-- add create project in notes tree, actually when we create a project it looks like folder in note tree we should be able to create project and create note from a tiny seperate buttons in notes tree
-- the tag filter in notes should have or functionality not and functionality
+
 - User should be able to add his own files to working tree like pdf, docx, epub and images 
 - Add notification in desktop and mobile
 - Add a Calendar page and integrate it with daily note page this calendat can sync with google calendar
@@ -53,4 +51,6 @@ Done tasks:
 - add minimal loading animation
 - Add copy md format functionality for users who want to copy the md format also the should be able to copy preview version also.
 - In the preview mode when we click on the check box it should be checked
-
+- Add speech to text functionalities, We use google speech to text api for now
+- add create project in notes tree, actually when we create a project it looks like folder in note tree we should be able to create project and create note from a tiny seperate buttons in notes tree
+- the tag filter in notes should have or functionality not and functionality

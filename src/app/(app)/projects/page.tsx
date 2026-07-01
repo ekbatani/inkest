@@ -3,9 +3,9 @@ import { FolderKanban, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { listNotes } from "@/server/notes/service";
+import { createProjectAction } from "@/server/notes/actions";
 import { formatRelativeDate } from "@/lib/dates";
 import { NoteStatusBadge } from "@/components/notes/note-status-badge";
-import { createProjectAction } from "./actions";
 import type { Note } from "@/server/db/schema";
 
 const STATUS_GROUPS: Record<

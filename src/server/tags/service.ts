@@ -193,7 +193,7 @@ export async function setNoteTags(noteId: string, tagIds: string[]): Promise<voi
 
 /**
  * Apply a tag filter to a notes list. Returns the set of note ids matching
- * ALL provided tag ids (intersection). Used by listNotes when filtering by tags.
+ * ANY provided tag ids (union). Used by listNotes when filtering by tags.
  */
 export async function getNoteIdsForTags(
   tagIds: string[],
@@ -225,17 +225,15 @@ export async function getNoteIdsForTags(
     s.add(r.tagId);
   }
 
-  const wanted = new Set(tagIds);
   const result = new Set<string>();
+  const wanted = new Set(tagIds);
   for (const [noteId, tagsArr] of byNote) {
-    let hasAll = true;
     for (const tid of wanted) {
-      if (!tagsArr.has(tid)) {
-        hasAll = false;
+      if (tagsArr.has(tid)) {
+        result.add(noteId);
         break;
       }
     }
-    if (hasAll) result.add(noteId);
   }
   return result;
 }
