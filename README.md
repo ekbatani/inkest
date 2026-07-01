@@ -72,6 +72,14 @@ docker compose up -d
 
 The container runs pending Drizzle migrations automatically on startup, so a fresh deploy initializes the schema on first boot. With the default local storage driver, the SQLite database and uploaded files live on named volumes (`inkest-data`, `inkest-storage`) mounted at `/app/data` and `/app/storage`, so they persist across `docker compose pull && up -d` redeploys.
 
+For Dokploy and other reverse-proxy-based platforms, the base [docker-compose.yml](/C:/Users/a.ekbatani/source/personal/inknest/docker-compose.yml) only exposes the app on the Docker network and does not bind host port `3000`. Point Dokploy at the app container's internal port `3000` and let Dokploy publish the external port/domain.
+
+For local Docker usage, add the included override file so the app binds to `localhost:3000`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+```
+
 ```bash
 # Or build the image locally instead of pulling
 docker build -t inkest .
