@@ -222,6 +222,7 @@
 .inkest-prose li > input[type="checkbox"] {
   margin-inline-end: 0.5em;
   vertical-align: middle;
+  cursor: pointer;
 }
 .inkest-prose blockquote {
   border-inline-start: 3px solid var(--border);
@@ -328,6 +329,38 @@
 
 .rtl-vazir {
   font-family: var(--font-rtl) !important;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, white 72%, transparent),
+    transparent
+  );
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.dark .skeleton-shimmer::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 0.1),
+    transparent
+  );
 }
 
 @layer components {

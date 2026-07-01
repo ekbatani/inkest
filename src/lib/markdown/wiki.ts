@@ -1,3 +1,5 @@
+import { slugify } from "@/lib/slug";
+
 // Transform `[[Wiki Link]]` and `[[Wiki Link#Section]]` tokens in Markdown into
 // real links to internal notes. The first match (by slug) wins; falls back to
 // case-insensitive title match.
@@ -10,6 +12,7 @@ export type WikiLinkTarget = {
 
 type NormalizedTarget = {
   id: string;
+  slug: string;
   slugLower: string;
   titleLower: string;
   title: string;
@@ -45,6 +48,57 @@ function resolve(
   return bySlugified ?? null;
 }
 
+function splitLinkedTarget(input: string) {
+  const trimmed = input.trim();
+  const hashIndex = trimmed.indexOf("#");
+
+  if (hashIndex === -1) {
+    return { name: trimmed, section: "" };
+  }
+
+  return {
+    name: trimmed.slice(0, hashIndex).trim(),
+    section: trimmed.slice(hashIndex + 1).trim(),
+  };
+}
+
+function stripInlineMarkdown(input: string) {
+  return input
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[`*_~]/g, "")
+    .trim();
+}
+
+export function getHeadingAnchorId(input: string) {
+  return slugify(stripInlineMarkdown(input)) || "section";
+}
+
+export function resolveNoteHref(input: string, targets: WikiLinkTarget[]) {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith("#")) {
+    return `#${getHeadingAnchorId(trimmed.slice(1))}`;
+  }
+
+  if (
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("./") ||
+    trimmed.startsWith("../") ||
+    /^[a-z][a-z0-9+.-]*:/i.test(trimmed)
+  ) {
+    return trimmed;
+  }
+
+  const { name, section } = splitLinkedTarget(trimmed);
+  const target = resolve(name, normalize(targets));
+
+  if (!target) return trimmed;
+
+  return `/notes/${target.id}${section ? `#${getHeadingAnchorId(section)}` : ""}`;
+}
+
 // Match `[[ ... ]]` — but not inside fenced code blocks. We do a line-based
 // scan that toggles inside fences to keep the regex simple and fast.
 const WIKI_RE = /\[\[([^\]\n]+?)\]\]/g;
@@ -67,16 +121,14 @@ export function transformWikiLinks(
     return line.replace(WIKI_RE, (whole, inner: string) => {
       const trimmed = (inner ?? "").trim();
       if (!trimmed) return whole;
-      const [nameRaw, sectionRaw] = trimmed.split("#");
-      const name = (nameRaw ?? "").trim();
-      const section = (sectionRaw ?? "").trim();
+      const { name, section } = splitLinkedTarget(trimmed);
       const target = resolve(name, normalized);
       const label = section ? `${name}#${section}` : name;
       if (!target) {
         // Render as muted text so the user sees the unresolved intention.
         return `*${label}*`;
       }
-      return `[${label}](/notes/${target.id}${section ? `#${section}` : ""})`;
+      return `[${label}](/notes/${target.id}${section ? `#${getHeadingAnchorId(section)}` : ""})`;
     });
   });
   return out.join("\n");

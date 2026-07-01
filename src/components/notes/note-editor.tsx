@@ -14,14 +14,23 @@ import {
   PanelRightOpen,
   PanelRightClose,
   Download,
+  Copy,
   Circle,
   CircleDot,
   FolderKanban,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -43,6 +52,7 @@ import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { FloatingMarkdownFormatToolbar } from "@/components/editor/markdown-format-toolbar";
 import { ImageUploadButton } from "@/components/editor/image-upload-button";
 import { AiPanel } from "@/components/ai/ai-panel";
+import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import { TagSelector } from "@/components/notes/tag-selector";
 import { ParentPicker } from "@/components/notes/parent-picker";
 import { DueDatePicker } from "@/components/notes/due-date-picker";
@@ -53,6 +63,14 @@ import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
 
 type EditorMode = "write" | "focus";
+type NoteSnapshot = {
+  title: string;
+  content: string;
+};
+
+function sameSnapshot(a: NoteSnapshot, b: NoteSnapshot) {
+  return a.title === b.title && a.content === b.content;
+}
 
 export function NoteEditor({
   note,
@@ -91,9 +109,26 @@ export function NoteEditor({
   });
 
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const undoCheckpointTimer = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const skipNextSave = React.useRef(true);
+  const skipNextHistoryCheckpoint = React.useRef(false);
+  const skipNextPersist = React.useRef(false);
   const editorRef = React.useRef<ReactCodeMirrorRef>(null);
   const titleInputRef = React.useRef<HTMLInputElement>(null);
+  const previewCopyRef = React.useRef<HTMLDivElement>(null);
+  const lastCheckpointRef = React.useRef<NoteSnapshot>({
+    title: note.title,
+    content: note.contentMd,
+  });
+  const [historyState, setHistoryState] = React.useState<{
+    past: NoteSnapshot[];
+    future: NoteSnapshot[];
+  }>({
+    past: [],
+    future: [],
+  });
 
   React.useEffect(() => {
     if (!selectTitleOnMount) return;
@@ -106,6 +141,10 @@ export function NoteEditor({
   }, [selectTitleOnMount]);
 
   React.useEffect(() => {
+    if (skipNextPersist.current) {
+      skipNextPersist.current = false;
+      return;
+    }
     if (skipNextSave.current) {
       skipNextSave.current = false;
       return;
@@ -130,6 +169,32 @@ export function NoteEditor({
     };
   }, [title, content, note.id]);
 
+  React.useEffect(() => {
+    if (skipNextHistoryCheckpoint.current) {
+      skipNextHistoryCheckpoint.current = false;
+      lastCheckpointRef.current = { title, content };
+      return;
+    }
+
+    if (undoCheckpointTimer.current) clearTimeout(undoCheckpointTimer.current);
+
+    undoCheckpointTimer.current = setTimeout(() => {
+      const nextSnapshot = { title, content };
+      const lastCheckpoint = lastCheckpointRef.current;
+      if (sameSnapshot(nextSnapshot, lastCheckpoint)) return;
+
+      setHistoryState((currentHistory) => ({
+        past: [...currentHistory.past, lastCheckpoint],
+        future: [],
+      }));
+      lastCheckpointRef.current = nextSnapshot;
+    }, 700);
+
+    return () => {
+      if (undoCheckpointTimer.current) clearTimeout(undoCheckpointTimer.current);
+    };
+  }, [title, content]);
+
   const forceSave = React.useCallback(async () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setSaveState("saving");
@@ -143,20 +208,142 @@ export function NoteEditor({
     }
   }, [note.id, title, content]);
 
+  const showEditor = mode === "write" || mode === "focus";
+  const isFocus = mode === "focus";
+  const currentSnapshot = React.useMemo(
+    () => ({ title, content }),
+    [title, content],
+  );
+  const canUndo =
+    historyState.past.length > 0 ||
+    !sameSnapshot(currentSnapshot, lastCheckpointRef.current);
+  const canRedo = historyState.future.length > 0;
+
+  const applySnapshot = React.useCallback(
+    (
+      snapshot: NoteSnapshot,
+      options?: {
+        skipPersist?: boolean;
+        nextHistory?: { past: NoteSnapshot[]; future: NoteSnapshot[] };
+      },
+    ) => {
+      skipNextHistoryCheckpoint.current = true;
+      if (options?.skipPersist) {
+        skipNextPersist.current = true;
+      }
+      lastCheckpointRef.current = snapshot;
+      setTitle(snapshot.title);
+      setContent(snapshot.content);
+      if (options?.nextHistory) {
+        setHistoryState(options.nextHistory);
+      }
+    },
+    [],
+  );
+
+  const undo = React.useCallback(() => {
+    const current = { title, content };
+    const lastCheckpoint = lastCheckpointRef.current;
+
+    if (!sameSnapshot(current, lastCheckpoint)) {
+      applySnapshot(lastCheckpoint, {
+        nextHistory: {
+          past: historyState.past,
+          future: [current, ...historyState.future],
+        },
+      });
+      return;
+    }
+
+    const previous = historyState.past[historyState.past.length - 1];
+    if (!previous) return;
+
+    applySnapshot(previous, {
+      nextHistory: {
+        past: historyState.past.slice(0, -1),
+        future: [current, ...historyState.future],
+      },
+    });
+  }, [applySnapshot, content, historyState, title]);
+
+  const redo = React.useCallback(() => {
+    const next = historyState.future[0];
+    if (!next) return;
+
+    applySnapshot(next, {
+      nextHistory: {
+        past: [...historyState.past, { title, content }],
+        future: historyState.future.slice(1),
+      },
+    });
+  }, [applySnapshot, content, historyState, title]);
+
+  const applyRestoredVersion = React.useCallback(
+    (snapshot: { title: string; contentMd: string }) => {
+      const current = { title, content };
+      const nextSnapshot = {
+        title: snapshot.title,
+        content: snapshot.contentMd,
+      };
+      if (sameSnapshot(current, nextSnapshot)) return;
+
+      applySnapshot(nextSnapshot, {
+        skipPersist: true,
+        nextHistory: {
+          past: [...historyState.past, current],
+          future: [],
+        },
+      });
+    },
+    [applySnapshot, content, historyState.past, title],
+  );
+
+  const focusEditorStart = React.useCallback(() => {
+    const view = editorRef.current?.view;
+    if (!view) return;
+
+    view.dispatch({
+      selection: { anchor: 0 },
+    });
+    view.focus();
+  }, []);
+
+  const exitFocusMode = React.useCallback(() => {
+    setMode("write");
+    window.setTimeout(() => focusEditorStart(), 0);
+  }, [focusEditorStart]);
+
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
+      if (e.key === "Escape" && isFocus) {
+        e.preventDefault();
+        exitFocusMode();
+        return;
+      }
       if (!mod) return;
       const key = e.key.toLowerCase();
 
       if (key === "s") {
         e.preventDefault();
         forceSave();
+        return;
+      }
+
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+        return;
+      }
+
+      if (key === "y" || (key === "z" && e.shiftKey)) {
+        e.preventDefault();
+        redo();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [forceSave]);
+  }, [exitFocusMode, forceSave, isFocus, redo, undo]);
 
   const onMetadataChange = async (
     field: string,
@@ -185,21 +372,9 @@ export function NoteEditor({
     setMetadata((m) => ({ ...m, pinned: !m.pinned }));
   };
 
-  const showEditor = mode === "write" || mode === "focus";
-  const isFocus = mode === "focus";
   const titleUsesRtlFont =
     metadata.direction === "rtl" ||
     (metadata.direction === "auto" && containsArabicScript(title));
-
-  const focusEditorStart = React.useCallback(() => {
-    const view = editorRef.current?.view;
-    if (!view) return;
-
-    view.dispatch({
-      selection: { anchor: 0 },
-    });
-    view.focus();
-  }, []);
 
   const goBack = React.useCallback(() => {
     if (typeof window === "undefined") {
@@ -226,6 +401,46 @@ export function NoteEditor({
     router.push("/notes");
   }, [router]);
 
+  const onCopyMarkdown = React.useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      toast.success("Markdown copied to clipboard.");
+    } catch {
+      toast.error("Failed to copy Markdown.");
+    }
+  }, [content]);
+
+  const onCopyPreview = React.useCallback(async () => {
+    const preview = previewCopyRef.current;
+    if (!preview) {
+      toast.error("Preview is not ready yet.");
+      return;
+    }
+
+    const plainText = preview.innerText.trim() || preview.textContent?.trim() || "";
+    const html = preview.innerHTML.trim();
+
+    try {
+      if (
+        typeof ClipboardItem !== "undefined" &&
+        html.length > 0
+      ) {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": new Blob([plainText], { type: "text/plain" }),
+            "text/html": new Blob([html], { type: "text/html" }),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(plainText);
+      }
+
+      toast.success("Preview copied to clipboard.");
+    } catch {
+      toast.error("Failed to copy preview.");
+    }
+  }, []);
+
   return (
     <div className="flex h-full flex-col">
       {!isFocus && (
@@ -251,6 +466,48 @@ export function NoteEditor({
 
           {showEditor && <ImageUploadButton editorRef={editorRef} />}
           {showEditor && <AiPanel noteId={note.id} editorRef={editorRef} />}
+          {showEditor && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={undo}
+                disabled={!canUndo}
+                aria-label="Undo"
+                title="Undo"
+              >
+                <Undo2 className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={redo}
+                disabled={!canRedo}
+                aria-label="Redo"
+                title="Redo"
+              >
+                <Redo2 className="size-4" />
+              </Button>
+            </>
+          )}
+          {showEditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button variant="ghost" size="sm" className="gap-1.5" />}
+              >
+                <Copy className="size-4 text-muted-foreground" />
+                <span className="hidden sm:inline">Copy</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={() => void onCopyMarkdown()}>
+                  Copy Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => void onCopyPreview()}>
+                  Copy preview
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {showEditor && (
             <Button
               variant="ghost"
@@ -309,6 +566,24 @@ export function NoteEditor({
         </div>
       )}
 
+      {isFocus && (
+        <div className="flex justify-end px-6 pt-4 sm:px-10">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 rounded-full shadow-sm"
+            onClick={exitFocusMode}
+            aria-label="Exit focus mode"
+          >
+            <ChevronLeft className="size-4" />
+            <span>Exit focus</span>
+            <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              Esc
+            </kbd>
+          </Button>
+        </div>
+      )}
+
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="px-6 pt-6 sm:px-10 sm:pt-8">
@@ -354,6 +629,8 @@ export function NoteEditor({
                   direction={metadata.direction}
                   className="flex-1"
                   editorRef={editorRef}
+                  linkableNotes={linkableNotes}
+                  onOpenLink={(href) => router.push(href)}
                 />
                 <FloatingMarkdownFormatToolbar editorRef={editorRef} />
               </div>
@@ -372,9 +649,22 @@ export function NoteEditor({
               noteTagIds={noteTagIds}
               parentCandidates={parentCandidates}
               backlinks={backlinks}
+              draft={{ title, contentMd: content }}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onUndo={undo}
+              onRedo={redo}
+              onRestoreVersion={applyRestoredVersion}
             />
           </aside>
         )}
+      </div>
+      <div
+        ref={previewCopyRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-[9999px] top-0 w-[48rem] opacity-0"
+      >
+        <MarkdownPreview content={content} direction={metadata.direction} />
       </div>
     </div>
   );
@@ -389,6 +679,12 @@ function MetadataPanel({
   noteTagIds,
   parentCandidates,
   backlinks,
+  draft,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  onRestoreVersion,
 }: {
   note: Note;
   metadata: {
@@ -406,6 +702,12 @@ function MetadataPanel({
   noteTagIds: string[];
   parentCandidates: Pick<Note, "id" | "title" | "type">[];
   backlinks: { id: string; title: string }[];
+  draft: { title: string; contentMd: string };
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  onRestoreVersion: (snapshot: { title: string; contentMd: string }) => void;
 }) {
   const showProjectLink = metadata.type === "project";
   return (
@@ -548,7 +850,16 @@ function MetadataPanel({
           >
             <Trash2 className="size-4" />
           </Button>
-          <VersionHistoryButton noteId={note.id} iconOnly />
+          <VersionHistoryButton
+            noteId={note.id}
+            iconOnly
+            draft={draft}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            onRestoreVersion={onRestoreVersion}
+          />
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -8,7 +9,12 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import { useMermaidCodeComponent } from "./use-mermaid-code-component";
-import { transformWikiLinks, type WikiLinkTarget } from "@/lib/markdown/wiki";
+import {
+  getHeadingAnchorId,
+  resolveNoteHref,
+  transformWikiLinks,
+  type WikiLinkTarget,
+} from "@/lib/markdown/wiki";
 import { containsArabicScript } from "@/lib/text/rtl";
 
 type Props = {
@@ -70,6 +76,22 @@ function normalizeMarkdownHeadings(content: string) {
     .join("\n");
 }
 
+function extractNodeText(node: React.ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(extractNodeText).join("");
+  }
+
+  if (React.isValidElement<{ children?: React.ReactNode }>(node)) {
+    return extractNodeText(node.props.children);
+  }
+
+  return "";
+}
+
 export function MarkdownPreview({
   content,
   direction = "auto",
@@ -86,6 +108,60 @@ export function MarkdownPreview({
     (): Components => ({
       ...mermaidComponents,
       ...extraComponents,
+      h1: ({ children, className: headingClassName, ...props }) => (
+        <h1
+          id={getHeadingAnchorId(extractNodeText(children))}
+          className={cn("scroll-mt-24", headingClassName)}
+          {...props}
+        >
+          {children}
+        </h1>
+      ),
+      h2: ({ children, className: headingClassName, ...props }) => (
+        <h2
+          id={getHeadingAnchorId(extractNodeText(children))}
+          className={cn("scroll-mt-24", headingClassName)}
+          {...props}
+        >
+          {children}
+        </h2>
+      ),
+      h3: ({ children, className: headingClassName, ...props }) => (
+        <h3
+          id={getHeadingAnchorId(extractNodeText(children))}
+          className={cn("scroll-mt-24", headingClassName)}
+          {...props}
+        >
+          {children}
+        </h3>
+      ),
+      h4: ({ children, className: headingClassName, ...props }) => (
+        <h4
+          id={getHeadingAnchorId(extractNodeText(children))}
+          className={cn("scroll-mt-24", headingClassName)}
+          {...props}
+        >
+          {children}
+        </h4>
+      ),
+      h5: ({ children, className: headingClassName, ...props }) => (
+        <h5
+          id={getHeadingAnchorId(extractNodeText(children))}
+          className={cn("scroll-mt-24", headingClassName)}
+          {...props}
+        >
+          {children}
+        </h5>
+      ),
+      h6: ({ children, className: headingClassName, ...props }) => (
+        <h6
+          id={getHeadingAnchorId(extractNodeText(children))}
+          className={cn("scroll-mt-24", headingClassName)}
+          {...props}
+        >
+          {children}
+        </h6>
+      ),
       a: ({
         href,
         children,
@@ -129,14 +205,41 @@ export function MarkdownPreview({
           );
         }
 
+        const resolvedHref =
+          href && linkableNotes && linkableNotes.length > 0
+            ? resolveNoteHref(href, linkableNotes) ?? href
+            : href;
+
+        if (resolvedHref?.startsWith("/")) {
+          return (
+            <Link href={resolvedHref} {...props}>
+              {children}
+            </Link>
+          );
+        }
+
         return (
-          <a href={href} {...props}>
+          <a href={resolvedHref} {...props}>
             {children}
           </a>
         );
       },
+      input: ({ type, checked, className, ...props }) => {
+        if (type !== "checkbox") {
+          return <input type={type} className={className} {...props} />;
+        }
+
+        return (
+          <input
+            type="checkbox"
+            defaultChecked={Boolean(checked)}
+            className={cn("cursor-pointer", className)}
+            {...props}
+          />
+        );
+      },
     }),
-    [mermaidComponents, extraComponents],
+    [mermaidComponents, extraComponents, linkableNotes],
   );
 
   const processedContent = React.useMemo(

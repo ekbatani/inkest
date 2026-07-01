@@ -566,10 +566,16 @@ export async function listNotesTree(): Promise<NoteTreeNode[]> {
  * we keep it shallow: a note can only be parented to other top-level notes
  * (no nested nesting) — keeps the tree two levels deep and predictable.
  */
-export async function listParentCandidates(noteId: string): Promise<Note[]> {
+export async function listParentCandidates(
+  noteId: string,
+): Promise<Pick<Note, "id" | "title" | "type">[]> {
   const { user, workspace } = await getContext();
   const rows = await db
-    .select()
+    .select({
+      id: schema.notes.id,
+      title: schema.notes.title,
+      type: schema.notes.type,
+    })
     .from(schema.notes)
     .where(
       and(

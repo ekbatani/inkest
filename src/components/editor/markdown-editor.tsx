@@ -11,6 +11,11 @@ import {
 import { Prec, StateField, type EditorState, type Range } from "@codemirror/state";
 import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
+import {
+  getHeadingAnchorId,
+  resolveNoteHref,
+  type WikiLinkTarget,
+} from "@/lib/markdown/wiki";
 
 type Props = {
   value: string;
@@ -18,6 +23,8 @@ type Props = {
   direction?: "ltr" | "rtl" | "auto";
   className?: string;
   editorRef?: React.RefObject<ReactCodeMirrorRef | null>;
+  linkableNotes?: WikiLinkTarget[];
+  onOpenLink?: (href: string) => void;
 };
 
 export function MarkdownEditor({
@@ -26,6 +33,8 @@ export function MarkdownEditor({
   direction = "auto",
   className,
   editorRef,
+  linkableNotes = [],
+  onOpenLink,
 }: Props) {
   const usesRtlFont =
     direction === "rtl" || (direction === "auto" && containsArabicScript(value));
@@ -37,7 +46,10 @@ export function MarkdownEditor({
       markdown({ base: markdownLanguage }),
       EditorView.lineWrapping,
       fencedBlockField,
-      EditorView.decorations.of(buildStyledMarkdownDecorations),
+      EditorView.decorations.of(buildStyledMarkdownDecorations(linkableNotes)),
+      EditorView.domEventHandlers({
+        click: (event, view) => handleEditorLinkClick(event, view, onOpenLink),
+      }),
       Prec.highest(
         EditorView.theme({
           "&": {
@@ -213,10 +225,18 @@ export function MarkdownEditor({
             fontSize: "1.42em",
             lineHeight: "1.32",
           },
+          ".cm-md-link": {
+            color: "var(--primary)",
+            cursor: "pointer",
+            textDecoration: "underline",
+            textDecorationColor:
+              "color-mix(in oklab, var(--primary) 65%, transparent)",
+            textUnderlineOffset: "0.16em",
+          },
         }),
       ),
     ],
-    [editorFontFamily],
+    [editorFontFamily, linkableNotes, onOpenLink],
   );
 
   const dir = direction === "auto" ? undefined : direction;
@@ -260,6 +280,63 @@ function hideIfIdle(
 ) {
   if (from >= to || selectionTouches(view.state, from, to)) return;
   ranges.push(Decoration.replace({}).range(from, to));
+}
+
+function findHeadingPosition(state: EditorState, fragment: string) {
+  const targetId = getHeadingAnchorId(fragment);
+
+  for (let lineNo = 1; lineNo <= state.doc.lines; lineNo++) {
+    const line = state.doc.line(lineNo);
+    const heading = line.text.match(/^\s{0,3}#{1,6}\s+(.+)$/);
+    if (!heading) continue;
+
+    if (getHeadingAnchorId(heading[1]) === targetId) {
+      return line.from;
+    }
+  }
+
+  return null;
+}
+
+function handleEditorLinkClick(
+  event: MouseEvent,
+  view: EditorView,
+  onOpenLink?: (href: string) => void,
+) {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return false;
+
+  const linkNode = target.closest<HTMLElement>("[data-inknest-link-href]");
+  const href = linkNode?.dataset.inknestLinkHref?.trim();
+  if (!href) return false;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (href.startsWith("#")) {
+    const targetPos = findHeadingPosition(view.state, href.slice(1));
+    if (targetPos !== null) {
+      view.dispatch({
+        selection: { anchor: targetPos },
+        effects: EditorView.scrollIntoView(targetPos, { y: "center" }),
+      });
+      view.focus();
+    }
+    return true;
+  }
+
+  if (/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+    window.location.assign(href);
+    return true;
+  }
+
+  if (onOpenLink) {
+    onOpenLink(href);
+    return true;
+  }
+
+  window.location.assign(href);
+  return true;
 }
 
 class TaskCheckboxWidget extends WidgetType {
@@ -444,6 +521,33 @@ function decorateInlinePattern(
   }
 }
 
+const MARKDOWN_LINK_RE = /\[([^\]\n]+)]\(([^)\n]+)\)/g;
+const WIKI_LINK_RE = /\[\[([^\]\n]+?)\]\]/g;
+
+function addLinkDecoration(
+  ranges: Range<Decoration>[],
+  view: EditorView,
+  openFrom: number,
+  contentFrom: number,
+  contentTo: number,
+  closeTo: number,
+  href: string,
+) {
+  if (!href) return;
+
+  ranges.push(
+    Decoration.mark({
+      class: "cm-md-link",
+      attributes: {
+        "data-inknest-link-href": href,
+        title: href,
+      },
+    }).range(contentFrom, contentTo),
+  );
+  hideIfIdle(ranges, view, openFrom, contentFrom);
+  hideIfIdle(ranges, view, contentTo, closeTo);
+}
+
 type FencedBlock = {
   from: number;
   to: number;
@@ -497,127 +601,173 @@ function blockContainingLine(blocks: FencedBlock[], lineFrom: number, lineTo: nu
   return blocks.find((block) => block.from <= lineFrom && block.to >= lineTo);
 }
 
-function buildStyledMarkdownDecorations(view: EditorView) {
-  const ranges: Range<Decoration>[] = [];
-  const fencedBlocks = findFencedBlocks(view.state);
+function buildStyledMarkdownDecorations(linkableNotes: WikiLinkTarget[]) {
+  return (view: EditorView) => {
+    const ranges: Range<Decoration>[] = [];
+    const fencedBlocks = findFencedBlocks(view.state);
 
-  for (const { from, to } of view.visibleRanges) {
-    let pos = from;
-    while (pos <= to) {
-      const line = view.state.doc.lineAt(pos);
-      const text = line.text;
-      const fencedBlock = blockContainingLine(fencedBlocks, line.from, line.to);
-      if (fencedBlock && !selectionTouches(view.state, fencedBlock.from, fencedBlock.to)) {
-        if (line.to + 1 > to) break;
-        pos = line.to + 1;
-        continue;
-      }
+    for (const { from, to } of view.visibleRanges) {
+      let pos = from;
+      while (pos <= to) {
+        const line = view.state.doc.lineAt(pos);
+        const text = line.text;
+        const fencedBlock = blockContainingLine(fencedBlocks, line.from, line.to);
+        if (fencedBlock && !selectionTouches(view.state, fencedBlock.from, fencedBlock.to)) {
+          if (line.to + 1 > to) break;
+          pos = line.to + 1;
+          continue;
+        }
 
-      const heading = text.match(/^(#{1,6})\s*(?=\S)/);
-      const task = text.match(/^(\s*[-*]\s+\[([ xX])]\s+)/);
+        const heading = text.match(/^(#{1,6})\s*(?=\S)/);
+        const task = text.match(/^(\s*[-*]\s+\[([ xX])]\s+)/);
 
-      if (fencedBlock) {
-        ranges.push(
-          Decoration.line({ class: "cm-md-code-line" }).range(line.from),
-        );
-      } else if (task) {
-        replaceWithWidgetIfIdle(
+        if (fencedBlock) {
+          ranges.push(
+            Decoration.line({ class: "cm-md-code-line" }).range(line.from),
+          );
+        } else if (task) {
+          replaceWithWidgetIfIdle(
+            ranges,
+            view,
+            line.from,
+            line.from + task[1].length,
+            new TaskCheckboxWidget(task[2].toLowerCase() === "x"),
+          );
+        } else if (heading) {
+          const level = Math.min(heading[1].length, 3);
+          ranges.push(
+            Decoration.line({ class: `cm-md-heading-${level}` }).range(line.from),
+          );
+          hideIfIdle(ranges, view, line.from, line.from + heading[0].length);
+        }
+
+        const quote = text.match(/^(\s*>\s*)/);
+        if (!fencedBlock && quote) {
+          ranges.push(
+            Decoration.line({ class: "cm-md-quote-line" }).range(line.from),
+          );
+          hideIfIdle(ranges, view, line.from, line.from + quote[1].length);
+        }
+
+        if (fencedBlock) {
+          if (line.to + 1 > to) break;
+          pos = line.to + 1;
+          continue;
+        }
+
+        decorateInlinePattern(
           ranges,
           view,
           line.from,
-          line.from + task[1].length,
-          new TaskCheckboxWidget(task[2].toLowerCase() === "x"),
+          text,
+          /(\*\*|__)(?!\s)(.+?)(?<!\s)\1/g,
+          "cm-md-bold",
         );
-      } else if (heading) {
-        const level = Math.min(heading[1].length, 3);
-        ranges.push(
-          Decoration.line({ class: `cm-md-heading-${level}` }).range(line.from),
+        decorateInlinePattern(
+          ranges,
+          view,
+          line.from,
+          text,
+          /(~~)(?!\s)(.+?)(?<!\s)~~/g,
+          "cm-md-strike",
         );
-        hideIfIdle(ranges, view, line.from, line.from + heading[0].length);
-      }
+        decorateInlinePattern(
+          ranges,
+          view,
+          line.from,
+          text,
+          /(`)([^`\n]+?)`/g,
+          "cm-md-code",
+        );
+        decorateInlinePattern(
+          ranges,
+          view,
+          line.from,
+          text,
+          /(?<!\*)\*(?!\s|\*)(.+?)(?<!\s)\*(?!\*)/g,
+          "cm-md-italic",
+        );
 
-      const quote = text.match(/^(\s*>\s*)/);
-      if (!fencedBlock && quote) {
-        ranges.push(
-          Decoration.line({ class: "cm-md-quote-line" }).range(line.from),
-        );
-        hideIfIdle(ranges, view, line.from, line.from + quote[1].length);
-      }
+        for (const match of text.matchAll(MARKDOWN_LINK_RE)) {
+          if (match.index === undefined || !match[1] || !match[2]) continue;
 
-      if (fencedBlock) {
+          const openFrom = line.from + match.index;
+          const contentFrom = openFrom + 1;
+          const contentTo = contentFrom + match[1].length;
+          const closeTo = openFrom + match[0].length;
+          const href = match[2].trim();
+
+          if (href.startsWith("inkest-")) {
+            const className = href.startsWith("inkest-highlight:")
+              ? "cm-md-highlight"
+              : href.startsWith("inkest-comment:")
+                ? "cm-md-comment"
+                : href === "inkest-size:small"
+                  ? "cm-md-small"
+                  : href === "inkest-size:large"
+                    ? "cm-md-large"
+                    : href === "inkest-size:huge"
+                      ? "cm-md-huge"
+                      : null;
+
+            if (!className) continue;
+
+            ranges.push(
+              Decoration.mark({ class: className }).range(contentFrom, contentTo),
+            );
+            hideIfIdle(ranges, view, openFrom, contentFrom);
+            hideIfIdle(ranges, view, contentTo, closeTo);
+            continue;
+          }
+
+          addLinkDecoration(
+            ranges,
+            view,
+            openFrom,
+            contentFrom,
+            contentTo,
+            closeTo,
+            resolveNoteHref(href, linkableNotes) ?? href,
+          );
+        }
+
+        for (const match of text.matchAll(WIKI_LINK_RE)) {
+          if (match.index === undefined || !match[1]) continue;
+
+          const openFrom = line.from + match.index;
+          const inner = match[1].trim();
+          if (!inner) continue;
+
+          const sectionIndex = inner.indexOf("#");
+          const noteName =
+            sectionIndex === -1 ? inner : inner.slice(0, sectionIndex).trim();
+          const href = resolveNoteHref(inner, linkableNotes);
+
+          if (!href || href === inner || href === noteName) continue;
+
+          const leadingTrim = match[1].length - match[1].trimStart().length;
+          const contentFrom = openFrom + 2 + leadingTrim;
+          const contentTo = contentFrom + inner.length;
+          const closeTo = openFrom + match[0].length;
+
+          addLinkDecoration(
+            ranges,
+            view,
+            openFrom,
+            contentFrom,
+            contentTo,
+            closeTo,
+            href,
+          );
+        }
+
         if (line.to + 1 > to) break;
         pos = line.to + 1;
-        continue;
       }
-
-      decorateInlinePattern(
-        ranges,
-        view,
-        line.from,
-        text,
-        /(\*\*|__)(?!\s)(.+?)(?<!\s)\1/g,
-        "cm-md-bold",
-      );
-      decorateInlinePattern(
-        ranges,
-        view,
-        line.from,
-        text,
-        /(~~)(?!\s)(.+?)(?<!\s)~~/g,
-        "cm-md-strike",
-      );
-      decorateInlinePattern(
-        ranges,
-        view,
-        line.from,
-        text,
-        /(`)([^`\n]+?)`/g,
-        "cm-md-code",
-      );
-      decorateInlinePattern(
-        ranges,
-        view,
-        line.from,
-        text,
-        /(?<!\*)\*(?!\s|\*)(.+?)(?<!\s)\*(?!\*)/g,
-        "cm-md-italic",
-      );
-
-      for (const match of text.matchAll(/\[([^\]\n]+)]\((inkest-[^)]+)\)/g)) {
-        if (match.index === undefined || !match[1] || !match[2]) continue;
-
-        const openFrom = line.from + match.index;
-        const contentFrom = openFrom + 1;
-        const contentTo = contentFrom + match[1].length;
-        const closeTo = openFrom + match[0].length;
-        const annotation = match[2];
-        const className = annotation.startsWith("inkest-highlight:")
-          ? "cm-md-highlight"
-          : annotation.startsWith("inkest-comment:")
-            ? "cm-md-comment"
-            : annotation === "inkest-size:small"
-              ? "cm-md-small"
-              : annotation === "inkest-size:large"
-                ? "cm-md-large"
-                : annotation === "inkest-size:huge"
-                  ? "cm-md-huge"
-                  : null;
-
-        if (!className) continue;
-
-        ranges.push(
-          Decoration.mark({ class: className }).range(contentFrom, contentTo),
-        );
-        hideIfIdle(ranges, view, openFrom, contentFrom);
-        hideIfIdle(ranges, view, contentTo, closeTo);
-      }
-
-      if (line.to + 1 > to) break;
-      pos = line.to + 1;
     }
-  }
 
-  return ranges.length > 0 ? Decoration.set(ranges, true) : Decoration.none;
+    return ranges.length > 0 ? Decoration.set(ranges, true) : Decoration.none;
+  };
 }
 
 function buildFencedBlockDecorations(state: EditorState) {
