@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,6 @@ export function AuthForm({
     error?: string;
   }>;
 }) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = React.useState(false);
   const [email, setEmail] = React.useState("");
@@ -42,28 +41,11 @@ export function AuthForm({
         }
       }
 
-      const result = await signIn("credentials", {
+      await signIn("credentials", {
         email,
         password,
-        redirect: false,
         callbackUrl,
       });
-
-      if (result?.error) {
-        toast.error(
-          mode === "signup"
-            ? "Account created but sign-in failed. Please sign in."
-            : "Invalid email or password.",
-        );
-        if (mode === "signup") {
-          router.push("/signin");
-        }
-        return;
-      }
-
-      toast.success(mode === "signup" ? "Welcome to inkest!" : "Welcome back!");
-      const destination = result?.url ?? callbackUrl;
-      window.location.assign(destination);
     } finally {
       setLoading(false);
     }
