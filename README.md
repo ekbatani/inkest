@@ -108,11 +108,8 @@ docker run -p 3000:3000 \
 | `OPENROUTER_MODEL` | No | `openai/gpt-4o-mini` | OpenRouter model slug |
 | `TELEGRAM_BOT_TOKEN` | No | -- | Telegram bot token used to send successful AI action results |
 | `TELEGRAM_CHAT_ID` | No | -- | Telegram channel/chat ID or `@channelusername` that receives AI action results |
-| `GOOGLE_SPEECH_TO_TEXT_API_KEY` | No | -- | Google Cloud Speech-to-Text API key for voice transcription |
-| `GOOGLE_SPEECH_TO_TEXT_BASE_URL` | No | `https://speech.googleapis.com/v1` | Override the Google Speech-to-Text REST endpoint |
 | `GOOGLE_OAUTH_CLIENT_ID` | No | -- | Google OAuth client ID used for Calendar sync |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | No | -- | Google OAuth client secret used for Calendar sync |
-| `MAX_SPEECH_UPLOAD_SIZE_MB` | No | `10` | Max uploaded recording size accepted by the speech route |
 | `ATTACHMENT_STORAGE_DRIVER` | No | `local` | Attachment backend: `local` or `minio` |
 | `LOCAL_STORAGE_ROOT` | No | `./storage` | Local attachment root when using `local` storage |
 | `MAX_UPLOAD_SIZE_MB` | No | `20` | Max uploaded attachment size |
