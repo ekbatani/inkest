@@ -363,6 +363,107 @@
   );
 }
 
+/* Marketing — spotlight hero */
+@property --spot-x {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 50%;
+}
+@property --spot-y {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 30%;
+}
+
+.spotlight-hero {
+  --spot-x: 50%;
+  --spot-y: 30%;
+  position: relative;
+}
+.spotlight-hero__glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    640px circle at var(--spot-x) var(--spot-y),
+    color-mix(in oklch, var(--ai-start) 22%, transparent),
+    color-mix(in oklch, var(--ai-end) 12%, transparent) 38%,
+    transparent 68%
+  );
+  transition: background-color 0.3s ease-out;
+}
+.spotlight-hero--auto .spotlight-hero__glow {
+  animation: spotlight-pan 16s ease-in-out infinite;
+}
+@keyframes spotlight-pan {
+  0%,
+  100% {
+    --spot-x: 22%;
+    --spot-y: 24%;
+  }
+  50% {
+    --spot-x: 78%;
+    --spot-y: 58%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spotlight-hero--auto .spotlight-hero__glow {
+    animation: none;
+  }
+}
+
+/* Marketing — AI showcase card */
+@keyframes marketing-caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+.marketing-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-inline-start: 1px;
+  vertical-align: text-bottom;
+  background: var(--ai-ink);
+  animation: marketing-caret-blink 1s step-start infinite;
+}
+@keyframes marketing-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.marketing-pop-in {
+  animation: marketing-pop-in 0.32s ease-out both;
+}
+@keyframes marketing-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.marketing-fade-in {
+  animation: marketing-fade-in 0.4s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marketing-caret,
+  .marketing-pop-in,
+  .marketing-fade-in {
+    animation: none !important;
+  }
+}
+
 @layer components {
   .ai-badge {
     display: inline-flex;

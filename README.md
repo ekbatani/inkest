@@ -1,4 +1,4 @@
-# inkest
+# Inkest
 
 A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and lightweight AI actions -- all self-hosted.
 
@@ -11,7 +11,7 @@ A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and lig
 - **Daily notes** -- one note per day, auto-created
 - **Calendar sync** -- month view plus Google Calendar events inside daily notes
 - **AI actions** -- summarize, improve writing, extract tasks, generate diagrams, translate (OpenAI-compatible)
-- **Speech to text** -- record short voice notes and transcribe them with Google Speech-to-Text
+- **Speech to text** -- dictate notes in the browser via the Web Speech API (no server key required)
 - **Private attachments** -- images, PDFs, DOC/DOCX, EPUB via local storage or MinIO
 - **Version history** -- automatic snapshots with one-click restore
 - **Wiki links** -- `[[Note Title]]` linking with backlinks
@@ -72,7 +72,7 @@ docker compose up -d
 
 The container runs pending Drizzle migrations automatically on startup, so a fresh deploy initializes the schema on first boot. With the default local storage driver, the SQLite database and uploaded files live on named volumes (`inkest-data`, `inkest-storage`) mounted at `/app/data` and `/app/storage`, so they persist across `docker compose pull && up -d` redeploys.
 
-For Dokploy and other reverse-proxy-based platforms, the base [docker-compose.yml](/C:/Users/a.ekbatani/source/personal/inknest/docker-compose.yml) only exposes the app on the Docker network and does not bind host port `3000`. Point Dokploy at the app container's internal port `3000` and let Dokploy publish the external port/domain.
+For Dokploy and other reverse-proxy-based platforms, the base [docker-compose.yml](docker-compose.yml) only exposes the app on the Docker network and does not bind host port `3000`. Point Dokploy at the app container's internal port `3000` and let Dokploy publish the external port/domain.
 
 For local Docker usage, add the included override file so the app binds to `localhost:3000`:
 

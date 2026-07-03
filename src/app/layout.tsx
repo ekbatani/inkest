@@ -29,8 +29,26 @@ const vazirmatn = Vazirmatn({
 });
 
 export const metadata: Metadata = {
-  title: "inkest",
-  description: "A calm, Markdown-first personal workspace.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  title: {
+    default: "Inkest — a calm, Markdown-first workspace",
+    template: "%s · Inkest",
+  },
+  description:
+    "A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and AI actions — self-hosted or cloud.",
+  openGraph: {
+    title: "Inkest",
+    description:
+      "A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and AI actions — self-hosted or cloud.",
+    siteName: "Inkest",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Inkest",
+    description:
+      "A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and AI actions — self-hosted or cloud.",
+  },
 };
 
 export default function RootLayout({
