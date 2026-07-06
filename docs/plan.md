@@ -49,14 +49,14 @@ Root `/` currently redirects to `/dashboard`. Replace with a public marketing pa
 
 Focus mode exists in the editor mode switch; this adds a distinct **reading** experience.
 
-- [ ] "Super focus" toggle in preview/focus mode: page chrome dims to near-black overlay;
+- [x] "Super focus" toggle in preview/focus mode: page chrome dims to near-black overlay;
       a spotlight (radial gradient mask, ~3–4 lines tall) follows the reading position.
-- [ ] Two tracking modes: follow the pointer, or **auto-advance** — spotlight follows the
+- [x] Two tracking modes: follow the pointer, or **auto-advance** — spotlight follows the
       active paragraph as the user scrolls (paragraph nearest an anchor line gets full
       brightness, siblings dimmed via CSS `mask-image`/opacity, cheap to render).
-- [ ] Controls: `Esc` exits, visible exit button (learned from the old focus-mode bug),
+- [x] Controls: `Esc` exits, visible exit button (learned from the old focus-mode bug),
       spotlight radius slider in a small floating toolbar, respects `prefers-reduced-motion`.
-- [ ] Persist preference per user in editor prefs (settings already has an editor prefs block).
+- [x] Persist preference per user in editor prefs (settings already has an editor prefs block).
 
 ## Phase 4 — AI provider & help expansion ✦ medium
 
@@ -93,12 +93,12 @@ Today Telegram is a single global `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` env pa
 
 ## Phase 6 — Text-to-speech ✦ small
 
-- [ ] "Listen" button in preview mode using the **Web Speech API**
+- [x] "Listen" button in preview mode using the **Web Speech API**
       (`speechSynthesis`) — zero cost, works self-hosted, no key needed.
       Play/pause, highlight the sentence currently being read (ties in nicely with the
       spotlight mode — auto-advance the spotlight while reading aloud). Voice/rate picker
       persisted in editor prefs.
-- [ ] Strip markdown to plain text for speech via the existing preview pipeline.
+- [x] Strip markdown to plain text for speech via the existing preview pipeline.
 - [ ] Optional later: OpenAI-compatible TTS endpoint for users with a key (better voices),
       behind the same provider config. Not required for v1.
 
@@ -111,15 +111,17 @@ Today Telegram is a single global `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` env pa
 
 ## Phase 8 — Micro-animations, icons & logo ✦ medium
 
-- [ ] **Logo/icon**: design an SVG mark (ink drop + nib forming an "i" is the obvious
+- [x] **Logo/icon**: design an SVG mark (ink drop + nib forming an "i" is the obvious
       direction). Deliver: favicon set, `apple-touch-icon`, OG image, sidebar logo.
       SVG is hand-editable and animatable — no design-tool dependency.
-- [ ] **Animated icons**: animate on interaction only (save indicator morph, AI sparkle
+- [x] **Animated icons**: animate on interaction only (save indicator morph, AI sparkle
       pulse while running, sidebar collapse chevron, checkbox check-draw). Use CSS
       transitions/`@keyframes` on the existing lucide SVGs — no animation library.
-- [ ] App-wide micro-animations: view transitions between routes (Next.js supports the
-      View Transitions API), list item enter/exit fades, dialog spring. All gated on
-      `prefers-reduced-motion`, all CSS-only. Budget: zero new JS dependencies.
+- [x] App-wide micro-animations: view transitions between routes (implemented via the
+      standards-based CSS `@view-transition { navigation: auto; }` at-rule rather than
+      React/Next's experimental ViewTransition API, to avoid depending on an unverified
+      experimental surface in this fork), list item enter/exit fades, dialog spring. All
+      gated on `prefers-reduced-motion`, all CSS-only. Budget: zero new JS dependencies.
 
 ## Phase 9 — Performance pass ✦ medium
 

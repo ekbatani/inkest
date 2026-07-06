@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import {
+  AI_PROVIDER_IDS,
   getAiProviderDefinition,
   type AiProviderId,
 } from "@/lib/ai/providers";
@@ -12,9 +13,19 @@ export type AiProvider = {
   completeJson: (prompt: string, systemPrompt: string) => Promise<string>;
 };
 
+// Env-var prefix per provider, e.g. OPENROUTER_API_KEY / OPENCODE_BASE_URL / OLLAMA_MODEL.
+// "openai" and "custom" keep using the original OPENAI_* names for backwards compatibility.
+const PROVIDER_ENV_PREFIX: Partial<Record<AiProviderId, string>> = {
+  openrouter: "OPENROUTER",
+  opencode: "OPENCODE",
+  ollama: "OLLAMA",
+};
+
 function resolveEnvProviderId(): AiProviderId {
   const value = process.env.AI_PROVIDER;
-  if (value === "openrouter" || value === "custom") return value;
+  if ((AI_PROVIDER_IDS as readonly string[]).includes(value ?? "")) {
+    return value as AiProviderId;
+  }
   return "openai";
 }
 
@@ -22,25 +33,21 @@ export async function getAiProvider(): Promise<AiProvider | null> {
   const settings = await getUserSettings();
   const providerId = settings.ai?.provider ?? resolveEnvProviderId();
   const providerDef = getAiProviderDefinition(providerId);
+  const envPrefix = PROVIDER_ENV_PREFIX[providerId];
 
   const apiKey =
     settings.ai?.apiKey?.trim() ||
-    (providerId === "openrouter"
-      ? process.env.OPENROUTER_API_KEY
-      : process.env.OPENAI_API_KEY);
+    (envPrefix ? process.env[`${envPrefix}_API_KEY`] : process.env.OPENAI_API_KEY) ||
+    (providerDef.apiKeyOptional ? "not-required" : undefined);
   if (!apiKey) return null;
 
   const baseUrl =
     settings.ai?.baseURL?.trim() ||
-    (providerId === "openrouter"
-      ? process.env.OPENROUTER_BASE_URL
-      : process.env.OPENAI_BASE_URL) ||
+    (envPrefix ? process.env[`${envPrefix}_BASE_URL`] : process.env.OPENAI_BASE_URL) ||
     providerDef.defaultBaseURL;
   const model =
     settings.ai?.model?.trim() ||
-    (providerId === "openrouter"
-      ? process.env.OPENROUTER_MODEL
-      : process.env.OPENAI_MODEL) ||
+    (envPrefix ? process.env[`${envPrefix}_MODEL`] : process.env.OPENAI_MODEL) ||
     providerDef.defaultModel;
 
   const client = new OpenAI({ apiKey, baseURL: baseUrl });

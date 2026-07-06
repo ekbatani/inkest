@@ -1,4 +1,10 @@
-export const AI_PROVIDER_IDS = ["openai", "openrouter", "custom"] as const;
+export const AI_PROVIDER_IDS = [
+  "openai",
+  "openrouter",
+  "opencode",
+  "ollama",
+  "custom",
+] as const;
 
 export type AiProviderId = (typeof AI_PROVIDER_IDS)[number];
 
@@ -8,6 +14,8 @@ export type AiProviderDefinition = {
   defaultBaseURL: string;
   defaultModel: string;
   apiKeyPlaceholder: string;
+  /** Local gateways (e.g. Ollama) don't check the key — any placeholder works. */
+  apiKeyOptional?: boolean;
 };
 
 export const AI_PROVIDERS: readonly AiProviderDefinition[] = [
@@ -24,6 +32,21 @@ export const AI_PROVIDERS: readonly AiProviderDefinition[] = [
     defaultBaseURL: "https://openrouter.ai/api/v1",
     defaultModel: "openai/gpt-4o-mini",
     apiKeyPlaceholder: "sk-or-...",
+  },
+  {
+    id: "opencode",
+    label: "opencode Zen",
+    defaultBaseURL: "https://opencode.ai/zen/v1",
+    defaultModel: "deepseek-v4-flash-free",
+    apiKeyPlaceholder: "opencode Zen API key",
+  },
+  {
+    id: "ollama",
+    label: "Ollama (local, self-hosted)",
+    defaultBaseURL: "http://localhost:11434/v1",
+    defaultModel: "llama3.2",
+    apiKeyPlaceholder: "not required for local Ollama",
+    apiKeyOptional: true,
   },
   {
     id: "custom",

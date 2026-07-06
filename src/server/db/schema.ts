@@ -17,6 +17,13 @@ export const users = sqliteTable("users", {
   // JSON-encoded user settings, parsed by the service: editor prefs, AI
   // provider overrides, etc. Stored as TEXT since SQLite has no native JSONB.
   settings: text("settings"),
+  // Per-user Telegram link (env-var TELEGRAM_CHAT_ID remains a fallback for
+  // single-user self-host deployments that never link an account).
+  telegramChatId: text("telegram_chat_id").unique(),
+  telegramLinkCode: text("telegram_link_code"),
+  telegramLinkCodeExpiresAt: integer("telegram_link_code_expires_at", {
+    mode: "timestamp",
+  }),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at")
     .notNull()
@@ -125,6 +132,9 @@ export const tasks = sqliteTable("tasks", {
     .notNull()
     .default("manual"),
   sourceLine: integer("source_line"),
+  // Set once a Telegram due-date reminder has been sent, so the scheduler
+  // doesn't re-notify on every pass. Cleared if the due date changes.
+  dueReminderSentAt: integer("due_reminder_sent_at", { mode: "timestamp" }),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at")
     .notNull()

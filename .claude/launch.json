@@ -6,6 +6,12 @@
       "runtimeExecutable": "bun",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "inkest-preview",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "dev", "--port", "3100"],
+      "port": 3100
     }
   ]
 }

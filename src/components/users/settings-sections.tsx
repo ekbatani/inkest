@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   AI_PROVIDERS,
@@ -273,9 +274,17 @@ export function AiProviderSection({
 
   return (
     <section className="surface-card flex flex-col gap-4 p-5">
-      <div className="flex items-center gap-2">
-        <AiBadge />
-        <h2 className="text-sm font-semibold">AI provider</h2>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <AiBadge />
+          <h2 className="text-sm font-semibold">AI provider</h2>
+        </div>
+        <Link
+          href="/help#ai"
+          className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+        >
+          Need a key? →
+        </Link>
       </div>
       <p className="text-xs text-muted-foreground">
         Choose your provider and save your own API key. When these fields are
@@ -334,6 +343,175 @@ export function AiProviderSection({
         </Button>
       </div>
     </section>
+  );
+}
+
+export function NotificationsSection({
+  initialLinked,
+  aiResults,
+  taskDueReminders,
+  dailyNoteNudge,
+}: {
+  initialLinked: boolean;
+  aiResults?: boolean;
+  taskDueReminders?: boolean;
+  dailyNoteNudge?: boolean;
+}) {
+  const [linked, setLinked] = React.useState(initialLinked);
+  const [linkCode, setLinkCode] = React.useState<string | null>(null);
+  const [generating, setGenerating] = React.useState(false);
+  const [unlinking, setUnlinking] = React.useState(false);
+  const [prefs, setPrefs] = React.useState({
+    aiResults: aiResults ?? true,
+    taskDueReminders: taskDueReminders ?? false,
+    dailyNoteNudge: dailyNoteNudge ?? false,
+  });
+  const [savingPrefs, setSavingPrefs] = React.useState(false);
+
+  const generateCode = async () => {
+    setGenerating(true);
+    try {
+      const { code } = await import("@/server/notifications/telegram-actions").then((m) =>
+        m.generateTelegramLinkCodeAction(),
+      );
+      setLinkCode(code);
+    } catch {
+      toast.error("Failed to generate a linking code.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const unlink = async () => {
+    if (!confirm("Disconnect Telegram from your account?")) return;
+    setUnlinking(true);
+    try {
+      await import("@/server/notifications/telegram-actions").then((m) =>
+        m.unlinkTelegramAction(),
+      );
+      setLinked(false);
+      setLinkCode(null);
+      toast.success("Telegram disconnected.");
+    } catch {
+      toast.error("Failed to disconnect Telegram.");
+    } finally {
+      setUnlinking(false);
+    }
+  };
+
+  const savePrefs = async (next: typeof prefs) => {
+    setPrefs(next);
+    setSavingPrefs(true);
+    try {
+      await import("@/server/users/settings-actions").then((m) =>
+        m.updateUserSettingsAction({ notifications: next }),
+      );
+    } catch {
+      toast.error("Failed to save notification preferences.");
+    } finally {
+      setSavingPrefs(false);
+    }
+  };
+
+  return (
+    <section className="surface-card flex flex-col gap-4 p-5">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">Notifications · Telegram</h2>
+        <Link
+          href="/help#telegram"
+          className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+        >
+          How do I connect this? →
+        </Link>
+      </div>
+
+      {linked ? (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-muted/20 p-3">
+          <p className="text-xs text-muted-foreground">
+            Your Telegram account is connected.
+          </p>
+          <Button variant="outline" size="sm" onClick={unlink} disabled={unlinking}>
+            Disconnect
+          </Button>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border/70 bg-muted/20 p-3">
+          {linkCode ? (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs text-muted-foreground">
+                Message your Telegram bot with:
+              </p>
+              <code className="w-fit rounded-md bg-background px-2 py-1 text-sm font-semibold">
+                /start {linkCode}
+              </code>
+              <p className="text-xs text-muted-foreground">
+                Code expires in 15 minutes.
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Not connected. Generate a code to link your Telegram account.
+            </p>
+          )}
+          <Button
+            size="sm"
+            className="mt-3"
+            onClick={generateCode}
+            disabled={generating}
+          >
+            {linkCode ? "Generate new code" : "Generate linking code"}
+          </Button>
+        </div>
+      )}
+
+      <div className="grid gap-2 border-t pt-4 sm:grid-cols-3">
+        <NotificationToggle
+          label="AI action results"
+          checked={prefs.aiResults}
+          disabled={savingPrefs}
+          onChange={(v) => savePrefs({ ...prefs, aiResults: v })}
+        />
+        <NotificationToggle
+          label="Task due reminders"
+          checked={prefs.taskDueReminders}
+          disabled={savingPrefs}
+          onChange={(v) => savePrefs({ ...prefs, taskDueReminders: v })}
+        />
+        <NotificationToggle
+          label="Daily note nudge"
+          checked={prefs.dailyNoteNudge}
+          disabled={savingPrefs}
+          onChange={(v) => savePrefs({ ...prefs, dailyNoteNudge: v })}
+        />
+      </div>
+    </section>
+  );
+}
+
+function NotificationToggle({
+  label,
+  checked,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 justify-start"
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+      >
+        {checked ? "On" : "Off"}
+      </Button>
+    </div>
   );
 }
 

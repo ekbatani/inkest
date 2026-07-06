@@ -5,7 +5,7 @@ import { Loader2, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
-import { insertTextAtCursor } from "./markdown-editor";
+import { insertTextAtCursor } from "./markdown-editor-utils";
 
 type Props = {
   editorRef: React.RefObject<ReactCodeMirrorRef | null>;

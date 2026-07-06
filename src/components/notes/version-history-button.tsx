@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { History, RotateCcw, Loader2, Undo2, Redo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,13 +13,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import { formatDate } from "@/lib/dates";
 import {
   listNoteVersionsAction,
   restoreNoteVersionAction,
 } from "@/server/notes/versions-actions";
 import type { NoteVersion } from "@/server/db/schema";
+
+// Dynamically imported — this dialog (and its markdown rendering) is opened rarely,
+// so it shouldn't be part of the always-loaded editor toolbar bundle.
+const MarkdownPreview = dynamic(
+  () => import("@/components/markdown/markdown-preview").then((m) => m.MarkdownPreview),
+  { ssr: false },
+);
 
 type DraftSnapshot = {
   title: string;

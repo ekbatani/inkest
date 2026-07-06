@@ -326,7 +326,7 @@ export function NotesTree({ nodes }: { nodes: NoteTreeNode[] }) {
             const hasChildren = node.children.length > 0;
             const isProject = node.type === "project";
             return (
-              <li key={node.id}>
+              <li key={node.id} className="notes-tree-row">
                 <DropZone
                   id={makeRootDropId(node.id)}
                   active={isDropTargetActive(
@@ -376,7 +376,7 @@ export function NotesTree({ nodes }: { nodes: NoteTreeNode[] }) {
                 {isOpen && (
                   <ul className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l pl-1.5">
                     {node.children.map((child) => (
-                      <li key={child.id}>
+                      <li key={child.id} className="notes-tree-row">
                         <DropZone
                           id={makeChildDropId(node.id, child.id)}
                           active={isDropTargetActive(

@@ -11,6 +11,7 @@ import {
   parseDateKey,
 } from "@/server/calendar/service";
 import { listTags, listTagsForNote } from "@/server/tags/service";
+import { getUserSettings } from "@/server/users/settings-service";
 import { NoteEditor } from "@/components/notes/note-editor";
 
 export default async function NoteDetailPage({
@@ -36,6 +37,7 @@ export default async function NoteDetailPage({
     backlinks,
     calendarStatus,
     dailyEvents,
+    settings,
   ] =
     await Promise.all([
       listTags(),
@@ -47,6 +49,7 @@ export default async function NoteDetailPage({
       getBacklinks(id),
       dailyDate ? getGoogleCalendarStatus() : Promise.resolve(null),
       dailyDate ? listCalendarEventsForDay(dailyDate) : Promise.resolve([]),
+      getUserSettings(),
     ]);
 
   return (
@@ -58,6 +61,17 @@ export default async function NoteDetailPage({
       linkableNotes={linkableNotes}
       backlinks={backlinks.map((b) => ({ id: b.id, title: b.title }))}
       selectTitleOnMount={focus === "title"}
+      superFocusPrefs={{
+        trackingMode: settings.superFocus?.trackingMode ?? "pointer",
+        radius: settings.superFocus?.radius ?? 1,
+      }}
+      ttsPrefs={{
+        rate: settings.tts?.rate ?? 1,
+        voiceURI: settings.tts?.voiceURI,
+      }}
+      editorPrefs={{
+        pasteToPreview: settings.editor?.pasteToPreview ?? true,
+      }}
       dailyAgenda={
         dailyDate && calendarStatus
           ? {

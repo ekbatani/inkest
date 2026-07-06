@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   Pin,
@@ -20,6 +21,9 @@ import {
   FolderKanban,
   Undo2,
   Redo2,
+  BookOpen,
+  Flashlight,
+  Headphones,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -48,24 +52,43 @@ import { updateNoteAction } from "@/server/notes/actions";
 import { deleteNoteAction, togglePinnedAction } from "@/server/notes/actions";
 import { ArchiveToggleButton } from "@/components/notes/archive-toggle-button";
 import { formatDate } from "@/lib/dates";
-import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { FloatingMarkdownFormatToolbar } from "@/components/editor/markdown-format-toolbar";
 import { AttachmentUploadButton } from "@/components/editor/image-upload-button";
 import { SpeechToTextButton } from "@/components/editor/speech-to-text-button";
 import { AiPanel } from "@/components/ai/ai-panel";
-import { MarkdownPreview } from "@/components/markdown/markdown-preview";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TagSelector } from "@/components/notes/tag-selector";
 import { ParentPicker } from "@/components/notes/parent-picker";
 import { DueDatePicker } from "@/components/notes/due-date-picker";
 import { VersionHistoryButton } from "@/components/notes/version-history-button";
 import { DailyNoteCalendarPanel } from "@/components/calendar/daily-note-calendar-panel";
+import type { SuperFocusTrackingMode } from "@/components/notes/super-focus-reader";
+import { updateUserSettingsAction } from "@/server/users/settings-actions";
 import type { WikiLinkTarget } from "@/lib/markdown/wiki";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
 import type { GoogleCalendarEvent } from "@/server/db/schema";
 
-type EditorMode = "write" | "focus";
+// Dynamically imported so CodeMirror (write/focus mode) and the react-markdown preview
+// stack (read mode, copy-preview) split into separate chunks instead of always loading
+// together — see docs/plan.md Phase 9.
+const MarkdownEditor = dynamic(
+  () => import("@/components/editor/markdown-editor").then((m) => m.MarkdownEditor),
+  { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
+);
+const MarkdownPreview = dynamic(
+  () => import("@/components/markdown/markdown-preview").then((m) => m.MarkdownPreview),
+  { ssr: false, loading: () => <Skeleton className="h-full w-full" /> },
+);
+// Super focus is an optional reading mode entered rarely; lazy-load it (and its own
+// markdown preview + TTS deps) instead of bundling with the always-on editor toolbar.
+const SuperFocusReader = dynamic(
+  () => import("@/components/notes/super-focus-reader").then((m) => m.SuperFocusReader),
+  { ssr: false },
+);
+
+type EditorMode = "write" | "focus" | "read";
 type NoteSnapshot = {
   title: string;
   content: string;
@@ -84,6 +107,9 @@ export function NoteEditor({
   backlinks = [],
   selectTitleOnMount = false,
   dailyAgenda,
+  superFocusPrefs,
+  ttsPrefs,
+  editorPrefs,
 }: {
   note: Note;
   allTags?: Tag[];
@@ -92,6 +118,9 @@ export function NoteEditor({
   linkableNotes?: WikiLinkTarget[];
   backlinks?: { id: string; title: string }[];
   selectTitleOnMount?: boolean;
+  superFocusPrefs?: { trackingMode: SuperFocusTrackingMode; radius: number };
+  ttsPrefs?: { rate: number; voiceURI: string | undefined };
+  editorPrefs?: { pasteToPreview: boolean };
   dailyAgenda?: {
     dateKey: string;
     events: GoogleCalendarEvent[];
@@ -108,6 +137,20 @@ export function NoteEditor({
   const [content, setContent] = React.useState(note.contentMd);
   const [mode, setMode] = React.useState<EditorMode>("write");
   const [showPanel, setShowPanel] = React.useState(true);
+  const [showSuperFocus, setShowSuperFocus] = React.useState(false);
+  const [trackingMode, setTrackingMode] = React.useState<SuperFocusTrackingMode>(
+    superFocusPrefs?.trackingMode ?? "pointer",
+  );
+  const [radius, setRadius] = React.useState(superFocusPrefs?.radius ?? 1);
+  const [ttsRate, setTtsRate] = React.useState(ttsPrefs?.rate ?? 1);
+  const [ttsVoiceURI, setTtsVoiceURI] = React.useState(ttsPrefs?.voiceURI);
+  const [superFocusAutoPlay, setSuperFocusAutoPlay] = React.useState(false);
+  const [pasteToPreview, setPasteToPreview] = React.useState(
+    editorPrefs?.pasteToPreview ?? true,
+  );
+  const superFocusPrefsTimer = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">(
     "idle",
   );
@@ -132,6 +175,7 @@ export function NoteEditor({
   const editorRef = React.useRef<ReactCodeMirrorRef>(null);
   const titleInputRef = React.useRef<HTMLInputElement>(null);
   const previewCopyRef = React.useRef<HTMLDivElement>(null);
+  const [copyMenuTouched, setCopyMenuTouched] = React.useState(false);
   const lastCheckpointRef = React.useRef<NoteSnapshot>({
     title: note.title,
     content: note.contentMd,
@@ -153,6 +197,24 @@ export function NoteEditor({
     input.focus();
     input.select();
   }, [selectTitleOnMount]);
+
+  const skipNextSuperFocusPersist = React.useRef(true);
+  React.useEffect(() => {
+    if (skipNextSuperFocusPersist.current) {
+      skipNextSuperFocusPersist.current = false;
+      return;
+    }
+    if (superFocusPrefsTimer.current) clearTimeout(superFocusPrefsTimer.current);
+    superFocusPrefsTimer.current = setTimeout(() => {
+      void updateUserSettingsAction({
+        superFocus: { trackingMode, radius },
+        tts: { rate: ttsRate, voiceURI: ttsVoiceURI },
+      });
+    }, 600);
+    return () => {
+      if (superFocusPrefsTimer.current) clearTimeout(superFocusPrefsTimer.current);
+    };
+  }, [trackingMode, radius, ttsRate, ttsVoiceURI]);
 
   React.useEffect(() => {
     if (skipNextPersist.current) {
@@ -224,6 +286,7 @@ export function NoteEditor({
 
   const showEditor = mode === "write" || mode === "focus";
   const isFocus = mode === "focus";
+  const isRead = mode === "read";
   const currentSnapshot = React.useMemo(
     () => ({ title, content }),
     [title, content],
@@ -455,6 +518,21 @@ export function NoteEditor({
     }
   }, []);
 
+  const onLargeMarkdownPaste = React.useCallback(() => {
+    if (!pasteToPreview) return;
+    setMode("read");
+    toast("Pasted as Markdown — showing preview.", {
+      action: { label: "Edit", onClick: () => setMode("write") },
+      cancel: {
+        label: "Don't do this again",
+        onClick: () => {
+          setPasteToPreview(false);
+          void updateUserSettingsAction({ editor: { pasteToPreview: false } });
+        },
+      },
+    });
+  }, [pasteToPreview]);
+
   return (
     <div className="flex h-full flex-col">
       {!isFocus && (
@@ -476,7 +554,40 @@ export function NoteEditor({
               <Maximize className="size-3.5" />
               <span className="ml-1 hidden sm:inline">Focus</span>
             </ToggleGroupItem>
+            <ToggleGroupItem value="read" aria-label="Read mode">
+              <BookOpen className="size-3.5" />
+              <span className="ml-1 hidden sm:inline">Read</span>
+            </ToggleGroupItem>
           </ToggleGroup>
+
+          {isRead && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  setSuperFocusAutoPlay(false);
+                  setShowSuperFocus(true);
+                }}
+              >
+                <Flashlight className="size-4 text-muted-foreground" />
+                <span className="hidden sm:inline">Super focus</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  setSuperFocusAutoPlay(true);
+                  setShowSuperFocus(true);
+                }}
+              >
+                <Headphones className="size-4 text-muted-foreground" />
+                <span className="hidden sm:inline">Listen</span>
+              </Button>
+            </>
+          )}
 
           {showEditor && <AttachmentUploadButton editorRef={editorRef} />}
           {showEditor && <SpeechToTextButton editorRef={editorRef} />}
@@ -505,8 +616,8 @@ export function NoteEditor({
               </Button>
             </>
           )}
-          {showEditor && (
-            <DropdownMenu>
+          {(showEditor || isRead) && (
+            <DropdownMenu onOpenChange={(open) => open && setCopyMenuTouched(true)}>
               <DropdownMenuTrigger
                 render={<Button variant="ghost" size="sm" className="gap-1.5" />}
               >
@@ -523,7 +634,7 @@ export function NoteEditor({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {showEditor && (
+          {(showEditor || isRead) && (
             <Button
               variant="ghost"
               size="sm"
@@ -543,14 +654,17 @@ export function NoteEditor({
           )}
 
           <div className="ml-auto flex items-center gap-1">
-            {saveState === "saving" && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Loader2 className="size-3 animate-spin" /> Saving…
-              </span>
-            )}
-            {saveState === "saved" && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Check className="size-3" /> Saved
+            {saveState !== "idle" && (
+              <span
+                key={saveState}
+                className="save-indicator flex items-center gap-1 text-xs text-muted-foreground"
+              >
+                {saveState === "saving" ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Check className="size-3" />
+                )}
+                {saveState === "saving" ? "Saving…" : "Saved"}
               </span>
             )}
             <Button
@@ -646,8 +760,18 @@ export function NoteEditor({
                   editorRef={editorRef}
                   linkableNotes={linkableNotes}
                   onOpenLink={(href) => router.push(href)}
+                  onLargeMarkdownPaste={onLargeMarkdownPaste}
                 />
                 <FloatingMarkdownFormatToolbar editorRef={editorRef} />
+              </div>
+            )}
+            {isRead && (
+              <div className="min-h-0 flex-1 overflow-y-auto py-6">
+                <MarkdownPreview
+                  content={content}
+                  direction={metadata.direction}
+                  linkableNotes={linkableNotes}
+                />
               </div>
             )}
           </div>
@@ -680,8 +804,27 @@ export function NoteEditor({
         aria-hidden="true"
         className="pointer-events-none absolute -left-[9999px] top-0 w-[48rem] opacity-0"
       >
-        <MarkdownPreview content={content} direction={metadata.direction} />
+        {(isRead || copyMenuTouched) && (
+          <MarkdownPreview content={content} direction={metadata.direction} />
+        )}
       </div>
+      {showSuperFocus && (
+        <SuperFocusReader
+          content={content}
+          direction={metadata.direction}
+          linkableNotes={linkableNotes}
+          trackingMode={trackingMode}
+          radius={radius}
+          onTrackingModeChange={setTrackingMode}
+          onRadiusChange={setRadius}
+          ttsRate={ttsRate}
+          ttsVoiceURI={ttsVoiceURI}
+          onTtsRateChange={setTtsRate}
+          onTtsVoiceChange={setTtsVoiceURI}
+          autoPlayTts={superFocusAutoPlay}
+          onExit={() => setShowSuperFocus(false)}
+        />
+      )}
     </div>
   );
 }

@@ -3,16 +3,21 @@ import { Settings, Download, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/server/auth";
 import { getUserSettings } from "@/server/users/settings-service";
+import { getTelegramLinkStatus } from "@/server/notifications/telegram-link";
 import {
   ProfileSection,
   EditorPrefsSection,
   AiProviderSection,
+  NotificationsSection,
   DangerZoneSection,
 } from "@/components/users/settings-sections";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
-  const settings = await getUserSettings();
+  const [settings, telegramStatus] = await Promise.all([
+    getUserSettings(),
+    getTelegramLinkStatus(),
+  ]);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-10 sm:px-8 sm:py-14">
@@ -57,6 +62,14 @@ export default async function SettingsPage() {
           </Button>
         </div>
       </section>
+
+      <NotificationsSection
+        key={`notifications:${telegramStatus.linked}`}
+        initialLinked={telegramStatus.linked}
+        aiResults={settings.notifications?.aiResults}
+        taskDueReminders={settings.notifications?.taskDueReminders}
+        dailyNoteNudge={settings.notifications?.dailyNoteNudge}
+      />
 
       <DangerZoneSection />
     </div>

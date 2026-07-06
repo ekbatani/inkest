@@ -3,8 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Feather } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LogoMark } from "@/components/brand/logo-mark";
 import {
   mainNav,
   settingsNav,
@@ -50,7 +50,7 @@ export function Sidebar({ notesTree = [] }: { notesTree?: NoteTreeNode[] }) {
         className="flex items-center gap-2 px-5 py-4 text-sm font-semibold"
       >
         <span className="flex size-7 items-center justify-center rounded-md bg-foreground text-background">
-          <Feather className="size-4" />
+          <LogoMark className="size-4" />
         </span>
         <span>inkest</span>
       </Link>

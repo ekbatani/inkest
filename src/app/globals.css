@@ -51,78 +51,78 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.148 0.004 228.8);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.148 0.004 228.8);
+  --primary: oklch(0.5 0.134 242.749);
+  --primary-foreground: oklch(0.977 0.013 236.62);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.963 0.002 197.1);
+  --muted-foreground: oklch(0.56 0.021 213.5);
+  --accent: oklch(0.963 0.002 197.1);
+  --accent-foreground: oklch(0.218 0.008 223.9);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: oklch(0.925 0.005 214.3);
+  --input: oklch(0.925 0.005 214.3);
+  --ring: oklch(0.723 0.014 214.4);
+  --chart-1: oklch(0.828 0.111 230.318);
+  --chart-2: oklch(0.685 0.169 237.323);
+  --chart-3: oklch(0.588 0.158 241.966);
+  --chart-4: oklch(0.5 0.134 242.749);
+  --chart-5: oklch(0.443 0.11 240.79);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.987 0.002 197.1);
+  --sidebar-foreground: oklch(0.148 0.004 228.8);
+  --sidebar-primary: oklch(0.588 0.158 241.966);
+  --sidebar-primary-foreground: oklch(0.977 0.013 236.62);
+  --sidebar-accent: oklch(0.963 0.002 197.1);
+  --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
+  --sidebar-border: oklch(0.925 0.005 214.3);
+  --sidebar-ring: oklch(0.723 0.014 214.4);
   --ai-start: oklch(0.78 0.14 192);
   --ai-end: oklch(0.83 0.13 96);
   --ai-ink: oklch(0.31 0.07 220);
   --ai-border: color-mix(in oklch, var(--ai-start) 55%, white 45%);
   --ai-surface: color-mix(in oklch, var(--ai-start) 10%, white 90%);
   --font-rtl: "Vazir", var(--font-rtl-fallback), Tahoma, sans-serif;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.148 0.004 228.8);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
+  --background: oklch(0.148 0.004 228.8);
+  --foreground: oklch(0.987 0.002 197.1);
+  --card: oklch(0.218 0.008 223.9);
+  --card-foreground: oklch(0.987 0.002 197.1);
+  --popover: oklch(0.218 0.008 223.9);
+  --popover-foreground: oklch(0.987 0.002 197.1);
+  --primary: oklch(0.443 0.11 240.79);
+  --primary-foreground: oklch(0.977 0.013 236.62);
+  --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.275 0.011 216.9);
+  --muted-foreground: oklch(0.723 0.014 214.4);
+  --accent: oklch(0.275 0.011 216.9);
+  --accent-foreground: oklch(0.987 0.002 197.1);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.56 0.021 213.5);
+  --chart-1: oklch(0.828 0.111 230.318);
+  --chart-2: oklch(0.685 0.169 237.323);
+  --chart-3: oklch(0.588 0.158 241.966);
+  --chart-4: oklch(0.5 0.134 242.749);
+  --chart-5: oklch(0.443 0.11 240.79);
+  --sidebar: oklch(0.218 0.008 223.9);
+  --sidebar-foreground: oklch(0.987 0.002 197.1);
+  --sidebar-primary: oklch(0.685 0.169 237.323);
+  --sidebar-primary-foreground: oklch(0.293 0.066 243.157);
+  --sidebar-accent: oklch(0.275 0.011 216.9);
+  --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.56 0.021 213.5);
   --ai-start: oklch(0.71 0.11 194);
   --ai-end: oklch(0.76 0.1 96);
   --ai-ink: oklch(0.93 0.03 110);
@@ -218,11 +218,6 @@
 }
 .inkest-prose li {
   margin-top: 0.35em;
-}
-.inkest-prose li > input[type="checkbox"] {
-  margin-inline-end: 0.5em;
-  vertical-align: middle;
-  cursor: pointer;
 }
 .inkest-prose blockquote {
   border-inline-start: 3px solid var(--border);
@@ -361,6 +356,144 @@
     rgb(255 255 255 / 0.1),
     transparent
   );
+}
+
+/* Super focus reading mode — per-block spotlight dimming */
+.super-focus-block {
+  transition:
+    opacity 0.25s ease,
+    filter 0.25s ease;
+}
+.super-focus-block[data-tier="0"] {
+  opacity: 1;
+  filter: none;
+}
+.super-focus-block[data-tier="1"] {
+  opacity: 0.45;
+  filter: blur(0.3px);
+}
+.super-focus-block[data-tier="2"] {
+  opacity: 0.16;
+  filter: blur(0.5px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .super-focus-block {
+    transition: none;
+  }
+}
+
+/* Text-to-speech — currently spoken sentence, via CSS Custom Highlight API */
+::highlight(tts-active-sentence) {
+  background-color: oklch(0.85 0.15 90 / 35%);
+  color: oklch(0.98 0 0);
+}
+
+/* Micro-animations — interaction-only, all gated on prefers-reduced-motion */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.save-indicator {
+  animation: pop-in 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+@keyframes sparkle-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.88);
+  }
+}
+.ai-sparkle-pulse {
+  animation: sparkle-pulse 1.1s ease-in-out infinite;
+}
+.sidebar-chevron {
+  transition: transform 0.2s ease;
+}
+.sidebar-chevron-collapsed {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .save-indicator,
+  .ai-sparkle-pulse {
+    animation: none;
+  }
+  .sidebar-chevron {
+    transition: none;
+  }
+}
+
+/* Task-list checkboxes — checkmark draws in on check */
+.inkest-prose li > input[type="checkbox"] {
+  appearance: none;
+  width: 1.05em;
+  height: 1.05em;
+  margin-inline-end: 0.5em;
+  vertical-align: middle;
+  border: 1.5px solid var(--muted-foreground);
+  border-radius: 0.25em;
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+.inkest-prose li > input[type="checkbox"]::before {
+  content: "";
+  width: 0.65em;
+  height: 0.65em;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  background-color: var(--background);
+  transform: scale(0);
+  transform-origin: center;
+  transition: transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.inkest-prose li > input[type="checkbox"]:checked {
+  background-color: var(--foreground);
+  border-color: var(--foreground);
+}
+.inkest-prose li > input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .inkest-prose li > input[type="checkbox"]::before {
+    transition: none;
+  }
+}
+
+/* Notes tree — enter animation for newly mounted rows */
+@media not (prefers-reduced-motion: reduce) {
+  .notes-tree-row {
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+    @starting-style {
+      opacity: 0;
+      transform: translateY(-2px);
+    }
+  }
+}
+
+/* Same-document view transitions, browsers that support it opt in for free */
+@view-transition {
+  navigation: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }
 
 /* Marketing — spotlight hero */

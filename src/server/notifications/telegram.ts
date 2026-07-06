@@ -1,3 +1,7 @@
+import { getCurrentUser } from "@/server/auth";
+import { getUserSettings } from "@/server/users/settings-service";
+import { getTelegramChatIdForUser } from "@/server/notifications/telegram-link";
+
 const TELEGRAM_API_BASE_URL = "https://api.telegram.org";
 const TELEGRAM_MESSAGE_LIMIT = 4096;
 const TELEGRAM_SAFE_MESSAGE_LIMIT = 3900;
@@ -9,12 +13,12 @@ type TelegramNotification = {
   metadata?: Record<string, string | null | undefined>;
 };
 
-function telegramConfig() {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
-  const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
+type TelegramResult =
+  | { ok: true }
+  | { ok: false; error: string; notConfigured?: boolean };
 
-  if (!botToken || !chatId) return null;
-  return { botToken, chatId };
+export function telegramBotToken(): string | null {
+  return process.env.TELEGRAM_BOT_TOKEN?.trim() || null;
 }
 
 function truncateForTelegram(message: string) {
@@ -38,32 +42,23 @@ function formatNotification(notification: TelegramNotification) {
   );
 }
 
-export async function sendTelegramNotification(
-  notification: TelegramNotification,
-): Promise<{ ok: true } | { ok: false; error: string; notConfigured?: boolean }> {
-  const config = telegramConfig();
-  if (!config) {
-    return {
-      ok: false,
-      error: "Telegram notifications are not configured.",
-      notConfigured: true,
-    };
-  }
-
+/** Low-level send, usable both for configured-user notifications and the webhook's replies. */
+export async function sendRawTelegramMessage(
+  botToken: string,
+  chatId: string,
+  text: string,
+): Promise<TelegramResult> {
   try {
-    const response = await fetch(
-      `${TELEGRAM_API_BASE_URL}/bot${config.botToken}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(TELEGRAM_REQUEST_TIMEOUT_MS),
-        body: JSON.stringify({
-          chat_id: config.chatId,
-          text: formatNotification(notification),
-          disable_web_page_preview: true,
-        }),
-      },
-    );
+    const response = await fetch(`${TELEGRAM_API_BASE_URL}/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(TELEGRAM_REQUEST_TIMEOUT_MS),
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        disable_web_page_preview: true,
+      }),
+    });
 
     if (!response.ok) {
       const detail = await response.text();
@@ -85,6 +80,36 @@ export async function sendTelegramNotification(
   }
 }
 
+/**
+ * Sends to an explicit chatId when given (a linked per-user chat); otherwise falls back to the
+ * server-wide TELEGRAM_CHAT_ID env var, which keeps single-user self-host deployments working
+ * without linking an account.
+ */
+export async function sendTelegramNotification(
+  notification: TelegramNotification,
+  opts?: { chatId?: string | null },
+): Promise<TelegramResult> {
+  const botToken = telegramBotToken();
+  if (!botToken) {
+    return {
+      ok: false,
+      error: "Telegram notifications are not configured.",
+      notConfigured: true,
+    };
+  }
+
+  const chatId = opts?.chatId ?? process.env.TELEGRAM_CHAT_ID?.trim();
+  if (!chatId) {
+    return {
+      ok: false,
+      error: "No Telegram chat is linked or configured.",
+      notConfigured: true,
+    };
+  }
+
+  return sendRawTelegramMessage(botToken, chatId, formatNotification(notification));
+}
+
 export async function notifyAiActionResult(args: {
   action: string;
   noteTitle: string;
@@ -92,16 +117,26 @@ export async function notifyAiActionResult(args: {
   model?: string;
   provider?: string;
 }) {
-  const result = await sendTelegramNotification({
-    title: "Inkest AI decision output",
-    body: args.output,
-    metadata: {
-      Action: args.action,
-      Note: args.noteTitle,
-      Provider: args.provider,
-      Model: args.model,
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  const settings = await getUserSettings();
+  if (settings.notifications?.aiResults === false) return;
+
+  const chatId = await getTelegramChatIdForUser(user.id);
+  const result = await sendTelegramNotification(
+    {
+      title: "Inkest AI decision output",
+      body: args.output,
+      metadata: {
+        Action: args.action,
+        Note: args.noteTitle,
+        Provider: args.provider,
+        Model: args.model,
+      },
     },
-  });
+    { chatId },
+  );
 
   if (!result.ok && !result.notConfigured) {
     console.warn("[telegram] failed to send AI action result:", result.error);

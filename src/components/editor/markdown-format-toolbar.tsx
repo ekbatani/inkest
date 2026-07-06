@@ -36,7 +36,7 @@ import {
 import {
   applyMarkdownFormat,
   type MarkdownFormat,
-} from "@/components/editor/markdown-editor";
+} from "@/components/editor/markdown-editor-utils";
 import { cn } from "@/lib/utils";
 
 type Props = {

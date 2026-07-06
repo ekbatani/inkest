@@ -82,7 +82,11 @@ export async function updateTask(
   if (parsed.description !== undefined) updates.description = parsed.description ?? null;
   if (parsed.status !== undefined) updates.status = parsed.status;
   if (parsed.priority !== undefined) updates.priority = parsed.priority;
-  if (parsed.dueDate !== undefined) updates.dueDate = parsed.dueDate ?? null;
+  if (parsed.dueDate !== undefined) {
+    updates.dueDate = parsed.dueDate ?? null;
+    // Rescheduling should re-arm the Telegram due-date reminder.
+    updates.dueReminderSentAt = null;
+  }
 
   await db
     .update(schema.tasks)

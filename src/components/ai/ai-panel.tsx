@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Sparkles,
   Loader2,
@@ -40,15 +42,22 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import {
   getSelectedEditorText,
   insertTextAtCursor,
   replaceEntireEditorContent,
-} from "@/components/editor/markdown-editor";
+} from "@/components/editor/markdown-editor-utils";
 import { AiBadge, AiIcon } from "@/components/ai/ai-badge";
 import { createTaskAction } from "@/server/tasks/actions";
+import { cn } from "@/lib/utils";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
+
+// Dynamically imported so the react-markdown preview stack only loads once an AI
+// result is actually rendered, instead of bundling with every editor toolbar.
+const MarkdownPreview = dynamic(
+  () => import("@/components/markdown/markdown-preview").then((m) => m.MarkdownPreview),
+  { ssr: false },
+);
 
 type Props = {
   noteId: string;
@@ -71,7 +80,7 @@ type AiState =
   | { status: "loading"; label: string }
   | { status: "result"; output: string; action: ActionId }
   | { status: "tasks"; tasks: ExtractedTask[] }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string; notConfigured?: boolean };
 
 type ExtractedTask = {
   title: string;
@@ -115,6 +124,7 @@ export function AiPanel({ noteId, editorRef }: Props) {
         setState({
           status: "error",
           message: data?.error ?? "AI request failed.",
+          notConfigured: res.status === 503,
         });
         return;
       }
@@ -156,6 +166,16 @@ export function AiPanel({ noteId, editorRef }: Props) {
     }
     void runAction(action, sel ? { selectedText: sel } : {});
   };
+
+  React.useEffect(() => {
+    const onAskAi = (event: Event) => {
+      const detail = (event as CustomEvent<{ noteId: string }>).detail;
+      if (detail?.noteId !== noteId) return;
+      onPickAction("summarize");
+    };
+    window.addEventListener("inkest:ask-ai", onAskAi);
+    return () => window.removeEventListener("inkest:ask-ai", onAskAi);
+  });
 
   const submitPromptDialog = () => {
     if (!promptDialog) return;
@@ -249,7 +269,12 @@ export function AiPanel({ noteId, editorRef }: Props) {
             />
           }
         >
-          <Sparkles className="size-4 text-violet-400" />
+          <Sparkles
+            className={cn(
+              "size-4 text-violet-400",
+              state.status === "loading" && "ai-sparkle-pulse",
+            )}
+          />
           <span className="hidden sm:inline text-violet-400">AI</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">
@@ -378,6 +403,15 @@ export function AiPanel({ noteId, editorRef }: Props) {
                 <DialogDescription>{state.message}</DialogDescription>
               </DialogHeader>
               <div className="flex justify-end gap-2">
+                {state.notConfigured && (
+                  <Button
+                    size="sm"
+                    nativeButton={false}
+                    render={<Link href="/help#ai" />}
+                  >
+                    Set it up →
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={close}>
                   <X className="size-4" /> Close
                 </Button>

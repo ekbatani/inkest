@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SIDEBAR_DEFAULT_WIDTH = 240;
@@ -106,7 +107,7 @@ export function SidebarToggleWrapper({
   );
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden">
+    <div className="relative flex h-dvh w-full overflow-hidden">
       <aside
         className={cn(
           "relative hidden shrink-0 border-r bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:block",
@@ -128,6 +129,21 @@ export function SidebarToggleWrapper({
           </div>
         ) : null}
       </aside>
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        aria-pressed={!collapsed}
+        className="absolute top-1/2 z-20 hidden size-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-[left] duration-200 hover:bg-muted hover:text-foreground md:flex"
+        style={{ left: collapsed ? 0 : sidebarWidth }}
+      >
+        <ChevronLeft
+          className={cn(
+            "sidebar-chevron size-3",
+            collapsed && "sidebar-chevron-collapsed",
+          )}
+        />
+      </button>
       <div className="flex min-w-0 flex-1 flex-col">{children}</div>
     </div>
   );

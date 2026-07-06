@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { Search, FileText, Loader2 } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { Search, FileText, Loader2, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,10 @@ type Props = {
 
 export function CommandMenu({ open, onOpenChange }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const noteMatch = pathname?.match(/^\/notes\/([^/]+)$/);
+  const currentNoteId =
+    noteMatch && noteMatch[1] !== "new" ? noteMatch[1] : undefined;
   const [query, setQuery] = React.useState("");
   const [recent, setRecent] = React.useState<NoteSearchHit[]>([]);
   const [results, setResults] = React.useState<NoteSearchHit[]>([]);
@@ -192,6 +196,21 @@ export function CommandMenu({ open, onOpenChange }: Props) {
                   ))}
                 </CommandGroup>
                 <CommandGroup heading="Actions">
+                  {currentNoteId && (
+                    <CommandItem
+                      value="ask ai summarize explain note"
+                      onSelect={() => {
+                        const noteId = currentNoteId;
+                        handleOpenChange(false);
+                        window.dispatchEvent(
+                          new CustomEvent("inkest:ask-ai", { detail: { noteId } }),
+                        );
+                      }}
+                    >
+                      <Sparkles className="size-4" />
+                      <span>Ask AI…</span>
+                    </CommandItem>
+                  )}
                   <CommandItem
                     value="new note create"
                     onSelect={() => go("/notes/new")}

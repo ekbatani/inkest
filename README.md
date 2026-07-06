@@ -106,8 +106,14 @@ docker run -p 3000:3000 \
 | `OPENROUTER_API_KEY` | No | -- | OpenRouter API key when `AI_PROVIDER=openrouter` |
 | `OPENROUTER_BASE_URL` | No | `https://openrouter.ai/api/v1` | OpenRouter API endpoint |
 | `OPENROUTER_MODEL` | No | `openai/gpt-4o-mini` | OpenRouter model slug |
-| `TELEGRAM_BOT_TOKEN` | No | -- | Telegram bot token used to send successful AI action results |
-| `TELEGRAM_CHAT_ID` | No | -- | Telegram channel/chat ID or `@channelusername` that receives AI action results |
+| `OPENCODE_API_KEY` | No | -- | opencode Zen API key when `AI_PROVIDER=opencode` |
+| `OPENCODE_BASE_URL` | No | `https://opencode.ai/zen/v1` | opencode Zen endpoint |
+| `OPENCODE_MODEL` | No | `deepseek-v4-flash-free` | opencode Zen model id |
+| `OLLAMA_BASE_URL` | No | `http://localhost:11434/v1` | Local Ollama endpoint when `AI_PROVIDER=ollama` |
+| `OLLAMA_MODEL` | No | `llama3.2` | Ollama model tag |
+| `TELEGRAM_BOT_TOKEN` | No | -- | Telegram bot token, shared by all users on this instance |
+| `TELEGRAM_CHAT_ID` | No | -- | Fallback chat ID for AI action results when no user has linked Telegram (single-user self-host) |
+| `TELEGRAM_WEBHOOK_SECRET` | No | -- | Shared secret checked against Telegram's `secret_token` on `/api/telegram/webhook`, so set it if your instance has a public URL |
 | `GOOGLE_OAUTH_CLIENT_ID` | No | -- | Google OAuth client ID used for Calendar sync |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | No | -- | Google OAuth client secret used for Calendar sync |
 | `ATTACHMENT_STORAGE_DRIVER` | No | `local` | Attachment backend: `local` or `minio` |
