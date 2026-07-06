@@ -534,7 +534,7 @@ export function NoteEditor({
   }, [pasteToPreview]);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {!isFocus && (
         <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3 sm:px-4">
           <Button

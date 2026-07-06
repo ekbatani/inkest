@@ -9,7 +9,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarToggleWrapper sidebar={<Sidebar notesTree={notesTree} />}>
       <Topbar />
-      <main className="flex-1 overflow-y-auto">{children}</main>
+      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
     </SidebarToggleWrapper>
   );
 }
