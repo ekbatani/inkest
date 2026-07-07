@@ -1,4 +1,4 @@
-CREATE TABLE `google_calendar_connections` (
+CREATE TABLE IF NOT EXISTS `google_calendar_connections` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
 	`workspace_id` text NOT NULL,
@@ -16,8 +16,8 @@ CREATE TABLE `google_calendar_connections` (
 	FOREIGN KEY (`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `google_calendar_connections_user_id_unique` ON `google_calendar_connections` (`user_id`);--> statement-breakpoint
-CREATE TABLE `google_calendar_events` (
+CREATE UNIQUE INDEX IF NOT EXISTS `google_calendar_connections_user_id_unique` ON `google_calendar_connections` (`user_id`);--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS `google_calendar_events` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
 	`workspace_id` text NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE `google_calendar_events` (
 	FOREIGN KEY (`connection_id`) REFERENCES `google_calendar_connections`(`id`) ON UPDATE no action ON DELETE set null
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `google_calendar_events_external_key_unique` ON `google_calendar_events` (`external_key`);--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS `google_calendar_events_external_key_unique` ON `google_calendar_events` (`external_key`);--> statement-breakpoint
 ALTER TABLE `tasks` ADD `due_reminder_sent_at` integer;--> statement-breakpoint
 ALTER TABLE `users` ADD `telegram_chat_id` text;--> statement-breakpoint
 ALTER TABLE `users` ADD `telegram_link_code` text;--> statement-breakpoint

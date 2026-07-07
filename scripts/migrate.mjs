@@ -30,7 +30,17 @@ async function getLastMigrationCreatedAt() {
 }
 
 function isAlreadyAppliedError(error) {
-  const message = error?.message ?? "";
+  const messages = [];
+  let current = error;
+
+  while (current) {
+    if (current.message) {
+      messages.push(current.message);
+    }
+    current = current.cause;
+  }
+
+  const message = messages.join("\n");
   return /already exists|duplicate column name/i.test(message);
 }
 
@@ -72,6 +82,9 @@ async function runMigrations() {
   }
 }
 
-await runMigrations();
-console.log("Migrations applied.");
-client.close();
+try {
+  await runMigrations();
+  console.log("Migrations applied.");
+} finally {
+  client.close();
+}
