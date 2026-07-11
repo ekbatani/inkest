@@ -81,9 +81,9 @@
   --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
   --sidebar-border: oklch(0.925 0.005 214.3);
   --sidebar-ring: oklch(0.723 0.014 214.4);
-  --ai-start: oklch(0.78 0.14 192);
-  --ai-end: oklch(0.83 0.13 96);
-  --ai-ink: oklch(0.31 0.07 220);
+  --ai-start: oklch(0.66 0.16 262);
+  --ai-end: oklch(0.64 0.19 292);
+  --ai-ink: oklch(0.36 0.11 278);
   --ai-border: color-mix(in oklch, var(--ai-start) 55%, white 45%);
   --ai-surface: color-mix(in oklch, var(--ai-start) 10%, white 90%);
   --font-rtl: "Vazir", var(--font-rtl-fallback), Tahoma, sans-serif;
@@ -123,9 +123,9 @@
   --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.56 0.021 213.5);
-  --ai-start: oklch(0.71 0.11 194);
-  --ai-end: oklch(0.76 0.1 96);
-  --ai-ink: oklch(0.93 0.03 110);
+  --ai-start: oklch(0.7 0.15 262);
+  --ai-end: oklch(0.72 0.16 292);
+  --ai-ink: oklch(0.9 0.06 285);
   --ai-border: color-mix(in oklch, var(--ai-start) 55%, black 45%);
   --ai-surface: color-mix(in oklch, var(--ai-start) 16%, black 84%);
 }
@@ -523,7 +523,28 @@
     color-mix(in oklch, var(--ai-end) 12%, transparent) 38%,
     transparent 68%
   );
+  /* Fade the glow out before the section boundary so the spotlight never
+     produces a hard clipped edge against the divider below. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 97%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 97%);
   transition: background-color 0.3s ease-out;
+}
+/* Soft seam: a hairline that fades to nothing at both ends instead of a hard
+   full-width border, so the hero melts into the section below. */
+.spotlight-hero::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in oklch, var(--border) 85%, transparent) 22%,
+    color-mix(in oklch, var(--border) 85%, transparent) 78%,
+    transparent
+  );
 }
 .spotlight-hero--auto .spotlight-hero__glow {
   animation: spotlight-pan 16s ease-in-out infinite;
@@ -595,6 +616,179 @@
   .marketing-fade-in {
     animation: none !important;
   }
+}
+
+/* Marketing — scroll reveal (progressive enhancement, no JS, motion-safe) */
+.reveal {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      opacity: 0;
+      animation: marketing-reveal-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 2% cover 22%;
+    }
+  }
+}
+@keyframes marketing-reveal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Marketing — bento cells: lift + soft AI glow on hover/focus */
+.bento-cell {
+  position: relative;
+  isolation: isolate;
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+.bento-cell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  background: radial-gradient(
+    120% 90% at 50% 0%,
+    color-mix(in oklch, var(--ai-start) 16%, transparent),
+    transparent 62%
+  );
+}
+.bento-cell:hover,
+.bento-cell:focus-within {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklch, var(--ai-start) 42%, var(--border));
+  box-shadow: 0 18px 44px -22px color-mix(in oklch, var(--ai-start) 70%, transparent);
+}
+.bento-cell:hover::after,
+.bento-cell:focus-within::after {
+  opacity: 1;
+}
+.bento-cell .bento-icon {
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1),
+    box-shadow 0.3s ease;
+}
+.bento-cell:hover .bento-icon {
+  transform: rotate(-6deg) scale(1.06);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bento-cell,
+  .bento-cell .bento-icon {
+    transition: none;
+  }
+  .bento-cell:hover,
+  .bento-cell:focus-within {
+    transform: none;
+  }
+  .bento-cell:hover .bento-icon {
+    transform: none;
+  }
+}
+
+/* Marketing — closing CTA panel with drifting aurora + fine grid */
+.cta-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      120% 130% at 0% 0%,
+      color-mix(in oklch, var(--ai-start) 26%, transparent),
+      transparent 52%
+    ),
+    radial-gradient(
+      120% 130% at 100% 100%,
+      color-mix(in oklch, var(--ai-end) 24%, transparent),
+      transparent 52%
+    ),
+    var(--card);
+}
+.cta-panel__grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(80% 80% at 50% 30%, black, transparent 78%);
+}
+.cta-panel__aurora {
+  position: absolute;
+  inset: -40%;
+  pointer-events: none;
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    color-mix(in oklch, var(--ai-start) 30%, transparent),
+    transparent 25%,
+    color-mix(in oklch, var(--ai-end) 30%, transparent) 55%,
+    transparent 75%,
+    color-mix(in oklch, var(--ai-start) 30%, transparent)
+  );
+  filter: blur(46px);
+  opacity: 0.35;
+  animation: cta-aurora-spin 22s linear infinite;
+}
+@keyframes cta-aurora-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cta-panel__aurora {
+    animation: none;
+  }
+}
+
+/* Marketing — sheen sweep for primary CTA buttons */
+.btn-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.btn-sheen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline-start: -140%;
+  width: 60%;
+  height: 100%;
+  transform: skewX(-18deg);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, white 40%, transparent),
+    transparent
+  );
+  transition: inset-inline-start 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.btn-sheen:hover::after {
+  inset-inline-start: 160%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-sheen::after {
+    transition: none;
+  }
+}
+
+/* Marketing — testimonial avatar ring */
+.avatar-ring {
+  background: linear-gradient(135deg, var(--ai-start), var(--ai-end));
+  color: oklch(0.22 0.04 230);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45);
 }
 
 @layer components {

@@ -18,6 +18,9 @@ export function MarketingNav() {
           <Link href="#features" className="transition-colors hover:text-foreground">
             Features
           </Link>
+          <Link href="#testimonials" className="transition-colors hover:text-foreground">
+            Testimonials
+          </Link>
           <Link href="#self-host" className="transition-colors hover:text-foreground">
             Self-host
           </Link>

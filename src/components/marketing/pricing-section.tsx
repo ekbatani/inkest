@@ -38,7 +38,7 @@ const PLANS = [
 export function PricingSection() {
   return (
     <section id="pricing" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-      <div className="mx-auto mb-12 max-w-2xl text-center">
+      <div className="reveal mx-auto mb-12 max-w-2xl text-center">
         <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           Free to self-host. Simple to scale.
         </h2>
@@ -47,12 +47,12 @@ export function PricingSection() {
         </p>
       </div>
 
-      <div className="mx-auto grid max-w-3xl grid-cols-1 gap-5 sm:grid-cols-2">
+      <div className="reveal mx-auto grid max-w-3xl grid-cols-1 gap-5 sm:grid-cols-2">
         {PLANS.map((plan) => (
           <div
             key={plan.name}
             className={cn(
-              "surface-card flex flex-col p-6",
+              "bento-cell surface-card flex flex-col p-6",
               plan.highlighted && "border-foreground/30 shadow-sm",
             )}
           >

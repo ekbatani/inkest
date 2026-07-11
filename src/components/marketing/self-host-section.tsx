@@ -10,7 +10,7 @@ const DOCKER_COMMAND = `docker run -d \\
 export function SelfHostSection() {
   return (
     <section id="self-host" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
-      <div className="surface-card grid grid-cols-1 gap-8 overflow-hidden p-8 sm:p-10 lg:grid-cols-2 lg:items-center">
+      <div className="reveal bento-cell surface-card grid grid-cols-1 gap-8 overflow-hidden p-8 sm:p-10 lg:grid-cols-2 lg:items-center">
         <div>
           <span className="ai-badge">Open source</span>
           <h2 className="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">
