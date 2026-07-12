@@ -1,50 +1,37 @@
 import Link from "next/link";
-import { Feather } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowUpRight } from "lucide-react";
+import { LogoMark } from "@/components/brand/logo-mark";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
+
+const LINKS = [
+  ["Product", "#product"],
+  ["Philosophy", "#workflow"],
+  ["Open source", "#open-source"],
+  ["Pricing", "#pricing"],
+] as const;
 
 export function MarketingNav() {
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="flex size-7 items-center justify-center rounded-md bg-foreground text-background">
-            <Feather className="size-4" />
-          </span>
-          Inkest
+    <header className="marketing-nav">
+      <div className="mx-auto flex h-[4.5rem] max-w-[90rem] items-center justify-between px-5 sm:px-8 lg:px-12 xl:px-16">
+        <Link href="/" className="marketing-logo" aria-label="Inkest home">
+          <LogoMark className="size-8" />
+          <span>Inkest</span>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
-          <Link href="#features" className="transition-colors hover:text-foreground">
-            Features
-          </Link>
-          <Link href="#testimonials" className="transition-colors hover:text-foreground">
-            Testimonials
-          </Link>
-          <Link href="#self-host" className="transition-colors hover:text-foreground">
-            Self-host
-          </Link>
-          <Link href="#pricing" className="transition-colors hover:text-foreground">
-            Pricing
-          </Link>
-          <a
-            href="https://github.com/ekbatani/inkest"
-            target="_blank"
-            rel="noreferrer"
-            className="transition-colors hover:text-foreground"
-          >
-            GitHub
-          </a>
+        <nav className="hidden items-center gap-8 lg:flex" aria-label="Main navigation">
+          {LINKS.map(([label, href]) => (
+            <a key={href} href={href} className="marketing-nav-link">{label}</a>
+          ))}
         </nav>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-2">
           <ThemeToggle />
-          <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/signin" />}>
-            Sign in
-          </Button>
-          <Button size="sm" nativeButton={false} render={<Link href="/signup" />}>
-            Start writing
-          </Button>
+          <Link href="/signin" className="marketing-signin">Sign in</Link>
+          <Link href="/signup" className="marketing-nav-cta">
+            Get started
+            <ArrowUpRight className="size-3.5" aria-hidden="true" />
+          </Link>
         </div>
       </div>
     </header>

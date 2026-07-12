@@ -1,143 +1,83 @@
-import type { ComponentType } from "react";
 import {
-  FileText,
+  ArrowUpRight,
+  BrainCircuit,
   CalendarDays,
-  Tag,
-  Languages,
-  Server,
-  Workflow,
-  Mic,
+  CheckCircle2,
+  FileText,
+  FolderKanban,
+  Link2,
   Sparkles,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-type Feature = {
-  icon: ComponentType<{ className?: string }>;
-  title: string;
-  description: string;
-  /** Grid span classes for the bento layout. */
-  span?: string;
-  /** Highlighted, AI-tinted cell. */
-  featured?: boolean;
-};
-
-const FEATURES: Feature[] = [
-  {
-    icon: Sparkles,
-    title: "AI actions, built in — not bolted on",
-    description:
-      "Summarize, improve writing, extract tasks, or translate — right where you're writing. Bring your own key; nothing leaves without you asking.",
-    span: "sm:col-span-2 lg:row-span-2",
-    featured: true,
-  },
-  {
-    icon: FileText,
-    title: "Markdown-native",
-    description:
-      "Every note is plain Markdown with GFM tables, task lists, and Mermaid diagrams. Yours to export, forever.",
-    span: "sm:col-span-2",
-  },
-  {
-    icon: Workflow,
-    title: "Projects & tasks",
-    description: "A kanban board with due dates and priorities, right beside your notes.",
-  },
-  {
-    icon: CalendarDays,
-    title: "Daily notes",
-    description: "One note per day, with optional two-way Google Calendar sync.",
-  },
-  {
-    icon: Mic,
-    title: "Speech to text",
-    description: "Dictate in the browser. No server key, no extra cost.",
-  },
-  {
-    icon: Tag,
-    title: "Tags & hierarchy",
-    description: "Color-coded tags with OR filtering and a nested note tree.",
-  },
-  {
-    icon: Languages,
-    title: "RTL support",
-    description: "Per-note direction — first-class, never an afterthought.",
-  },
-  {
-    icon: Server,
-    title: "Self-hosted or cloud",
-    description: "Own your data with Docker, or let us run it. Same core either way.",
-  },
-];
-
-const AI_CHIPS = ["Summarize", "Improve writing", "Extract tasks", "Translate"];
 
 export function BentoFeatures() {
   return (
-    <section id="features" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
-      <div className="reveal mx-auto mb-12 max-w-2xl text-center">
-        <span className="ai-badge">Everything, deliberately minimal</span>
-        <h2 className="mt-5 text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
-          Everything you need. Nothing you don&apos;t.
-        </h2>
-        <p className="mt-3 text-muted-foreground text-pretty">
-          A calm writing surface with AI exactly where it helps — and out of the way
-          everywhere else.
-        </p>
-      </div>
+    <section id="product" className="marketing-section">
+      <div className="marketing-feature-grid">
+        <article className="feature-card feature-card--write reveal">
+          <div className="feature-card-copy">
+            <span className="feature-number">01</span>
+            <p className="marketing-eyebrow">Write without friction</p>
+            <h3>Markdown that feels like a blank page—not a syntax lesson.</h3>
+            <p>Rich formatting, wiki links, diagrams, attachments, RTL writing, and full export freedom.</p>
+          </div>
+          <div className="writing-demo" aria-hidden="true">
+            <div className="writing-demo-toolbar"><b>B</b><i>I</i><span>H1</span><Link2 /><Sparkles /></div>
+            <div className="writing-demo-page">
+              <small>IDEA / 12 JULY</small>
+              <strong>A slower kind of ambition</strong>
+              <span className="writing-line writing-line--long" />
+              <span className="writing-line" />
+              <mark>Make enough room for the work to surprise you.</mark>
+            </div>
+          </div>
+        </article>
 
-      <div className="reveal grid grid-cols-1 gap-4 sm:grid-cols-2 lg:auto-rows-[minmax(11rem,auto)] lg:grid-cols-4">
-        {FEATURES.map((feature) => (
-          <article
-            key={feature.title}
-            className={cn(
-              "bento-cell surface-card group flex flex-col p-5 sm:p-6",
-              feature.featured &&
-                "border-[var(--ai-border)] bg-[color-mix(in_oklch,var(--ai-surface)_60%,var(--card))]",
-              feature.span,
-            )}
-          >
-            <span
-              className={cn(
-                "bento-icon mb-4 inline-flex size-9 items-center justify-center rounded-xl",
-                feature.featured
-                  ? "ai-badge__icon"
-                  : "border border-border/70 bg-muted/50 text-foreground",
-              )}
-            >
-              <feature.icon className="size-4" />
-            </span>
+        <article className="feature-card feature-card--brain reveal">
+          <span className="feature-number">02</span>
+          <p className="marketing-eyebrow">Connect your digital brain</p>
+          <h3>Ideas become more useful when they find each other.</h3>
+          <p>Link notes, build nested spaces, add tags, and find any thought in seconds.</p>
+          <div className="brain-map" aria-hidden="true">
+            <span className="brain-node brain-node--center"><BrainCircuit /></span>
+            <span className="brain-node brain-node--a"><FileText /></span>
+            <span className="brain-node brain-node--b"><CalendarDays /></span>
+            <span className="brain-node brain-node--c"><FolderKanban /></span>
+            <svg viewBox="0 0 300 180"><path d="M150 90 66 38M150 90 244 42M150 90 236 145M150 90 66 145" /></svg>
+          </div>
+        </article>
 
-            <h3
-              className={cn(
-                "font-semibold tracking-tight",
-                feature.featured ? "text-lg" : "text-sm",
-              )}
-            >
-              {feature.title}
-            </h3>
-            <p
-              className={cn(
-                "mt-1.5 text-muted-foreground",
-                feature.featured ? "text-sm sm:text-base" : "text-sm",
-              )}
-            >
-              {feature.description}
-            </p>
+        <article className="feature-card feature-card--ai reveal">
+          <span className="feature-number">03</span>
+          <p className="marketing-eyebrow">AI in the margins</p>
+          <h3>Help that appears in context—and leaves when it&apos;s done.</h3>
+          <p>Improve a paragraph, summarize a note, translate a passage, or turn a brainstorm into tasks.</p>
+          <div className="ai-prompt-demo" aria-hidden="true">
+            <span className="ai-orbit"><Sparkles /></span>
+            <div><small>INKest AI</small><strong>Turn this into a clear project plan</strong></div>
+            <ArrowUpRight />
+          </div>
+        </article>
 
-            {feature.featured && (
-              <div className="mt-auto flex flex-wrap gap-2 pt-6" aria-hidden="true">
-                {AI_CHIPS.map((chip) => (
-                  <span
-                    key={chip}
-                    className="rounded-full border border-[var(--ai-border)] bg-[var(--ai-surface)] px-2.5 py-1 text-xs font-medium text-[var(--ai-ink)]"
-                  >
-                    {chip}
-                  </span>
-                ))}
+        <article className="feature-card feature-card--plan reveal">
+          <div className="feature-card-copy">
+            <span className="feature-number">04</span>
+            <p className="marketing-eyebrow">Turn thought into progress</p>
+            <h3>Your notes and projects finally speak the same language.</h3>
+            <p>Shape an idea, extract the work, and track it across a focused project board.</p>
+          </div>
+          <div className="kanban-demo" aria-hidden="true">
+            {[
+              ["TO DO", "Write the brief", "Shape the visual system"],
+              ["IN PROGRESS", "Prototype the new flow"],
+              ["DONE", "Collect research", "Define the goal"],
+            ].map(([title, ...cards]) => (
+              <div key={title} className="kanban-column">
+                <small>{title}</small>
+                {cards.map((card) => <span key={card}><CheckCircle2 />{card}</span>)}
               </div>
-            )}
-          </article>
-        ))}
+            ))}
+          </div>
+        </article>
       </div>
     </section>
   );

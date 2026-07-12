@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowUpRight, Check, GitFork, Play } from "lucide-react";
 import { getCurrentUser } from "@/server/auth";
-import { Button } from "@/components/ui/button";
 import { SpotlightHero } from "@/components/marketing/spotlight-hero";
 import { AiShowcase } from "@/components/marketing/ai-showcase";
 import { BentoFeatures } from "@/components/marketing/bento-features";
@@ -15,29 +14,29 @@ import { CtaSection } from "@/components/marketing/cta-section";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export const metadata: Metadata = {
-  title: "Inkest — a calm, Markdown-first workspace with AI built in",
+  title: "Inkest — Markdown notes, AI writing & project planning",
   description:
-    "Inkest is a fast, minimal, Markdown-first workspace for notes, projects, and tasks — with AI actions built in, not bolted on. Self-host it free, or let us run it.",
+    "Build your private digital brain with Markdown notes, daily journaling, AI writing tools, projects and tasks. Self-host Inkest free or choose managed cloud.",
   keywords: [
-    "markdown notes app",
-    "AI note taking",
-    "self-hosted notes",
-    "personal knowledge base",
-    "markdown editor",
-    "projects and tasks",
+    "Markdown notes app",
+    "AI writing workspace",
+    "self-hosted knowledge base",
+    "personal digital brain",
+    "private journal app",
     "open source notes",
+    "project management notes",
+    "second brain app",
   ],
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Inkest — a calm, Markdown-first workspace with AI built in",
+    title: "Inkest — Your private space to think in Markdown",
     description:
-      "A fast, minimal, Markdown-first workspace for notes, projects, and tasks — with AI actions built in. Self-host free, or let us run it.",
+      "Notes, daily journaling, AI writing and project planning in one calm, open-source workspace.",
     url: "/",
     type: "website",
   },
 };
 
-// Structured data for rich results — describes the product to search engines.
 const JSON_LD = {
   "@context": "https://schema.org",
   "@graph": [
@@ -48,20 +47,28 @@ const JSON_LD = {
       operatingSystem: "Web, Docker",
       url: APP_URL,
       description:
-        "A calm, fast, Markdown-first personal workspace for notes, projects, and tasks, with AI actions built in. Self-hosted or cloud.",
-      offers: {
-        "@type": "Offer",
-        price: "0",
-        priceCurrency: "USD",
-        description: "Free forever to self-host.",
-      },
+        "An open-source Markdown workspace for notes, daily journaling, projects, tasks and AI-assisted writing.",
+      offers: [
+        {
+          "@type": "Offer",
+          name: "Self-hosted",
+          price: "0",
+          priceCurrency: "USD",
+        },
+        {
+          "@type": "Offer",
+          name: "Inkest Cloud",
+          availability: "https://schema.org/PreOrder",
+          priceCurrency: "USD",
+        },
+      ],
       featureList: [
-        "Markdown-native notes",
-        "AI actions (summarize, improve, extract tasks, translate)",
-        "Projects and tasks with a kanban board",
-        "Daily notes with calendar sync",
-        "Speech to text",
-        "Self-hosted or cloud",
+        "Markdown-native notes and wiki links",
+        "AI-assisted writing and task extraction",
+        "Projects and task management",
+        "Daily notes and journaling",
+        "Private self-hosting with Docker",
+        "Managed cloud option",
       ],
     },
     {
@@ -73,64 +80,96 @@ const JSON_LD = {
   ],
 };
 
+const TRUST_POINTS = ["Markdown native", "Open source", "Your data, always"];
+
 export default async function LandingPage() {
   const user = await getCurrentUser();
   if (user) redirect("/dashboard");
 
   return (
-    <>
+    <div className="marketing-shell">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
       />
 
       <SpotlightHero>
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-12 px-4 py-20 sm:px-6 sm:py-28 lg:flex-row lg:items-center lg:gap-16">
-          <div className="flex-1 text-center lg:text-start">
-            <span className="ai-badge">Markdown-first · AI-assisted</span>
-            <h1 className="mt-5 text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-              A calm place to write, think, and let AI help.
+        <div className="mx-auto grid min-h-[calc(100svh-4.5rem)] max-w-[90rem] items-center gap-14 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[0.88fr_1.12fr] lg:gap-16 lg:px-12 xl:px-16">
+          <div className="hero-copy max-w-2xl">
+            <a className="marketing-kicker" href="#open-source">
+              <span className="marketing-kicker-dot" />
+              Open source, private by design
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
+            </a>
+            <h1 className="marketing-display mt-7 text-[clamp(3.15rem,7vw,6.8rem)] leading-[0.92] tracking-[-0.065em]">
+              Make space
+              <span className="block font-serif italic text-[var(--marketing-accent)]">
+                for thought.
+              </span>
             </h1>
-            <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground text-pretty lg:mx-0">
-              Inkest is a fast, minimal, Markdown-first workspace for notes, projects, and
-              tasks — with AI actions built in, not bolted on. Self-host it for free, or
-              let us run it for you.
+            <p className="mt-7 max-w-xl text-lg leading-8 text-[var(--marketing-muted)] sm:text-xl">
+              A private, Markdown-native home for your notes, diary, projects, and ideas—with
+              thoughtful AI when you want a hand.
             </p>
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
-              <Button
-                size="lg"
-                className="btn-sheen"
-                nativeButton={false}
-                render={<Link href="/signup" />}
-              >
-                Start writing
-                <ArrowRight className="size-4" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                nativeButton={false}
-                render={<Link href="#self-host" />}
-              >
-                Self-host it
-              </Button>
+
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Link className="marketing-button marketing-button--primary" href="/signup">
+                Start your workspace
+                <ArrowUpRight className="size-4" aria-hidden="true" />
+              </Link>
+              <a className="marketing-button marketing-button--ghost" href="#product">
+                <Play className="size-3.5 fill-current" aria-hidden="true" />
+                See how it works
+              </a>
             </div>
-            <p className="mt-5 text-sm text-muted-foreground">
-              Open source · AGPL-3.0 · your data stays yours.
-            </p>
+
+            <ul className="mt-8 flex flex-wrap gap-x-5 gap-y-2" aria-label="Product promises">
+              {TRUST_POINTS.map((point) => (
+                <li key={point} className="flex items-center gap-1.5 text-xs font-medium text-[var(--marketing-muted)]">
+                  <Check className="size-3.5 text-[var(--marketing-accent)]" aria-hidden="true" />
+                  {point}
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <div className="w-full flex-1">
+          <div className="hero-product-stage">
             <AiShowcase />
           </div>
         </div>
+
+        <div className="marketing-marquee" aria-hidden="true">
+          <div className="marketing-marquee-track">
+            {["WRITE", "CONNECT", "PLAN", "REFLECT", "CREATE", "WRITE", "CONNECT", "PLAN", "REFLECT", "CREATE"].map((word, index) => (
+              <span key={`${word}-${index}`}>{word}<i>✦</i></span>
+            ))}
+          </div>
+        </div>
       </SpotlightHero>
+
+      <section className="marketing-intro" aria-labelledby="intro-title">
+        <p className="marketing-eyebrow">One workspace · every kind of thought</p>
+        <h2 id="intro-title" className="marketing-section-title max-w-5xl">
+          Your notes should grow with your thinking—not get in its way.
+        </h2>
+      </section>
 
       <BentoFeatures />
       <TestimonialsSection />
       <SelfHostSection />
       <PricingSection />
       <CtaSection />
-    </>
+
+      <a
+        href="https://github.com/ekbatani/inkest"
+        target="_blank"
+        rel="noreferrer"
+        className="marketing-github-float"
+        aria-label="View Inkest on GitHub"
+      >
+        <GitFork className="size-4" aria-hidden="true" />
+        GitHub
+      </a>
+    </div>
   );
 }
