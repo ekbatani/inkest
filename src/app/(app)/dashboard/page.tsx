@@ -1,6 +1,8 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  CalendarDays,
+  Clock3,
   Pin,
   FolderKanban,
   CheckCircle2,
@@ -30,17 +32,70 @@ export default async function DashboardPage() {
     ["todo", "doing", "paused"].includes(p.status),
   );
   const hasDueTasks = dueTasks.overdue.length > 0 || dueTasks.upcoming.length > 0;
+  const dueTaskCount = dueTasks.overdue.length + dueTasks.upcoming.length;
+  const todayLabel = new Intl.DateTimeFormat("en", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(new Date());
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-5 py-10 sm:px-8 sm:py-14">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Welcome back
-        </h1>
-        <p className="text-muted-foreground">
-          A calm place for your notes, projects, and ideas.
-        </p>
-      </header>
+    <div className="app-page gap-8 sm:gap-10">
+      <section className="dashboard-intro surface-card p-6 sm:p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-xl">
+            <p className="section-label flex items-center gap-2">
+              <span className="size-1.5 rounded-full bg-primary" />
+              {todayLabel}
+            </p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">
+              Make space for what matters.
+            </h1>
+            <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground sm:text-base">
+              Capture a thought, continue a project, or open today&apos;s page—your
+              whole workspace is within reach.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              nativeButton={false}
+              render={<Link href="/daily" />}
+            >
+              <CalendarDays className="size-4" />
+              Open daily
+            </Button>
+            <Button
+              className="rounded-xl shadow-sm"
+              nativeButton={false}
+              render={<Link href="/notes/new" />}
+            >
+              <Plus className="size-4" />
+              New note
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-7 grid grid-cols-3 divide-x divide-border/70 border-t border-border/70 pt-5">
+          <WorkspaceMetric
+            icon={<Pin className="size-3.5" />}
+            value={pinnedNotes.length}
+            label="Pinned"
+          />
+          <WorkspaceMetric
+            icon={<FolderKanban className="size-3.5" />}
+            value={activeProjectsFiltered.length}
+            label="Active projects"
+          />
+          <WorkspaceMetric
+            icon={<Clock3 className="size-3.5" />}
+            value={dueTaskCount}
+            label="Due soon"
+          />
+        </div>
+      </section>
 
       <QuickCapture />
 
@@ -170,6 +225,32 @@ export default async function DashboardPage() {
   );
 }
 
+function WorkspaceMetric({
+  icon,
+  value,
+  label,
+}: {
+  icon: React.ReactNode;
+  value: number;
+  label: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 px-3 first:pl-0 last:pr-0 sm:gap-3 sm:px-5">
+      <span className="hidden size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:flex">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p className="font-mono text-lg font-semibold leading-none tabular-nums">
+          {value}
+        </p>
+        <p className="mt-1 truncate text-[11px] text-muted-foreground sm:text-xs">
+          {label}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function SectionHeader({
   title,
   icon,
@@ -183,7 +264,7 @@ function SectionHeader({
     <div className="mb-3 flex items-center justify-between">
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground">{icon}</span>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="section-label">
           {title}
         </h2>
       </div>
@@ -280,7 +361,7 @@ function TaskDueList({
   return (
     <div className="surface-card flex flex-col gap-3 p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h3 className="section-label">
           {title}
         </h3>
         <Badge variant="secondary" className="text-xs">

@@ -205,7 +205,13 @@ function isDropTargetActive(activeId: string | null, overId: string, over: strin
   return Boolean(activeId) && over === overId;
 }
 
-export function NotesTree({ nodes }: { nodes: NoteTreeNode[] }) {
+export function NotesTree({
+  nodes,
+  onNavigate,
+}: {
+  nodes: NoteTreeNode[];
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const dndContextId = React.useId();
@@ -220,6 +226,8 @@ export function NotesTree({ nodes }: { nodes: NoteTreeNode[] }) {
   }>({ activeId: null, overId: null });
 
   React.useEffect(() => {
+    // Server refreshes replace the canonical tree after optimistic drag updates.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTreeNodes(nodes);
   }, [nodes]);
 
@@ -280,7 +288,7 @@ export function NotesTree({ nodes }: { nodes: NoteTreeNode[] }) {
           Notes Tree
         </span>
         <div className="flex items-center gap-0.5">
-          <form action={createProjectAction}>
+          <form action={createProjectAction} onSubmit={onNavigate}>
             <button
               type="submit"
               className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -292,6 +300,7 @@ export function NotesTree({ nodes }: { nodes: NoteTreeNode[] }) {
           </form>
           <Link
             href="/notes/new"
+            onClick={onNavigate}
             className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="Create note"
             title="Create note"
@@ -348,6 +357,7 @@ export function NotesTree({ nodes }: { nodes: NoteTreeNode[] }) {
                     makeProjectDropId(node.id),
                     dragState.overId,
                   )}
+                  onNavigate={onNavigate}
                 >
                   {hasChildren ? (
                     <button
@@ -391,6 +401,7 @@ export function NotesTree({ nodes }: { nodes: NoteTreeNode[] }) {
                           href={`/notes/${child.id}`}
                           isActive={pathname === `/notes/${child.id}`}
                           icon={FileText}
+                          onNavigate={onNavigate}
                         >
                           <span className="block size-4 shrink-0" />
                         </TreeRow>
@@ -434,6 +445,7 @@ function TreeRow({
   canAcceptChildren = false,
   projectDropId = null,
   projectDropActive = false,
+  onNavigate,
   children,
 }: {
   noteId: string;
@@ -444,6 +456,7 @@ function TreeRow({
   canAcceptChildren?: boolean;
   projectDropId?: string | null;
   projectDropActive?: boolean;
+  onNavigate?: () => void;
   children: React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -471,6 +484,7 @@ function TreeRow({
         {children}
         <Link
           href={href}
+          onClick={onNavigate}
           className={cn(
             "group flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-1 text-sm transition-colors touch-none",
             isActive

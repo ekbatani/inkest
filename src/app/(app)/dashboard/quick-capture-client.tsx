@@ -11,6 +11,12 @@ import { generateQuickCaptureNoteAction, quickCaptureAction } from "./actions";
 
 type PendingAction = "save" | "generate" | null;
 
+const CAPTURE_STARTERS = [
+  "Meeting notes",
+  "Project idea",
+  "Weekly reflection",
+] as const;
+
 export function QuickCaptureClient() {
   const router = useRouter();
   const [text, setText] = React.useState("");
@@ -55,7 +61,7 @@ export function QuickCaptureClient() {
   }
 
   return (
-    <div className="surface-card flex flex-col gap-4 p-4 sm:p-5">
+    <div className="surface-card flex flex-col gap-4 p-4 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -73,7 +79,8 @@ export function QuickCaptureClient() {
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Try: Plan a 5-day vacation in Dubai with budget-friendly ideas..."
-        className="min-h-28 resize-none"
+        aria-label="Quick capture note"
+        className="min-h-32 resize-none rounded-xl border-border/70 bg-background/70 p-4 text-[0.95rem] leading-6 shadow-inner shadow-black/[0.015]"
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
             e.preventDefault();
@@ -85,6 +92,25 @@ export function QuickCaptureClient() {
           }
         }}
       />
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="section-label mr-1">Start with</span>
+        {CAPTURE_STARTERS.map((starter) => (
+          <button
+            key={starter}
+            type="button"
+            onClick={() =>
+              setText((current) =>
+                current.trim() ? `${current.trim()}\n${starter}: ` : `${starter}: `,
+              )
+            }
+            disabled={isPending}
+            className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/20 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+          >
+            {starter}
+          </button>
+        ))}
+      </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-xs text-muted-foreground">

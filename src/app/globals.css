@@ -7,8 +7,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
   --font-serif: var(--font-serif);
   --font-rtl-fallback: var(--font-rtl-fallback);
   --font-heading: var(--font-sans);
@@ -136,6 +136,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "ss01" 1, "cv02" 1, "cv03" 1;
   }
   html {
     @apply font-sans;
@@ -822,16 +823,50 @@
   }
 
   .surface-card {
-    @apply rounded-2xl border border-border/70 bg-card text-card-foreground;
+    @apply rounded-2xl border border-border/70 bg-card/92 text-card-foreground shadow-[0_1px_2px_rgb(0_0_0/0.025),0_12px_36px_rgb(0_0_0/0.025)];
   }
 
   .surface-card-interactive {
-    @apply rounded-2xl border border-border/70 bg-card text-card-foreground transition-colors hover:bg-muted/25;
+    @apply rounded-2xl border border-border/70 bg-card/92 text-card-foreground shadow-[0_1px_2px_rgb(0_0_0/0.025)] transition-[border-color,background-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-card hover:shadow-[0_14px_36px_rgb(0_0_0/0.06)];
   }
 
-.surface-card-dashed {
+  .surface-card-dashed {
     @apply rounded-2xl border border-dashed border-border/70 bg-muted/15 text-card-foreground;
   }
+
+  .app-page {
+    @apply mx-auto flex w-full max-w-5xl flex-col px-5 py-8 sm:px-8 sm:py-10;
+  }
+
+  .section-label {
+    @apply font-mono text-[0.68rem] font-semibold uppercase tracking-[0.13em] text-muted-foreground;
+  }
+}
+
+.app-canvas {
+  background:
+    radial-gradient(circle at 88% -8%, color-mix(in oklch, var(--primary) 7%, transparent), transparent 28rem),
+    radial-gradient(circle at 12% 108%, color-mix(in oklch, var(--ai-end) 5%, transparent), transparent 32rem),
+    var(--background);
+}
+
+.dashboard-intro {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.dashboard-intro::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 18rem;
+  height: 18rem;
+  inset-inline-end: -7rem;
+  inset-block-start: -10rem;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--primary) 8%, transparent);
+  filter: blur(1px);
 }
 
 /* Marketing site — editorial paper, graphite ink, living green. */

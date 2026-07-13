@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Lora, Vazirmatn, Inter } from "next/font/google";
+import { Geist, Geist_Mono, Lora, Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "@/components/providers/session-provider";
@@ -7,10 +7,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 const geistMono = Geist_Mono({
-  variable: "--font-mono",
+  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
@@ -58,9 +62,15 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("h-full", "antialiased", geistMono.variable, lora.variable, vazirmatn.variable, "font-sans", inter.variable)}
+      className={cn(
+        "h-full",
+        geistSans.variable,
+        geistMono.variable,
+        lora.variable,
+        vazirmatn.variable,
+      )}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="flex min-h-full flex-col antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

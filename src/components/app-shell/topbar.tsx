@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { Menu, Plus, Search } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { CalendarDays, Menu, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 import {
@@ -13,10 +13,25 @@ import {
 } from "@/components/ui/sheet";
 import { Sidebar } from "@/components/app-shell/sidebar";
 import { CommandMenu } from "@/components/app-shell/command-menu";
+import { mainNav, settingsNav } from "@/components/app-shell/nav-items";
+import type { NoteTreeNode } from "@/server/notes/service";
 
-export function Topbar() {
+function getRouteLabel(pathname: string) {
+  const navItem = [...mainNav, ...settingsNav].find(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+  );
+
+  if (pathname === "/notes/new") return "New note";
+  if (pathname.startsWith("/notes/")) return "Note editor";
+  if (pathname.startsWith("/projects/")) return "Project workspace";
+  return navItem?.label ?? "Workspace";
+}
+
+export function Topbar({ notesTree = [] }: { notesTree?: NoteTreeNode[] }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [commandOpen, setCommandOpen] = React.useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -44,8 +59,8 @@ export function Topbar() {
 
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:px-4">
-        <Sheet>
+      <header className="relative z-30 flex h-16 shrink-0 items-center gap-2 border-b border-border/70 bg-background/80 px-3 backdrop-blur-xl sm:px-5">
+        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
           <SheetTrigger
             render={
               <Button
@@ -58,18 +73,30 @@ export function Topbar() {
           >
             <Menu className="size-4" />
           </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0">
+          <SheetContent side="left" className="w-72 p-0" showCloseButton={false}>
             <SheetTitle className="sr-only">Navigation</SheetTitle>
-            <Sidebar />
+            <Sidebar
+              notesTree={notesTree}
+              onNavigate={() => setMobileNavOpen(false)}
+            />
           </SheetContent>
         </Sheet>
+
+        <div className="hidden min-w-32 md:block">
+          <p className="section-label leading-none">Current space</p>
+          <p className="mt-1 truncate text-sm font-semibold tracking-tight">
+            {getRouteLabel(pathname)}
+          </p>
+        </div>
+
+        <div className="mx-2 hidden h-6 w-px bg-border/80 md:block" />
 
         <Button
           variant="outline"
           role="combobox"
           aria-label="Open command menu"
           onClick={() => setCommandOpen(true)}
-          className="h-9 w-full max-w-xs justify-start gap-2 px-3 text-muted-foreground sm:w-72"
+          className="h-9 w-full max-w-sm justify-start gap-2 rounded-xl border-border/70 bg-muted/25 px-3 text-muted-foreground shadow-none hover:bg-muted/50 sm:w-72 lg:w-80"
         >
           <Search className="size-4" />
           <span className="text-sm">Search…</span>
@@ -78,10 +105,19 @@ export function Topbar() {
           </kbd>
         </Button>
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="hidden gap-1.5 text-muted-foreground lg:flex"
+            onClick={() => router.push("/daily")}
+          >
+            <CalendarDays className="size-4" />
+            Today
+          </Button>
           <Button
             size="sm"
-            className="gap-1.5"
+            className="gap-1.5 rounded-xl px-3.5 shadow-sm"
             onClick={() => router.push("/notes/new")}
           >
             <Plus className="size-4" />
