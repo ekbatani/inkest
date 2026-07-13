@@ -48,6 +48,10 @@ export function QuickCaptureClient() {
     setPendingAction("generate");
     try {
       const result = await generateQuickCaptureNoteAction(prompt);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
       setText("");
       toast.success("AI note created");
       router.push(`/notes/${result.id}`);

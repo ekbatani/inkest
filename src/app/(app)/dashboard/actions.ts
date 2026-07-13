@@ -17,7 +17,7 @@ export async function quickCaptureAction(content: string) {
 export async function generateQuickCaptureNoteAction(prompt: string) {
   const result = await createNoteFromPrompt(prompt);
   if (!result.ok) {
-    throw new Error(result.error);
+    return { ok: false as const, error: result.error };
   }
 
   const note = await createNote({
@@ -27,5 +27,5 @@ export async function generateQuickCaptureNoteAction(prompt: string) {
 
   revalidatePath("/dashboard");
   revalidatePath("/notes");
-  return { id: note.id };
+  return { ok: true as const, id: note.id };
 }

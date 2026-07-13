@@ -50,7 +50,21 @@ export async function getAiProvider(): Promise<AiProvider | null> {
     (envPrefix ? process.env[`${envPrefix}_MODEL`] : process.env.OPENAI_MODEL) ||
     providerDef.defaultModel;
 
-  const client = new OpenAI({ apiKey, baseURL: baseUrl });
+  const client = new OpenAI({
+    apiKey,
+    baseURL: baseUrl,
+    ...(providerId === "openrouter"
+      ? {
+          defaultHeaders: {
+            // These are optional for authentication, but identify this app to
+            // OpenRouter and ask it to include guardrail details in 403s.
+            "HTTP-Referer": process.env.NEXTAUTH_URL || "https://inkest.natrademind.com",
+            "X-Title": "InkNest",
+            "X-OpenRouter-Metadata": "enabled",
+          },
+        }
+      : {}),
+  });
 
   return {
     id: providerId,
