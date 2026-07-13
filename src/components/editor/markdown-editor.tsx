@@ -57,7 +57,9 @@ export function MarkdownEditor({
   const usesRtlFont =
     direction === "rtl" || (direction === "auto" && containsArabicScript(value));
   const editorFontFamily =
-    usesRtlFont ? "var(--font-rtl)" : "var(--font-serif), Georgia, serif";
+    usesRtlFont
+      ? "var(--font-rtl)"
+      : '"Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif';
 
   const extensions = React.useMemo(
     () => [
@@ -79,24 +81,28 @@ export function MarkdownEditor({
       Prec.highest(
         EditorView.theme({
           "&": {
-            fontSize: "16.5px",
+            fontSize: "16.75px",
             backgroundColor: "transparent",
-            color: "color-mix(in oklab, var(--foreground) 88%, transparent)",
+            color: "color-mix(in oklab, var(--foreground) 91%, transparent)",
             minHeight: "100%",
           },
           ".cm-scroller": {
             fontFamily: editorFontFamily,
-            lineHeight: "1.62",
+            lineHeight: "1.72",
+            letterSpacing: "-0.006em",
             overflow: "auto",
           },
           ".cm-line": {
-            padding: "0.08rem 0",
+            padding: "0.06rem 0",
           },
           ".cm-content": {
             paddingBlock: "0",
-            paddingInline: "0.18rem",
+            paddingInline: "0.25rem",
             paddingBottom: "2.5rem",
-            caretColor: "color-mix(in oklab, var(--foreground) 82%, transparent)",
+            width: "100%",
+            maxWidth: "48rem",
+            marginInline: "auto",
+            caretColor: "var(--primary)",
           },
           ".cm-gutters": {
             display: "none",
@@ -106,40 +112,43 @@ export function MarkdownEditor({
           },
           ".cm-selectionBackground, .cm-content ::selection": {
             backgroundColor:
-              "color-mix(in oklab, var(--muted) 82%, var(--foreground) 18%) !important",
+              "color-mix(in oklab, var(--primary) 17%, transparent) !important",
           },
           ".cm-cursor, .cm-dropCursor": {
-            borderLeftColor:
-              "color-mix(in oklab, var(--foreground) 78%, transparent)",
+            borderLeftColor: "var(--primary)",
             zIndex: "3",
           },
           ".cm-editor": {
             minHeight: "100%",
           },
           ".cm-placeholder": {
-            color: "color-mix(in oklab, var(--muted-foreground) 70%, transparent)",
+            color: "color-mix(in oklab, var(--muted-foreground) 62%, transparent)",
           },
           ".cm-md-heading-1": {
             fontFamily: "var(--font-sans)",
-            fontSize: "1.72em",
-            fontWeight: "650",
-            lineHeight: "1.22",
-            paddingTop: "0.45rem",
-            paddingBottom: "0.18rem",
+            fontSize: "1.68em",
+            fontWeight: "660",
+            lineHeight: "1.2",
+            letterSpacing: "-0.035em",
+            paddingTop: "0.7rem",
+            paddingBottom: "0.14rem",
           },
           ".cm-md-heading-2": {
             fontFamily: "var(--font-sans)",
-            fontSize: "1.38em",
+            fontSize: "1.36em",
             fontWeight: "650",
-            lineHeight: "1.28",
-            paddingTop: "0.38rem",
+            lineHeight: "1.25",
+            letterSpacing: "-0.025em",
+            paddingTop: "0.58rem",
             paddingBottom: "0.14rem",
           },
           ".cm-md-heading-3": {
             fontFamily: "var(--font-sans)",
-            fontSize: "1.16em",
-            fontWeight: "650",
-            paddingTop: "0.28rem",
+            fontSize: "1.15em",
+            fontWeight: "640",
+            lineHeight: "1.35",
+            letterSpacing: "-0.015em",
+            paddingTop: "0.42rem",
           },
           ".cm-md-bold": {
             fontWeight: "700",
@@ -154,14 +163,14 @@ export function MarkdownEditor({
           },
           ".cm-md-code": {
             borderRadius: "0.35rem",
-            backgroundColor: "var(--muted)",
+            backgroundColor: "color-mix(in oklab, var(--muted) 72%, transparent)",
             fontFamily: "var(--font-mono)",
             fontSize: "0.92em",
             padding: "0.08em 0.24em",
           },
           ".cm-md-code-line": {
             borderRadius: "0.35rem",
-            backgroundColor: "var(--muted)",
+            backgroundColor: "color-mix(in oklab, var(--muted) 72%, transparent)",
             fontFamily: "var(--font-mono)",
             fontSize: "0.92em",
           },
@@ -218,10 +227,11 @@ export function MarkdownEditor({
             whiteSpace: "pre-wrap",
           },
           ".cm-md-quote-line": {
-            borderInlineStart: "3px solid var(--border)",
-            color: "var(--muted-foreground)",
-            fontStyle: "italic",
-            paddingInlineStart: "0.8rem",
+            borderInlineStart:
+              "2px solid color-mix(in oklab, var(--primary) 48%, var(--border))",
+            color: "color-mix(in oklab, var(--foreground) 70%, transparent)",
+            fontStyle: "normal",
+            paddingInlineStart: "0.9rem",
           },
           ".cm-md-task-checkbox": {
             display: "inline-flex",

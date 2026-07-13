@@ -716,7 +716,7 @@ export function NoteEditor({
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="px-6 pt-6 sm:px-10 sm:pt-8">
-            <div className="max-w-4xl">
+            <div className="mx-auto w-full max-w-3xl">
               <Label
                 htmlFor="note-title"
                 className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/75"
