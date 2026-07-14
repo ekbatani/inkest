@@ -1,0 +1,71 @@
+name: Beta bug report
+description: Report a reproducible problem in the Inkest beta.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve Inkest. Please do not include note content, attachments, passwords, session cookies, API keys, OAuth tokens, or other personal data. Redact screenshots and logs before submitting.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the unexpected result and the result you expected instead.
+      placeholder: "When I ..., I expected ..., but ... happened."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest reliable sequence of actions, starting from the relevant route or screen.
+      placeholder: |
+        1. Go to ...
+        2. Create/open ...
+        3. Click/type ...
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      description: Choose the effect on your work; maintainers apply the final severity.
+      options:
+        - Cannot use Inkest or may have lost data
+        - A core workflow is blocked
+        - A workflow is impaired but has a workaround
+        - Minor problem or polish issue
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include Inkest version or commit, deployment type, browser and version, operating system, and whether optional AI, Calendar, Telegram, or MinIO are enabled. Do not include secrets or URLs with tokens.
+      placeholder: |
+        Inkest version/commit:
+        Deployment: local / Docker / other
+        Browser and version:
+        Operating system:
+        Enabled integrations:
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Safe supporting evidence (optional)
+      description: Attach redacted screenshots or logs only. Never attach private notes, attachments, tokens, cookies, or credentials.
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed note content, attachments, passwords, session cookies, API keys, OAuth tokens, and other personal data from this report.
+          required: true

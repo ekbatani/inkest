@@ -19,6 +19,15 @@ self-hosted, portable, and comfortable for daily writing.
 The durable product, architecture, and operations documentation is in
 [docs/](docs/README.md).
 
+## Beta feedback
+
+Report reproducible beta defects through the
+[Beta bug report](https://github.com/ekbatani/inkest/issues/new?template=bug-report.yml).
+Please redact note content, attachments, credentials, tokens, cookies, and
+personal data. The [beta feedback guide](docs/beta-feedback.md) explains the
+severity definitions and triage cadence; use GitHub's private security advisory
+flow for potential vulnerabilities.
+
 ## Stack
 
 | Layer | Technology |

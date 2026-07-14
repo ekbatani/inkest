@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/ekbatani/inkest/security/advisories/new
+    about: Please report security vulnerabilities privately; do not file them as public beta issues.

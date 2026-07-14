@@ -3,12 +3,13 @@
 import * as React from "react";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { syntaxTree } from "@codemirror/language";
 import {
   Decoration,
   EditorView,
   WidgetType,
 } from "@codemirror/view";
-import { Prec, StateField, type EditorState, type Range } from "@codemirror/state";
+import { Prec, type EditorState, type Range } from "@codemirror/state";
 import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
 import {
@@ -29,6 +30,7 @@ type Props = {
 };
 
 const LARGE_PASTE_THRESHOLD = 1500;
+const PARENT_UPDATE_DELAY_MS = 120;
 
 function looksLikeMarkdown(text: string) {
   const lines = text.split("\n");
@@ -54,8 +56,27 @@ export function MarkdownEditor({
   onOpenLink,
   onLargeMarkdownPaste,
 }: Props) {
+  // Keep CodeMirror's controlled value local while a user is typing. Updating the
+  // note route for every character rerenders its toolbars, panels, and metadata
+  // controls; the parent receives the latest value shortly afterwards for saving.
+  const [editorState, setEditorState] = React.useState({
+    value,
+    sourceValue: value,
+  });
+  if (editorState.sourceValue !== value) {
+    setEditorState({ value, sourceValue: value });
+  }
+  const editorValue = editorState.value;
+
+  React.useEffect(() => {
+    if (editorValue === value) return;
+
+    const timer = setTimeout(() => onChange(editorValue), PARENT_UPDATE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [editorValue, onChange, value]);
+
   const usesRtlFont =
-    direction === "rtl" || (direction === "auto" && containsArabicScript(value));
+    direction === "rtl" || (direction === "auto" && containsArabicScript(editorValue));
   const editorFontFamily =
     usesRtlFont
       ? "var(--font-rtl)"
@@ -65,7 +86,6 @@ export function MarkdownEditor({
     () => [
       markdown({ base: markdownLanguage }),
       EditorView.lineWrapping,
-      fencedBlockField,
       EditorView.decorations.of(buildStyledMarkdownDecorations(linkableNotes)),
       EditorView.domEventHandlers({
         click: (event, view) => handleEditorLinkClick(event, view, onOpenLink),
@@ -281,8 +301,8 @@ export function MarkdownEditor({
     <div className={cn("h-full", usesRtlFont && "rtl-vazir", className)} dir={dir}>
       <CodeMirror
         ref={editorRef}
-        value={value}
-        onChange={onChange}
+        value={editorValue}
+        onChange={(nextValue) => setEditorState({ value: nextValue, sourceValue: value })}
         extensions={extensions}
         height="100%"
         className="h-full text-sm"
@@ -399,130 +419,6 @@ class TaskCheckboxWidget extends WidgetType {
   }
 }
 
-let mermaidPreviewId = 0;
-
-class FencedBlockWidget extends WidgetType {
-  constructor(
-    private readonly lang: string,
-    private readonly code: string,
-    private readonly rawMarkdown: string,
-    private readonly from: number,
-    private readonly to: number,
-  ) {
-    super();
-  }
-
-  eq(widget: FencedBlockWidget) {
-    return (
-      widget.lang === this.lang &&
-      widget.code === this.code &&
-      widget.rawMarkdown === this.rawMarkdown &&
-      widget.from === this.from &&
-      widget.to === this.to
-    );
-  }
-
-  toDOM(view: EditorView) {
-    const root = document.createElement("div");
-    root.className = "cm-md-fenced-block";
-
-    const toolbar = document.createElement("div");
-    toolbar.className = "cm-md-fenced-toolbar";
-
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "cm-md-fenced-button";
-
-    const edit = document.createElement("button");
-    edit.type = "button";
-    edit.className = "cm-md-fenced-button";
-    edit.textContent = "Edit";
-    edit.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      view.dispatch({ selection: { anchor: this.from, head: this.to } });
-      view.focus();
-    });
-
-    const body = document.createElement("div");
-    body.className = "cm-md-fenced-body";
-
-    let showingCode = false;
-    let renderVersion = 0;
-
-    const renderCode = () => {
-      showingCode = true;
-      toggle.textContent = "Preview";
-      body.className = "cm-md-fenced-body";
-      body.textContent = "";
-      const pre = document.createElement("pre");
-      pre.className = "cm-md-fenced-code";
-      pre.textContent = this.rawMarkdown;
-      pre.title = "Click Edit to modify this Markdown block";
-      body.append(pre);
-    };
-
-    const renderPreview = () => {
-      showingCode = false;
-      toggle.textContent = "Code";
-      body.textContent = "";
-
-      if (this.lang.toLowerCase() !== "mermaid") {
-        const pre = document.createElement("pre");
-        pre.className = "cm-md-fenced-code";
-        pre.textContent = this.code;
-        body.append(pre);
-        return;
-      }
-
-      const version = ++renderVersion;
-      body.className = "cm-md-fenced-body cm-md-mermaid";
-      body.textContent = "Rendering diagram...";
-
-      void import("mermaid")
-        .then((module) => {
-          if (version !== renderVersion) return;
-          const mermaid = module.default;
-          mermaid.initialize({
-            startOnLoad: false,
-            securityLevel: "strict",
-            theme: "default",
-          });
-          return mermaid.render(`editor-mermaid-${++mermaidPreviewId}`, this.code);
-        })
-        .then((result) => {
-          if (!result || version !== renderVersion) return;
-          body.innerHTML = result.svg;
-        })
-        .catch((error: unknown) => {
-          if (version !== renderVersion) return;
-          body.className = "cm-md-fenced-body cm-md-fenced-error";
-          body.textContent =
-            error instanceof Error ? error.message : "Invalid Mermaid diagram.";
-        });
-    };
-
-    toggle.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (showingCode) {
-        renderPreview();
-      } else {
-        renderCode();
-      }
-    });
-
-    toolbar.append(toggle, edit);
-    root.append(toolbar, body);
-    renderPreview();
-    return root;
-  }
-
-  ignoreEvent() {
-    return false;
-  }
-}
-
 function replaceWithWidgetIfIdle(
   ranges: Range<Decoration>[],
   view: EditorView,
@@ -584,63 +480,18 @@ function addLinkDecoration(
   hideIfIdle(ranges, view, contentTo, closeTo);
 }
 
-type FencedBlock = {
-  from: number;
-  to: number;
-  lang: string;
-  code: string;
-  rawMarkdown: string;
-};
-
-function findFencedBlocks(state: EditorState) {
-  const blocks: FencedBlock[] = [];
-  const doc = state.doc;
-
-  for (let lineNo = 1; lineNo <= doc.lines; lineNo++) {
-    const startLine = doc.line(lineNo);
-    const startMatch = startLine.text.match(/^\s*```(\S*)\s*$/);
-    if (!startMatch) continue;
-
-    const codeLines: string[] = [];
-    let endLine = startLine;
-    let foundEnd = false;
-
-    for (let innerLineNo = lineNo + 1; innerLineNo <= doc.lines; innerLineNo++) {
-      const line = doc.line(innerLineNo);
-      if (/^\s*```\s*$/.test(line.text)) {
-        endLine = line;
-        foundEnd = true;
-        lineNo = innerLineNo;
-        break;
-      }
-      codeLines.push(line.text);
-      endLine = line;
-    }
-
-    if (!foundEnd) {
-      lineNo = endLine.number;
-    }
-
-    blocks.push({
-      from: startLine.from,
-      to: endLine.to,
-      lang: startMatch[1] ?? "",
-      code: codeLines.join("\n"),
-      rawMarkdown: doc.sliceString(startLine.from, endLine.to),
-    });
-  }
-
-  return blocks;
-}
-
-function blockContainingLine(blocks: FencedBlock[], lineFrom: number, lineTo: number) {
+function blockContainingLine(
+  blocks: ReadonlyArray<{ from: number; to: number }>,
+  lineFrom: number,
+  lineTo: number,
+) {
   return blocks.find((block) => block.from <= lineFrom && block.to >= lineTo);
 }
 
 function buildStyledMarkdownDecorations(linkableNotes: WikiLinkTarget[]) {
   return (view: EditorView) => {
     const ranges: Range<Decoration>[] = [];
-    const fencedBlocks = findFencedBlocks(view.state);
+    const fencedBlocks = findVisibleFencedBlocks(view);
 
     for (const { from, to } of view.visibleRanges) {
       let pos = from;
@@ -657,11 +508,7 @@ function buildStyledMarkdownDecorations(linkableNotes: WikiLinkTarget[]) {
         const heading = text.match(/^(#{1,6})\s*(?=\S)/);
         const task = text.match(/^(\s*[-*]\s+\[([ xX])]\s+)/);
 
-        if (fencedBlock) {
-          ranges.push(
-            Decoration.line({ class: "cm-md-code-line" }).range(line.from),
-          );
-        } else if (task) {
+        if (!fencedBlock && task) {
           replaceWithWidgetIfIdle(
             ranges,
             view,
@@ -806,37 +653,22 @@ function buildStyledMarkdownDecorations(linkableNotes: WikiLinkTarget[]) {
   };
 }
 
-function buildFencedBlockDecorations(state: EditorState) {
-  const ranges: Range<Decoration>[] = [];
+function findVisibleFencedBlocks(view: EditorView) {
+  const blocks: { from: number; to: number }[] = [];
 
-  for (const block of findFencedBlocks(state)) {
-    if (selectionTouches(state, block.from, block.to)) continue;
+  syntaxTree(view.state).iterate({
+    enter: (node) => {
+      if (node.name !== "FencedCode") return;
+      if (
+        view.visibleRanges.some(
+          (range) => node.from <= range.to && node.to >= range.from,
+        )
+      ) {
+        blocks.push({ from: node.from, to: node.to });
+      }
+    },
+  });
 
-    ranges.push(
-      Decoration.replace({
-        block: true,
-        widget: new FencedBlockWidget(
-          block.lang,
-          block.code,
-          block.rawMarkdown,
-          block.from,
-          block.to,
-        ),
-      }).range(block.from, block.to),
-    );
-  }
-
-  return ranges.length > 0 ? Decoration.set(ranges, true) : Decoration.none;
+  return blocks;
 }
-
-const fencedBlockField = StateField.define({
-  create(state) {
-    return buildFencedBlockDecorations(state);
-  },
-  update(value, tr) {
-    if (!tr.docChanged && !tr.selection) return value;
-    return buildFencedBlockDecorations(tr.state);
-  },
-  provide: (field) => EditorView.decorations.from(field),
-});
 

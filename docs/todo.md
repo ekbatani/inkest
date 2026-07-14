@@ -106,11 +106,17 @@ All of the following must be complete before announcing a public release:
     preflight passed all five HTTP checks against `http://127.0.0.1:3000`; `bun
     run typecheck` and `bun run build` passed.
 
-- [todo] **P0-04 — Define the beta feedback loop.** Add a lightweight,
+- [done] **P0-04 — Define the beta feedback loop.** Add a lightweight,
   privacy-respecting feedback route (for example GitHub issues/email), a bug
   template, severity definitions, and a triage cadence.
   - Acceptance: beta users can report a defect with reproduction steps and it
     can be classified as release-blocking, high, normal, or enhancement.
+  - Evidence: 2026-07-14 — added the GitHub `Beta bug report` form and private
+    security-advisory route; documented public-report redaction rules, severity
+    definitions, and a twice-weekly triage cadence in `docs/beta-feedback.md`;
+    linked the feedback flow from `README.md` and the documentation index.
+    Manually verified all required report fields and the supported severity
+    classifications in the template.
 
 ## Phase 1 — make writing fast, calm, and reliable
 
