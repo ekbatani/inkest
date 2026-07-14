@@ -8,7 +8,7 @@ shortcuts. The normal local loop is:
 
 ```bash
 bun install
-cp .env.local.example .env.local
+cp .env.example .env.local
 bun run db:migrate
 bun run dev
 ```

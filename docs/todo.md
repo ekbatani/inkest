@@ -76,13 +76,23 @@ All of the following must be complete before announcing a public release:
     passed; the checklist records the current `bun run lint` failures and build
     warnings for follow-up.
 
-- [now] **P0-02 — Reconcile docs with running behavior.** Verify the current
+- [done] **P0-02 — Reconcile docs with running behavior.** Verify the current
   product, architecture, operations, README, and environment example against
   source and a local run; correct only factual drift.
   - Acceptance: no documented feature, configuration variable, or deployment
     command contradicts the implementation.
+  - Evidence: 2026-07-14 — reconciled `.env.example`, `README.md`, and
+    `docs/OPERATIONS.md` with the active source configuration: attachment
+    storage uses `ATTACHMENT_STORAGE_DRIVER`; Google Calendar uses
+    `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` with its callback
+    derived from `NEXTAUTH_URL`; and the local setup copies `.env.example`.
+    Added the supported AI, Telegram, MinIO, public-URL, and default attachment
+    type settings to the now-tracked environment example. Verified a local `bun run dev`
+    response from `/` returned HTTP 200 (111,043-byte HTML); the known CSS
+    parser warning for `::highlight(tts-active-sentence)` remains recorded in
+    the release baseline.
 
-- [todo] **P0-03 — Add a release smoke-test script/checklist.** Cover signup
+- [now] **P0-03 — Add a release smoke-test script/checklist.** Cover signup
   or sign-in, note create/edit/reload, project task completion, attachment
   upload/download, export, AI missing-provider handling, and disabled
   integration states.
