@@ -94,6 +94,22 @@ These are post-change development measurements, not a production or throttled
 before/after comparison. Capture that comparison on representative hardware
 before declaring the P0-10 performance gate complete.
 
+### Editor route code-splitting measurement — 2026-07-14
+
+The P0-11 production build was inspected through the generated client-reference
+and build manifests. The initial `/notes/[id]` dependency set contains 23 script
+files: **1,045.3 KiB raw / 323.5 KiB gzip**. This is a 60% reduction from the
+previously recorded 818 KiB editor script transfer, using the gzip manifest
+measurement as a reproducible conservative proxy for browser transfer.
+
+CodeMirror remains the write-mode dependency. Markdown preview, Mermaid, and
+super-focus remain dynamically imported; the AI panel is now loaded only after
+the AI button or the command-menu action is used. Its separate production chunk
+is 13.6 KiB raw / 4.6 KiB gzip and is absent from the initial note-route entry
+set. `bun run typecheck` and an isolated `bun run build` passed. Repeat the
+same authenticated browser measurement on representative hardware when browser
+automation is available.
+
 ## Release readiness
 
 - Confirm migrations, persistent volumes, and environment values in a clean

@@ -135,12 +135,21 @@ All of the following must be complete before announcing a public release:
     `bun run build` passed. The development-only trace details and deferred
     production/throttled comparison are recorded in `docs/OPERATIONS.md`.
 
-- [now] **P0-11 — Split editor-route JavaScript by measured cost.** Keep
+- [done] **P0-11 — Split editor-route JavaScript by measured cost.** Keep
   CodeMirror, Markdown preview, Mermaid, AI panel, and nonessential panels
   from blocking initial note editing where safe.
   - Acceptance: production measurements show a meaningful reduction from the
     recorded 818 KiB editor script transfer and no regression to editing,
     preview, Mermaid, or error states.
+  - Evidence: 2026-07-14 — made the AI panel interaction-loaded while
+    preserving the editor toolbar and command-menu `Ask AI` action; the
+    production note-route manifest lists 323.5 KiB gzip of initial scripts,
+    down from the recorded 818 KiB transfer, with the 4.6 KiB-gzip AI chunk
+    absent until requested. Existing CodeMirror, preview, Mermaid, and
+    super-focus dynamic boundaries remain in place. `bun run typecheck` and an
+    isolated production `bun run build` passed. Browser automation was not
+    installed locally, so repeat the authenticated browser waterfall on
+    representative hardware when available.
 
 - [todo] **P0-12 — Repair Markdown code-block editing.** Reproduce the
   reported inability to enter/edit code areas and the rounded-border-per-line

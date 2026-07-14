@@ -59,11 +59,6 @@ const MarkdownPreview = dynamic(
   { ssr: false },
 );
 
-type Props = {
-  noteId: string;
-  editorRef: React.RefObject<ReactCodeMirrorRef | null>;
-};
-
 type ActionId =
   | "summarize"
   | "improve-writing"
@@ -74,6 +69,14 @@ type ActionId =
   | "translate"
   | "comment-selection"
   | "apply-comments";
+
+type Props = {
+  noteId: string;
+  editorRef: React.RefObject<ReactCodeMirrorRef | null>;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  initialAction?: ActionId;
+};
 
 type AiState =
   | { status: "idle" }
@@ -93,7 +96,13 @@ const SELECTION_ONLY_ACTIONS: ActionId[] = [
   "comment-selection",
 ];
 
-export function AiPanel({ noteId, editorRef }: Props) {
+export function AiPanel({
+  noteId,
+  editorRef,
+  open,
+  onOpenChange,
+  initialAction,
+}: Props) {
   const [state, setState] = React.useState<AiState>({ status: "idle" });
   const [copied, setCopied] = React.useState(false);
   const [promptDialog, setPromptDialog] = React.useState<{
@@ -107,7 +116,7 @@ export function AiPanel({ noteId, editorRef }: Props) {
 
   const getSelection = (): string | null => getSelectedEditorText(editorRef);
 
-  const runAction = async (
+  const runAction = React.useCallback(async (
     action: ActionId,
     payload: Record<string, unknown>,
   ) => {
@@ -143,7 +152,7 @@ export function AiPanel({ noteId, editorRef }: Props) {
     } catch {
       setState({ status: "error", message: "Network error." });
     }
-  };
+  }, [noteId]);
 
   const onPickAction = (action: ActionId) => {
     const sel = getSelection();
@@ -167,15 +176,12 @@ export function AiPanel({ noteId, editorRef }: Props) {
     void runAction(action, sel ? { selectedText: sel } : {});
   };
 
+  const initialActionRun = React.useRef(false);
   React.useEffect(() => {
-    const onAskAi = (event: Event) => {
-      const detail = (event as CustomEvent<{ noteId: string }>).detail;
-      if (detail?.noteId !== noteId) return;
-      onPickAction("summarize");
-    };
-    window.addEventListener("inkest:ask-ai", onAskAi);
-    return () => window.removeEventListener("inkest:ask-ai", onAskAi);
-  });
+    if (!initialAction || initialActionRun.current) return;
+    initialActionRun.current = true;
+    void runAction(initialAction, {});
+  }, [initialAction, runAction]);
 
   const submitPromptDialog = () => {
     if (!promptDialog) return;
@@ -259,7 +265,7 @@ export function AiPanel({ noteId, editorRef }: Props) {
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={onOpenChange}>
         <DropdownMenuTrigger
           render={
             <Button

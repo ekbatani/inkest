@@ -24,6 +24,7 @@ import {
   BookOpen,
   Flashlight,
   Headphones,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,6 @@ import { formatDate } from "@/lib/dates";
 import { FloatingMarkdownFormatToolbar } from "@/components/editor/markdown-format-toolbar";
 import { AttachmentUploadButton } from "@/components/editor/image-upload-button";
 import { SpeechToTextButton } from "@/components/editor/speech-to-text-button";
-import { AiPanel } from "@/components/ai/ai-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TagSelector } from "@/components/notes/tag-selector";
 import { ParentPicker } from "@/components/notes/parent-picker";
@@ -86,6 +86,21 @@ const MarkdownPreview = dynamic(
 const SuperFocusReader = dynamic(
   () => import("@/components/notes/super-focus-reader").then((m) => m.SuperFocusReader),
   { ssr: false },
+);
+// AI is useful but not needed to begin writing. Keep its action menus, dialogs, and
+// result preview out of the editor route until the user explicitly opens AI (or invokes
+// the command-menu shortcut).
+const AiPanel = dynamic(
+  () => import("@/components/ai/ai-panel").then((m) => m.AiPanel),
+  {
+    ssr: false,
+    loading: () => (
+      <Button variant="ghost" size="sm" className="gap-1.5" disabled>
+        <Loader2 className="size-4 animate-spin text-violet-400" />
+        <span className="hidden sm:inline text-violet-400">AI</span>
+      </Button>
+    ),
+  },
 );
 
 type EditorMode = "write" | "focus" | "read";
@@ -138,6 +153,11 @@ export function NoteEditor({
   const [mode, setMode] = React.useState<EditorMode>("write");
   const [showPanel, setShowPanel] = React.useState(true);
   const [showSuperFocus, setShowSuperFocus] = React.useState(false);
+  const [aiPanelRequested, setAiPanelRequested] = React.useState(false);
+  const [aiPanelOpen, setAiPanelOpen] = React.useState(false);
+  const [aiInitialAction, setAiInitialAction] = React.useState<"summarize" | null>(
+    null,
+  );
   const [trackingMode, setTrackingMode] = React.useState<SuperFocusTrackingMode>(
     superFocusPrefs?.trackingMode ?? "pointer",
   );
@@ -540,6 +560,23 @@ export function NoteEditor({
     });
   }, [pasteToPreview]);
 
+  const requestAiPanel = React.useCallback((initialAction?: "summarize") => {
+    setAiInitialAction(initialAction ?? null);
+    setAiPanelRequested(true);
+    setAiPanelOpen(true);
+  }, []);
+
+  React.useEffect(() => {
+    const onAskAi = (event: Event) => {
+      const detail = (event as CustomEvent<{ noteId?: string }>).detail;
+      if (detail?.noteId !== note.id) return;
+      requestAiPanel("summarize");
+    };
+
+    window.addEventListener("inkest:ask-ai", onAskAi);
+    return () => window.removeEventListener("inkest:ask-ai", onAskAi);
+  }, [note.id, requestAiPanel]);
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       {!isFocus && (
@@ -598,7 +635,26 @@ export function NoteEditor({
 
           {showEditor && <AttachmentUploadButton editorRef={editorRef} />}
           {showEditor && <SpeechToTextButton editorRef={editorRef} />}
-          {showEditor && <AiPanel noteId={note.id} editorRef={editorRef} />}
+          {showEditor &&
+            (aiPanelRequested ? (
+              <AiPanel
+                noteId={note.id}
+                editorRef={editorRef}
+                open={aiPanelOpen}
+                onOpenChange={setAiPanelOpen}
+                initialAction={aiInitialAction ?? undefined}
+              />
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-foreground/80 hover:text-foreground"
+                onClick={() => requestAiPanel()}
+              >
+                <Sparkles className="size-4 text-violet-400" />
+                <span className="hidden sm:inline text-violet-400">AI</span>
+              </Button>
+            ))}
           {showEditor && (
             <>
               <Button
