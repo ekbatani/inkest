@@ -92,12 +92,19 @@ All of the following must be complete before announcing a public release:
     parser warning for `::highlight(tts-active-sentence)` remains recorded in
     the release baseline.
 
-- [now] **P0-03 — Add a release smoke-test script/checklist.** Cover signup
+- [done] **P0-03 — Add a release smoke-test script/checklist.** Cover signup
   or sign-in, note create/edit/reload, project task completion, attachment
   upload/download, export, AI missing-provider handling, and disabled
   integration states.
   - Acceptance: the checklist names expected results and can be run on a
     clean local or container deployment without hidden setup steps.
+  - Evidence: 2026-07-14 — added `scripts/release-smoke.mjs`, exposed as
+    `bun run smoke`, for repeatable unauthenticated routing/auth preflight;
+    added `docs/release-smoke-test.md` with disposable-deployment setup and
+    expected signup, note editing/reload, project task, attachment, export,
+    missing-AI-provider, and disabled Calendar/Telegram outcomes. The local
+    preflight passed all five HTTP checks against `http://127.0.0.1:3000`; `bun
+    run typecheck` and `bun run build` passed.
 
 - [todo] **P0-04 — Define the beta feedback loop.** Add a lightweight,
   privacy-respecting feedback route (for example GitHub issues/email), a bug

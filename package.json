@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "smoke": "bun scripts/release-smoke.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
