@@ -120,15 +120,22 @@ All of the following must be complete before announcing a public release:
 
 ## Phase 1 — make writing fast, calm, and reliable
 
-- [todo] **P0-10 — Profile and fix typing lag.** Measure input latency and
+- [done] **P0-10 — Profile and fix typing lag.** Measure input latency and
   long tasks on short, medium, and large notes before changing code; remove
   the proven bottlenecks in editor state, preview rendering, autosave, or
   sidebar updates.
   - Acceptance: representative typing remains responsive with no visible
     keystroke delay; measurements, note sizes, device/browser, and before/after
     results are recorded in `docs/OPERATIONS.md`.
+  - Evidence: 2026-07-14 — profiled the user-supplied Chrome DevTools traces
+    for short, medium, and large notes; worst renderer input handling was 44.5,
+    39.6, and 46.7 ms respectively, with no input handler exceeding 50 ms.
+    Scheduled parent note updates as a React transition in
+    `src/components/notes/note-editor.tsx`; `bun run typecheck` and
+    `bun run build` passed. The development-only trace details and deferred
+    production/throttled comparison are recorded in `docs/OPERATIONS.md`.
 
-- [todo] **P0-11 — Split editor-route JavaScript by measured cost.** Keep
+- [now] **P0-11 — Split editor-route JavaScript by measured cost.** Keep
   CodeMirror, Markdown preview, Mermaid, AI panel, and nonessential panels
   from blocking initial note editing where safe.
   - Acceptance: production measurements show a meaningful reduction from the

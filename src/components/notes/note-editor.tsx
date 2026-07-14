@@ -180,6 +180,13 @@ export function NoteEditor({
     title: note.title,
     content: note.contentMd,
   });
+
+  // CodeMirror keeps the keystroke path local. Its debounced parent update still
+  // drives autosave, history, preview, and metadata, but it must not make those
+  // route-level renders compete with the next keystroke.
+  const handleEditorChange = React.useCallback((nextContent: string) => {
+    React.startTransition(() => setContent(nextContent));
+  }, []);
   const [historyState, setHistoryState] = React.useState<{
     past: NoteSnapshot[];
     future: NoteSnapshot[];
@@ -754,7 +761,7 @@ export function NoteEditor({
               <div className="flex min-h-0 flex-1 flex-col py-6">
                 <MarkdownEditor
                   value={content}
-                  onChange={setContent}
+                  onChange={handleEditorChange}
                   direction={metadata.direction}
                   className="flex-1"
                   editorRef={editorRef}

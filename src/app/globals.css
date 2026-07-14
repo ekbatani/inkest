@@ -390,12 +390,6 @@
   }
 }
 
-/* Text-to-speech — currently spoken sentence, via CSS Custom Highlight API */
-::highlight(tts-active-sentence) {
-  background-color: oklch(0.85 0.15 90 / 35%);
-  color: oklch(0.98 0 0);
-}
-
 /* Micro-animations — interaction-only, all gated on prefers-reduced-motion */
 @keyframes pop-in {
   from {

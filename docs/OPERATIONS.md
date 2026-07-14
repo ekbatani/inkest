@@ -68,6 +68,32 @@ Targets: landing page Lighthouse at least 95 with under 100 KiB first-load
 JavaScript; substantially narrow the editor gap to the dashboard; validate
 editor interactivity on representative hardware and a throttled connection.
 
+### Editor typing trace — 2026-07-14
+
+Chrome DevTools traces were captured on the local development route on a
+Windows host (device-pixel ratio 1) for the user-labelled short, medium, and
+large note cases. The table reports `WidgetBaseInputHandler::OnHandleInputEvent`
+durations on the renderer main thread; the corresponding
+`WebFrameWidgetImpl::HandleInputEvent` event is intentionally not counted a
+second time.
+
+| Case | Input events | Mean input handling | Worst input handling | Worst layout update |
+| --- | ---: | ---: | ---: | ---: |
+| Short | 296 | 1.5 ms | 44.5 ms | 16.9 ms |
+| Medium | 130 | 2.7 ms | 39.6 ms | 6.1 ms |
+| Large | 334 | 0.7 ms | 46.7 ms | 6.1 ms |
+
+No captured editor input handler exceeded the 50 ms long-task threshold. The
+separate 54.9–192 ms main-thread samples are DevTools CPU-profiler/debugger
+startup and callback work (`CpuProfiler::StartProfiling`,
+`V8.InvokeApiInterruptCallbacks`, and `EvaluateScript`), rather than input
+handling. The traces therefore do not identify a further editor bottleneck
+beyond the parent-route update that is now scheduled as a React transition.
+
+These are post-change development measurements, not a production or throttled
+before/after comparison. Capture that comparison on representative hardware
+before declaring the P0-10 performance gate complete.
+
 ## Release readiness
 
 - Confirm migrations, persistent volumes, and environment values in a clean

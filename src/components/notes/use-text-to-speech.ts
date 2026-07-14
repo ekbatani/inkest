@@ -76,6 +76,19 @@ function supportsCustomHighlight() {
 }
 
 const HIGHLIGHT_NAME = "tts-active-sentence";
+const HIGHLIGHT_STYLE_ID = "tts-active-sentence-style";
+
+function ensureCustomHighlightStyles() {
+  if (typeof document === "undefined" || document.getElementById(HIGHLIGHT_STYLE_ID)) return;
+
+  const style = document.createElement("style");
+  style.id = HIGHLIGHT_STYLE_ID;
+  style.textContent = `::highlight(${HIGHLIGHT_NAME}) {
+  background-color: oklch(0.85 0.15 90 / 35%);
+  color: oklch(0.98 0 0);
+}`;
+  document.head.appendChild(style);
+}
 
 export function useTextToSpeech({
   getBlocks,
@@ -112,6 +125,10 @@ export function useTextToSpeech({
     load();
     window.speechSynthesis.addEventListener("voiceschanged", load);
     return () => window.speechSynthesis.removeEventListener("voiceschanged", load);
+  }, []);
+
+  React.useEffect(() => {
+    if (supportsCustomHighlight()) ensureCustomHighlightStyles();
   }, []);
 
   const clearHighlight = React.useCallback(() => {
