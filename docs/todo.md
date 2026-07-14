@@ -64,13 +64,19 @@ All of the following must be complete before announcing a public release:
 
 ## Phase 0 — establish the release baseline
 
-- [now] **P0-01 — Create a reproducible release baseline.** Record the
+- [done] **P0-01 — Create a reproducible release baseline.** Record the
   current commit, environment, database/storage driver, enabled integrations,
   test account setup, and known defects in a dated release-checklist note.
   - Acceptance: a second agent can start the app and repeat the baseline
     checks using only repository documentation and the checklist.
+  - Evidence: 2026-07-14 — added `docs/release-checklist-2026-07-14.md` with
+    commit `05bc813553e18a8c0eb11137f6dbd2e6350b2541`, environment and
+    integration state, disposable two-account setup, repeatable local/Docker
+    checks, and known release blockers. `bun run typecheck` and `bun run build`
+    passed; the checklist records the current `bun run lint` failures and build
+    warnings for follow-up.
 
-- [todo] **P0-02 — Reconcile docs with running behavior.** Verify the current
+- [now] **P0-02 — Reconcile docs with running behavior.** Verify the current
   product, architecture, operations, README, and environment example against
   source and a local run; correct only factual drift.
   - Acceptance: no documented feature, configuration variable, or deployment
