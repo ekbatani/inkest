@@ -1,150 +1,153 @@
 # Inkest
 
-A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and lightweight AI actions -- all self-hosted.
+Inkest is a calm, private, Markdown-first personal workspace for notes,
+projects, tasks, and intentional AI assistance. It is designed to be
+self-hosted, portable, and comfortable for daily writing.
 
-## Features
+## What it includes
 
-- **Markdown-native** -- notes are stored as plain Markdown with GFM support
-- **Mermaid diagrams** -- fenced `mermaid` blocks render inline
-- **Projects & tasks** -- project notes with status, priority, due dates, and a kanban board
-- **Tags & hierarchy** -- color-coded tags, parent-child note tree
-- **Daily notes** -- one note per day, auto-created
-- **Calendar sync** -- month view plus Google Calendar events inside daily notes
-- **AI actions** -- summarize, improve writing, extract tasks, generate diagrams, translate (OpenAI-compatible)
-- **Speech to text** -- dictate notes in the browser via the Web Speech API (no server key required)
-- **Private attachments** -- images, PDFs, DOC/DOCX, EPUB via local storage or MinIO
-- **Version history** -- automatic snapshots with one-click restore
-- **Wiki links** -- `[[Note Title]]` linking with backlinks
-- **Export** -- full workspace ZIP or single-note Markdown
-- **Command palette** -- Ctrl+K for quick navigation and search
-- **RTL support** -- per-note direction (LTR, RTL, auto)
-- **Dark mode** -- system-aware light/dark theme
+- Markdown notes with safe GFM preview, Mermaid diagrams, wiki links,
+  backlinks, version history, and Markdown/workspace export.
+- Projects, note-backed tasks, checklists, due dates, kanban, tags, folders,
+  archive, daily notes, and calendar views.
+- Private image and document attachments; browser speech-to-text; and
+  text-to-speech, focus, super-focus, RTL, and dark-mode reading support.
+- Explicit AI actions for writing, summaries, task extraction, project plans,
+  Mermaid generation, explanations, and translation.
+- Optional Google Calendar and Telegram integrations.
 
-## Tech Stack
+The durable product, architecture, and operations documentation is in
+[docs/](docs/README.md).
+
+## Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript |
-| Styling | Tailwind CSS v4 + shadcn/ui |
-| Database | Drizzle ORM + libSQL/Turso |
-| Editor | CodeMirror 6 |
-| Preview | react-markdown + remark-gfm + rehype-sanitize |
-| Auth | Auth.js (next-auth) with Credentials + Google Calendar OAuth connect |
-| AI | OpenAI SDK (any compatible provider) |
-| Runtime | Bun |
+| --- | --- |
+| Application | Next.js 16 App Router, React 19, TypeScript |
+| Runtime and package manager | Bun |
+| UI | Tailwind CSS v4, shadcn/ui, CodeMirror 6 |
+| Data | Drizzle ORM with local libSQL or Turso |
+| Authentication | Auth.js credentials sessions |
+| Integrations | OpenAI-compatible AI providers, Google Calendar, Telegram, MinIO/S3-compatible storage |
 
-## Quick Start
+## Run locally
 
-### Prerequisites
-
-- [Bun](https://bun.sh/) 1.x
-
-### Setup
+Prerequisite: [Bun](https://bun.sh/) 1.x.
 
 ```bash
-# Install dependencies
 bun install
+cp .env.example .env.local
+```
 
-# Set up environment variables
-cp .env.local.example .env.local
-# Edit .env.local with your values
+Set `NEXTAUTH_SECRET` in `.env.local` to a strong value, for example
+`openssl rand -base64 32`. The defaults use a local SQLite-compatible libSQL
+database and local attachment storage.
 
-# Run database migrations
+```bash
 bun run db:migrate
-
-# Start the dev server
 bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and create an account to get started.
+Open [http://localhost:3000](http://localhost:3000), create an account, and
+start writing. On PowerShell, use `Copy-Item .env.example .env.local` instead
+of `cp` if that command is unavailable.
 
-## Docker
-
-Every push to `main` builds the image via GitHub Actions ([.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml)) and publishes it to GitHub Container Registry at `ghcr.io/ekbatani/inkest`.
+### Useful commands
 
 ```bash
-# Deploy the published image (pulls the latest build, no local build needed)
-docker login ghcr.io -u <your-github-username>   # if the package is private
+bun run typecheck
+bun run lint
+bun run build
+bun run db:generate  # create a migration after changing the schema
+bun run db:migrate   # apply committed migrations
+bun run db:studio
+```
+
+## Configuration
+
+Only `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, and `DATABASE_URL` are needed for a
+standard deployment. The rest enable optional integrations or override safe
+defaults. Keep all values in your environment or secret store; do not commit
+them.
+
+| Group | Variables |
+| --- | --- |
+| App and database | `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `NEXT_PUBLIC_APP_URL`, `DATABASE_URL`, `DATABASE_AUTH_TOKEN` |
+| AI provider | `AI_PROVIDER` (`openai`, `openrouter`, `opencode`, `ollama`, or `custom`) plus the selected provider's `*_API_KEY`, `*_BASE_URL`, and `*_MODEL` values |
+| OpenAI or custom AI | `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL` |
+| OpenRouter AI | `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL` |
+| opencode Zen AI | `OPENCODE_API_KEY`, `OPENCODE_BASE_URL`, `OPENCODE_MODEL` |
+| Ollama AI | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` (no API key required) |
+| Google Calendar | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` |
+| Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET` |
+| Attachments | `ATTACHMENT_STORAGE_DRIVER`, `LOCAL_STORAGE_ROOT`, `MAX_UPLOAD_SIZE_MB`, `ALLOWED_UPLOAD_TYPES` |
+| MinIO | `MINIO_ENDPOINT`, `MINIO_BUCKET`, `MINIO_REGION`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` |
+
+`DATABASE_URL` defaults to `file:./data/local.db`; use a Turso URL with
+`DATABASE_AUTH_TOKEN` for a remote database. `NEXT_PUBLIC_APP_URL` supplies
+the canonical public URL for metadata, robots, and the sitemap. AI settings can
+also be supplied per user in the application.
+
+Attachments use the local driver by default. Set
+`ATTACHMENT_STORAGE_DRIVER=minio` with all `MINIO_*` variables to use an
+S3-compatible MinIO server. Files remain private in either mode and are served
+only through the authenticated attachment route.
+
+## Docker and self-hosting
+
+Every push to `main` and version tag is built by
+[the Docker publishing workflow](.github/workflows/docker-publish.yml) and
+published to `ghcr.io/ekbatani/inkest`.
+
+```bash
+docker login ghcr.io -u <github-user> # only if the package is private
 docker compose pull
 docker compose up -d
 ```
 
-The container runs pending Drizzle migrations automatically on startup, so a fresh deploy initializes the schema on first boot. With the default local storage driver, the SQLite database and uploaded files live on named volumes (`inkest-data`, `inkest-storage`) mounted at `/app/data` and `/app/storage`, so they persist across `docker compose pull && up -d` redeploys.
+The image applies pending Drizzle migrations at startup. With the default local
+storage driver, the named `inkest-data` and `inkest-storage` volumes persist the
+database and uploads across redeployments.
 
-For Dokploy and other reverse-proxy-based platforms, the base [docker-compose.yml](docker-compose.yml) only exposes the app on the Docker network and does not bind host port `3000`. Point Dokploy at the app container's internal port `3000` and let Dokploy publish the external port/domain.
-
-For local Docker usage, add the included override file so the app binds to `localhost:3000`:
+The base [docker-compose.yml](docker-compose.yml) exposes the app only to the
+Docker network for reverse proxies such as Dokploy. Point the proxy at port
+`3000` in the container. For local Docker development, add the included port
+override:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 ```
 
+To start the optional MinIO service declared in the same Compose file, add its
+profile:
+
 ```bash
-# Or build the image locally instead of pulling
+docker compose --profile storage up -d
+```
+
+You can build locally instead of pulling the published image:
+
+```bash
 docker build -t inkest .
 docker run -p 3000:3000 \
-  -e NEXTAUTH_SECRET=$(openssl rand -base64 32) \
+  -e NEXTAUTH_URL=http://localhost:3000 \
+  -e NEXTAUTH_SECRET="$(openssl rand -base64 32)" \
   -e DATABASE_URL=file:/app/data/local.db \
   -v inkest-data:/app/data \
   -v inkest-storage:/app/storage \
   inkest
 ```
 
-## Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `NEXTAUTH_URL` | Yes | -- | App URL (e.g. `http://localhost:3000`) |
-| `NEXTAUTH_SECRET` | Yes | -- | Auth.js secret (`openssl rand -base64 32`) |
-| `DATABASE_URL` | Yes | `file:./data/local.db` | SQLite file path or Turso URL |
-| `DATABASE_AUTH_TOKEN` | No | -- | Turso auth token (if using remote DB) |
-| `AI_PROVIDER` | No | `openai` | Default server-side AI provider (`openai`, `openrouter`, `custom`) |
-| `OPENAI_API_KEY` | No | -- | OpenAI or generic compatible provider API key |
-| `OPENAI_BASE_URL` | No | `https://api.openai.com/v1` | OpenAI or custom compatible endpoint |
-| `OPENAI_MODEL` | No | `gpt-4o-mini` | OpenAI or custom compatible model |
-| `OPENROUTER_API_KEY` | No | -- | OpenRouter API key when `AI_PROVIDER=openrouter` |
-| `OPENROUTER_BASE_URL` | No | `https://openrouter.ai/api/v1` | OpenRouter API endpoint |
-| `OPENROUTER_MODEL` | No | `openai/gpt-4o-mini` | OpenRouter model slug |
-| `OPENCODE_API_KEY` | No | -- | opencode Zen API key when `AI_PROVIDER=opencode` |
-| `OPENCODE_BASE_URL` | No | `https://opencode.ai/zen/v1` | opencode Zen endpoint |
-| `OPENCODE_MODEL` | No | `deepseek-v4-flash-free` | opencode Zen model id |
-| `OLLAMA_BASE_URL` | No | `http://localhost:11434/v1` | Local Ollama endpoint when `AI_PROVIDER=ollama` |
-| `OLLAMA_MODEL` | No | `llama3.2` | Ollama model tag |
-| `TELEGRAM_BOT_TOKEN` | No | -- | Telegram bot token, shared by all users on this instance |
-| `TELEGRAM_CHAT_ID` | No | -- | Fallback chat ID for AI action results when no user has linked Telegram (single-user self-host) |
-| `TELEGRAM_WEBHOOK_SECRET` | No | -- | Shared secret checked against Telegram's `secret_token` on `/api/telegram/webhook`, so set it if your instance has a public URL |
-| `GOOGLE_OAUTH_CLIENT_ID` | No | -- | Google OAuth client ID used for Calendar sync |
-| `GOOGLE_OAUTH_CLIENT_SECRET` | No | -- | Google OAuth client secret used for Calendar sync |
-| `ATTACHMENT_STORAGE_DRIVER` | No | `local` | Attachment backend: `local` or `minio` |
-| `LOCAL_STORAGE_ROOT` | No | `./storage` | Local attachment root when using `local` storage |
-| `MAX_UPLOAD_SIZE_MB` | No | `20` | Max uploaded attachment size |
-| `ALLOWED_UPLOAD_TYPES` | No | built-in allowlist | Comma-separated MIME types for attachments |
-| `MINIO_ENDPOINT` | No | -- | MinIO/S3-compatible endpoint, e.g. `http://minio:9000` |
-| `MINIO_BUCKET` | No | -- | Bucket used when `ATTACHMENT_STORAGE_DRIVER=minio` |
-| `MINIO_REGION` | No | `us-east-1` | Region used for S3 signature calculation |
-| `MINIO_ACCESS_KEY` | No | -- | MinIO access key |
-| `MINIO_SECRET_KEY` | No | -- | MinIO secret key |
-
-## Attachments
-
-The editor attachment button inserts:
-
-- Markdown images for image files
-- Markdown links for PDFs, DOC/DOCX, and EPUB files
-
-All attachments remain private and are served through `/api/attachments/[id]` with per-user authorization. To move attachment storage from the local filesystem to MinIO, set `ATTACHMENT_STORAGE_DRIVER=minio` and the `MINIO_*` variables above.
-
-## Keyboard Shortcuts
+## Keyboard shortcuts
 
 | Shortcut | Action |
-|----------|--------|
-| `Ctrl+K` | Command palette |
-| `Ctrl+N` | New note |
-| `Ctrl+D` | Today's daily note |
+| --- | --- |
+| `Ctrl+K` | Open command palette |
+| `Ctrl+N` | Create a note |
+| `Ctrl+D` | Open today's daily note |
 | `Ctrl+\` | Toggle sidebar |
-| `Ctrl+S` | Force save (in editor) |
-| `Ctrl+E` | Toggle edit/preview (in editor) |
+| `Ctrl+S` | Force save in the editor |
+| `Ctrl+E` | Toggle edit/preview in the editor |
 
 ## License
 
