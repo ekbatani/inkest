@@ -3,13 +3,23 @@
 import * as React from "react";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
+import { css } from "@codemirror/lang-css";
+import { html } from "@codemirror/lang-html";
+import { javascript } from "@codemirror/lang-javascript";
+import {
+  ensureSyntaxTree,
+  HighlightStyle,
+  LanguageDescription,
+  syntaxHighlighting,
+  syntaxTree,
+} from "@codemirror/language";
 import {
   Decoration,
   EditorView,
   WidgetType,
 } from "@codemirror/view";
 import { Prec, type EditorState, type Range } from "@codemirror/state";
+import { tags } from "@lezer/highlight";
 import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
 import {
@@ -31,6 +41,38 @@ type Props = {
 
 const LARGE_PASTE_THRESHOLD = 1500;
 const PARENT_UPDATE_DELAY_MS = 120;
+
+const fencedCodeLanguages = [
+  LanguageDescription.of({
+    name: "JSON",
+    alias: ["json"],
+    support: javascript(),
+  }),
+  LanguageDescription.of({
+    name: "JavaScript",
+    alias: ["js", "javascript", "jsx", "ts", "typescript", "tsx"],
+    support: javascript({ jsx: true, typescript: true }),
+  }),
+  LanguageDescription.of({
+    name: "HTML",
+    alias: ["html", "xml", "svg"],
+    support: html(),
+  }),
+  LanguageDescription.of({
+    name: "CSS",
+    alias: ["css"],
+    support: css(),
+  }),
+];
+
+const fencedCodeHighlightStyle = HighlightStyle.define([
+  { tag: tags.keyword, color: "#c084fc" },
+  { tag: [tags.string, tags.special(tags.string)], color: "#86efac" },
+  { tag: [tags.number, tags.bool, tags.null], color: "#fbbf24" },
+  { tag: tags.propertyName, color: "#7dd3fc" },
+  { tag: [tags.comment, tags.lineComment, tags.blockComment], color: "#94a3b8", fontStyle: "italic" },
+  { tag: [tags.definitionKeyword, tags.function(tags.variableName)], color: "#f9a8d4" },
+]);
 
 function looksLikeMarkdown(text: string) {
   const lines = text.split("\n");
@@ -84,7 +126,8 @@ export function MarkdownEditor({
 
   const extensions = React.useMemo(
     () => [
-      markdown({ base: markdownLanguage }),
+      markdown({ base: markdownLanguage, codeLanguages: fencedCodeLanguages }),
+      syntaxHighlighting(fencedCodeHighlightStyle),
       EditorView.lineWrapping,
       EditorView.decorations.of(buildStyledMarkdownDecorations(linkableNotes)),
       EditorView.domEventHandlers({
@@ -190,25 +233,21 @@ export function MarkdownEditor({
           },
           ".cm-md-code-block": {
             fontFamily: "var(--font-mono)",
-            fontSize: "0.92em",
-            lineHeight: "1.62",
             backgroundColor: "color-mix(in oklab, var(--muted) 72%, transparent)",
-            borderInline: "1px solid var(--border)",
-            paddingInline: "0.85rem",
+            boxShadow:
+              "inset 1px 0 var(--border), inset -1px 0 var(--border)",
           },
           ".cm-md-code-block-start": {
-            marginBlockStart: "0.55rem",
-            paddingBlockStart: "0.65rem",
-            borderBlockStart: "1px solid var(--border)",
             borderStartStartRadius: "0.5rem",
             borderStartEndRadius: "0.5rem",
+            boxShadow:
+              "inset 1px 0 var(--border), inset -1px 0 var(--border), inset 0 1px var(--border)",
           },
           ".cm-md-code-block-end": {
-            marginBlockEnd: "0.55rem",
-            paddingBlockEnd: "0.65rem",
-            borderBlockEnd: "1px solid var(--border)",
             borderEndStartRadius: "0.5rem",
             borderEndEndRadius: "0.5rem",
+            boxShadow:
+              "inset 1px 0 var(--border), inset -1px 0 var(--border), inset 0 -1px var(--border)",
           },
           ".cm-md-quote-line": {
             borderInlineStart:
