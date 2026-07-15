@@ -3,7 +3,7 @@
 import * as React from "react";
 import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { syntaxTree } from "@codemirror/language";
+import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import {
   Decoration,
   EditorView,
@@ -632,8 +632,13 @@ function buildStyledMarkdownDecorations(linkableNotes: WikiLinkTarget[]) {
 
 function findVisibleFencedBlocks(view: EditorView) {
   const blocks: { from: number; to: number }[] = [];
+  const visibleEnd = view.visibleRanges.at(-1)?.to ?? view.viewport.to;
+  // The language parser can still be catching up when the editor first mounts.
+  // Resolve the visible tree now so an initially visible fenced block gets its
+  // non-blocking surface decoration without waiting for a later transaction.
+  const tree = ensureSyntaxTree(view.state, visibleEnd, 20) ?? syntaxTree(view.state);
 
-  syntaxTree(view.state).iterate({
+  tree.iterate({
     enter: (node) => {
       if (node.name !== "FencedCode") return;
       if (
