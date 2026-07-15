@@ -151,7 +151,7 @@ All of the following must be complete before announcing a public release:
     installed locally, so repeat the authenticated browser waterfall on
     representative hardware when available.
 
-- [todo] **P0-12 — Repair Markdown code-block editing.** Reproduce the
+- [now] **P0-12 — Repair Markdown code-block editing.** Reproduce the
   reported inability to enter/edit code areas and the rounded-border-per-line
   visual defect; fix the editor integration and add regression coverage or a
   precise manual test.

@@ -57,6 +57,12 @@ personal content.
 - [ ] Switch to read/preview with `Ctrl+E`, confirm the heading, checklist, and
       code block render, then switch back and place the caret in the same code
       block. Expected: editing resumes without a route change or lost draft.
+- [ ] In both the light and dark themes, create an LTR and an RTL note with a
+      multi-line fenced code block. Click in its first, middle, and final lines;
+      select text across lines; paste a line; then move the caret outside with
+      the arrow keys. Expected: each action edits the Markdown source directly,
+      the caret never becomes trapped, and the block has one continuous
+      background and border with rounding only at its top and bottom edges.
 
 ### Project task
 

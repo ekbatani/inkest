@@ -188,63 +188,27 @@ export function MarkdownEditor({
             fontSize: "0.92em",
             padding: "0.08em 0.24em",
           },
-          ".cm-md-code-line": {
-            borderRadius: "0.35rem",
-            backgroundColor: "color-mix(in oklab, var(--muted) 72%, transparent)",
+          ".cm-md-code-block": {
             fontFamily: "var(--font-mono)",
             fontSize: "0.92em",
+            lineHeight: "1.62",
+            backgroundColor: "color-mix(in oklab, var(--muted) 72%, transparent)",
+            borderInline: "1px solid var(--border)",
+            paddingInline: "0.85rem",
           },
-          ".cm-md-fenced-block": {
-            position: "relative",
-            margin: "0.55rem 0",
-            border: "1px solid var(--border)",
-            borderRadius: "0.5rem",
-            backgroundColor: "color-mix(in oklch, var(--muted) 42%, transparent)",
-            overflow: "hidden",
+          ".cm-md-code-block-start": {
+            marginBlockStart: "0.55rem",
+            paddingBlockStart: "0.65rem",
+            borderBlockStart: "1px solid var(--border)",
+            borderStartStartRadius: "0.5rem",
+            borderStartEndRadius: "0.5rem",
           },
-          ".cm-md-fenced-toolbar": {
-            position: "absolute",
-            insetBlockStart: "0.35rem",
-            insetInlineEnd: "0.35rem",
-            zIndex: "1",
-            display: "flex",
-            gap: "0.25rem",
-          },
-          ".cm-md-fenced-button": {
-            border: "1px solid var(--border)",
-            borderRadius: "0.35rem",
-            backgroundColor: "var(--background)",
-            color: "var(--foreground)",
-            cursor: "pointer",
-            fontFamily: "var(--font-sans)",
-            fontSize: "0.72rem",
-            fontWeight: "600",
-            padding: "0.16rem 0.45rem",
-          },
-          ".cm-md-fenced-body": {
-            padding: "1rem",
-            paddingBlockStart: "2.2rem",
-            overflowX: "auto",
-          },
-          ".cm-md-fenced-code": {
-            margin: "0",
-            whiteSpace: "pre",
-            fontFamily: "var(--font-mono)",
-            fontSize: "0.84rem",
-            lineHeight: "1.55",
-          },
-          ".cm-md-mermaid": {
-            display: "flex",
-            justifyContent: "center",
-            minHeight: "5rem",
-          },
-          ".cm-md-mermaid svg": {
-            maxWidth: "100%",
-            height: "auto",
-          },
-          ".cm-md-fenced-error": {
-            color: "var(--destructive)",
-            whiteSpace: "pre-wrap",
+          ".cm-md-code-block-end": {
+            marginBlockEnd: "0.55rem",
+            paddingBlockEnd: "0.65rem",
+            borderBlockEnd: "1px solid var(--border)",
+            borderEndStartRadius: "0.5rem",
+            borderEndEndRadius: "0.5rem",
           },
           ".cm-md-quote-line": {
             borderInlineStart:
@@ -488,6 +452,19 @@ function blockContainingLine(
   return blocks.find((block) => block.from <= lineFrom && block.to >= lineTo);
 }
 
+function getFencedBlockLineClass(
+  block: { from: number; to: number },
+  lineFrom: number,
+  lineTo: number,
+) {
+  const classes = ["cm-md-code-block"];
+
+  if (lineFrom === block.from) classes.push("cm-md-code-block-start");
+  if (lineTo === block.to) classes.push("cm-md-code-block-end");
+
+  return classes.join(" ");
+}
+
 function buildStyledMarkdownDecorations(linkableNotes: WikiLinkTarget[]) {
   return (view: EditorView) => {
     const ranges: Range<Decoration>[] = [];
@@ -499,7 +476,13 @@ function buildStyledMarkdownDecorations(linkableNotes: WikiLinkTarget[]) {
         const line = view.state.doc.lineAt(pos);
         const text = line.text;
         const fencedBlock = blockContainingLine(fencedBlocks, line.from, line.to);
-        if (fencedBlock && !selectionTouches(view.state, fencedBlock.from, fencedBlock.to)) {
+        if (fencedBlock) {
+          ranges.push(
+            Decoration.line({
+              class: getFencedBlockLineClass(fencedBlock, line.from, line.to),
+            }).range(line.from),
+          );
+
           if (line.to + 1 > to) break;
           pos = line.to + 1;
           continue;
@@ -508,7 +491,7 @@ function buildStyledMarkdownDecorations(linkableNotes: WikiLinkTarget[]) {
         const heading = text.match(/^(#{1,6})\s*(?=\S)/);
         const task = text.match(/^(\s*[-*]\s+\[([ xX])]\s+)/);
 
-        if (!fencedBlock && task) {
+        if (task) {
           replaceWithWidgetIfIdle(
             ranges,
             view,
@@ -525,17 +508,11 @@ function buildStyledMarkdownDecorations(linkableNotes: WikiLinkTarget[]) {
         }
 
         const quote = text.match(/^(\s*>\s*)/);
-        if (!fencedBlock && quote) {
+        if (quote) {
           ranges.push(
             Decoration.line({ class: "cm-md-quote-line" }).range(line.from),
           );
           hideIfIdle(ranges, view, line.from, line.from + quote[1].length);
-        }
-
-        if (fencedBlock) {
-          if (line.to + 1 > to) break;
-          pos = line.to + 1;
-          continue;
         }
 
         decorateInlinePattern(
