@@ -231,24 +231,6 @@ export function MarkdownEditor({
             fontSize: "0.92em",
             padding: "0.08em 0.24em",
           },
-          ".cm-md-code-block": {
-            fontFamily: "var(--font-mono)",
-            backgroundColor: "color-mix(in oklab, var(--muted) 72%, transparent)",
-            boxShadow:
-              "inset 1px 0 var(--border), inset -1px 0 var(--border)",
-          },
-          ".cm-md-code-block-start": {
-            borderStartStartRadius: "0.5rem",
-            borderStartEndRadius: "0.5rem",
-            boxShadow:
-              "inset 1px 0 var(--border), inset -1px 0 var(--border), inset 0 1px var(--border)",
-          },
-          ".cm-md-code-block-end": {
-            borderEndStartRadius: "0.5rem",
-            borderEndEndRadius: "0.5rem",
-            boxShadow:
-              "inset 1px 0 var(--border), inset -1px 0 var(--border), inset 0 -1px var(--border)",
-          },
           ".cm-md-quote-line": {
             borderInlineStart:
               "2px solid color-mix(in oklab, var(--primary) 48%, var(--border))",
@@ -491,19 +473,6 @@ function blockContainingLine(
   return blocks.find((block) => block.from <= lineFrom && block.to >= lineTo);
 }
 
-function getFencedBlockLineClass(
-  block: { from: number; to: number },
-  lineFrom: number,
-  lineTo: number,
-) {
-  const classes = ["cm-md-code-block"];
-
-  if (lineFrom === block.from) classes.push("cm-md-code-block-start");
-  if (lineTo === block.to) classes.push("cm-md-code-block-end");
-
-  return classes.join(" ");
-}
-
 function buildStyledMarkdownDecorations(linkableNotes: WikiLinkTarget[]) {
   return (view: EditorView) => {
     const ranges: Range<Decoration>[] = [];
@@ -516,12 +485,6 @@ function buildStyledMarkdownDecorations(linkableNotes: WikiLinkTarget[]) {
         const text = line.text;
         const fencedBlock = blockContainingLine(fencedBlocks, line.from, line.to);
         if (fencedBlock) {
-          ranges.push(
-            Decoration.line({
-              class: getFencedBlockLineClass(fencedBlock, line.from, line.to),
-            }).range(line.from),
-          );
-
           if (line.to + 1 > to) break;
           pos = line.to + 1;
           continue;
