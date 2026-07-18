@@ -13,6 +13,11 @@ export type AiProvider = {
   completeJson: (prompt: string, systemPrompt: string) => Promise<string>;
 };
 
+export type AiConfigurationStatus = {
+  provider: AiProviderId;
+  source: "user" | "instance" | "unavailable";
+};
+
 // Env-var prefix per provider, e.g. OPENROUTER_API_KEY / OPENCODE_BASE_URL / OLLAMA_MODEL.
 // "openai" and "custom" keep using the original OPENAI_* names for backwards compatibility.
 const PROVIDER_ENV_PREFIX: Partial<Record<AiProviderId, string>> = {
@@ -27,6 +32,30 @@ function resolveEnvProviderId(): AiProviderId {
     return value as AiProviderId;
   }
   return "openai";
+}
+
+/**
+ * Returns only setup metadata suitable for the Settings UI. In particular, it
+ * never includes an API key or any other environment value.
+ */
+export function getAiConfigurationStatus(
+  settings: Awaited<ReturnType<typeof getUserSettings>>,
+): AiConfigurationStatus {
+  const provider = settings.ai?.provider ?? resolveEnvProviderId();
+  const definition = getAiProviderDefinition(provider);
+  const envPrefix = PROVIDER_ENV_PREFIX[provider];
+  const instanceHasKey = Boolean(
+    (envPrefix ? process.env[`${envPrefix}_API_KEY`] : process.env.OPENAI_API_KEY)?.trim(),
+  );
+
+  return {
+    provider,
+    source: settings.ai?.apiKey?.trim()
+      ? "user"
+      : instanceHasKey || definition.apiKeyOptional
+        ? "instance"
+        : "unavailable",
+  };
 }
 
 export async function getAiProvider(): Promise<AiProvider | null> {

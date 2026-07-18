@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/server/auth";
 import { getUserSettings } from "@/server/users/settings-service";
 import { getTelegramLinkStatus } from "@/server/notifications/telegram-link";
+import { getAiConfigurationStatus } from "@/server/ai/provider";
 import {
   ProfileSection,
   EditorPrefsSection,
@@ -18,6 +19,7 @@ export default async function SettingsPage() {
     getUserSettings(),
     getTelegramLinkStatus(),
   ]);
+  const aiConfiguration = getAiConfigurationStatus(settings);
 
   return (
     <div className="app-page max-w-3xl gap-6">
@@ -26,8 +28,14 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
       </header>
 
+      <p className="-mt-3 text-sm text-muted-foreground">
+        Account, writing, AI, data, and connected-service preferences are kept separate below.
+      </p>
+
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Account</h2>
       <ProfileSection email={user?.email ?? ""} name={user?.name} />
 
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Writing</h2>
       <EditorPrefsSection
         key={`editor:${settings.editor?.autosaveDelayMs}:${settings.editor?.showLineNumbers}:${settings.editor?.spellcheck}:${settings.editor?.spellcheckLanguage}`}
         autosaveDelayMs={settings.editor?.autosaveDelayMs}
@@ -36,14 +44,17 @@ export default async function SettingsPage() {
         spellcheckLanguage={settings.editor?.spellcheckLanguage}
       />
 
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AI setup</h2>
       <AiProviderSection
         key={`ai:${settings.ai?.provider}:${settings.ai?.apiKey ? "set" : "unset"}:${settings.ai?.baseURL ?? ""}:${settings.ai?.model ?? ""}`}
         provider={settings.ai?.provider}
-        apiKey={settings.ai?.apiKey}
+        hasApiKey={Boolean(settings.ai?.apiKey)}
         baseURL={settings.ai?.baseURL}
         model={settings.ai?.model}
+        configurationSource={aiConfiguration.source}
       />
 
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your data</h2>
       <section className="surface-card flex flex-col gap-3 p-5">
         <header className="flex items-center gap-2">
           <Archive className="size-4 text-muted-foreground" />
@@ -64,6 +75,7 @@ export default async function SettingsPage() {
         </div>
       </section>
 
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Connected services</h2>
       <NotificationsSection
         key={`notifications:${telegramStatus.linked}`}
         initialLinked={telegramStatus.linked}
@@ -72,6 +84,7 @@ export default async function SettingsPage() {
         dailyNoteNudge={settings.notifications?.dailyNoteNudge}
       />
 
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Account deletion</h2>
       <DangerZoneSection />
     </div>
   );

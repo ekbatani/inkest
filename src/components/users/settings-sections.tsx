@@ -246,22 +246,29 @@ export function EditorPrefsSection({
 
 export function AiProviderSection({
   provider,
-  apiKey,
+  hasApiKey,
   baseURL,
   model,
+  configurationSource,
 }: {
   provider?: AiProviderId;
-  apiKey?: string;
+  hasApiKey: boolean;
   baseURL?: string;
   model?: string;
+  configurationSource: "user" | "instance" | "unavailable";
 }) {
   const initialProvider = provider ?? "openai";
   const [selectedProvider, setSelectedProvider] =
     React.useState<AiProviderId>(initialProvider);
-  const [key, setKey] = React.useState(apiKey ?? "");
-  const [url, setUrl] = React.useState(baseURL ?? "");
-  const [mdl, setMdl] = React.useState(model ?? "");
+  const [key, setKey] = React.useState("");
+  const [url, setUrl] = React.useState(
+    baseURL ?? getAiProviderDefinition(initialProvider).defaultBaseURL,
+  );
+  const [mdl, setMdl] = React.useState(
+    model ?? getAiProviderDefinition(initialProvider).defaultModel,
+  );
   const [saving, setSaving] = React.useState(false);
+  const [removingKey, setRemovingKey] = React.useState(false);
   const providerDef = getAiProviderDefinition(selectedProvider);
 
   const onProviderChange = (nextProvider: AiProviderId) => {
@@ -278,23 +285,55 @@ export function AiProviderSection({
   };
 
   const save = async () => {
+    const trimmedUrl = url.trim();
+    const trimmedModel = mdl.trim();
+    if (trimmedUrl) {
+      try {
+        new URL(trimmedUrl);
+      } catch {
+        toast.error("Enter a valid OpenAI-compatible base URL.");
+        return;
+      }
+    }
+    if (!trimmedModel) {
+      toast.error("Enter the model name to use.");
+      return;
+    }
+    if (!providerDef.apiKeyOptional && !key.trim() && !hasApiKey && configurationSource === "unavailable") {
+      toast.error("Add an API key or ask the instance administrator to configure one.");
+      return;
+    }
     setSaving(true);
     try {
       await import("@/server/users/settings-actions").then((m) =>
-        m.updateUserSettingsAction({
-          ai: {
-            provider: selectedProvider,
-            apiKey: key.trim() || undefined,
-            baseURL: url.trim() || undefined,
-            model: mdl.trim() || undefined,
-          },
+        m.updateAiProviderSettingsAction({
+          provider: selectedProvider,
+          ...(key.trim() ? { apiKey: key.trim() } : {}),
+          baseURL: trimmedUrl,
+          model: trimmedModel,
         }),
       );
+      setKey("");
       toast.success("AI provider saved.");
-    } catch {
-      toast.error("Failed to save AI provider.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save AI provider.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const removeSavedKey = async () => {
+    if (!confirm("Remove your saved AI API key? The instance default will be used instead.")) return;
+    setRemovingKey(true);
+    try {
+      await import("@/server/users/settings-actions").then((m) =>
+        m.clearAiProviderApiKeyAction(),
+      );
+      toast.success("Saved AI API key removed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to remove the saved key.");
+    } finally {
+      setRemovingKey(false);
     }
   };
 
@@ -312,10 +351,15 @@ export function AiProviderSection({
           Need a key? →
         </Link>
       </div>
+      <div className="rounded-md border bg-muted/35 px-3 py-2 text-xs text-muted-foreground">
+        {configurationSource === "user"
+          ? "Using your saved API key. It is encrypted at rest and never shown here again."
+          : configurationSource === "instance"
+            ? "Using the instance default. Add your own key below to override it just for your account."
+            : "AI is unavailable: add your own key below, or ask the instance administrator to configure a provider."}
+      </div>
       <p className="text-xs text-muted-foreground">
-        Choose your provider and save your own API key. When these fields are
-        left empty, the app falls back to the server environment variables. The
-        key is stored locally in your self-hosted database.
+        Provider, base URL, and model are personal preferences. A blank API key keeps your existing saved key; otherwise the instance default is used. Ollama does not require a key.
       </p>
       <div className="grid gap-3 sm:grid-cols-4">
         <div className="flex flex-col gap-1.5">
@@ -337,7 +381,7 @@ export function AiProviderSection({
           </Select>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label className="text-xs text-muted-foreground">API key</Label>
+          <Label className="text-xs text-muted-foreground">API key {hasApiKey ? "(saved)" : "(optional)"}</Label>
           <Input
             type="password"
             value={key}
@@ -345,6 +389,7 @@ export function AiProviderSection({
             placeholder={providerDef.apiKeyPlaceholder}
             autoComplete="off"
           />
+          {hasApiKey ? <p className="text-[11px] text-muted-foreground">Leave blank to keep the saved key.</p> : null}
         </div>
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-muted-foreground">Base URL</Label>
@@ -363,10 +408,15 @@ export function AiProviderSection({
           />
         </div>
       </div>
-      <div>
+      <div className="flex flex-wrap gap-2">
         <Button size="sm" onClick={save} disabled={saving}>
           Save AI provider
         </Button>
+        {hasApiKey ? (
+          <Button size="sm" variant="outline" onClick={removeSavedKey} disabled={removingKey}>
+            Remove saved key
+          </Button>
+        ) : null}
       </div>
     </section>
   );

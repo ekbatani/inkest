@@ -264,11 +264,19 @@ All of the following must be complete before announcing a public release:
     Verification: `bun.cmd run typecheck`, focused ESLint, and `bun.cmd run
     build` passed.
 
-- [now] **P1-21 — Refine settings and AI setup UX.** Group settings by
+- [done] **P1-21 — Refine settings and AI setup UX.** Group settings by
   purpose, clarify instance versus user configuration, make provider setup
   easy, and show actionable validation/error messages.
   - Acceptance: a new user can configure an OpenAI-compatible provider or
     understand why AI is unavailable without reading source code.
+  - Evidence: 2026-07-18 — grouped the Settings page into account, writing,
+    AI setup, data, connected services, and deletion; added explicit active
+    AI source states (personal key, instance default, unavailable), provider
+    defaults, client/server URL and model validation, and actionable missing
+    key errors. Personal API keys are no longer passed to the browser; Settings
+    receives only whether a key exists and can remove it explicitly. Updated
+    `README.md` with the instance-versus-personal precedence contract. `bun.cmd
+    run typecheck`, focused ESLint, and `bun.cmd run build` passed.
 
 - [todo] **P1-22 — Make the right sidebar useful and predictable.** Redesign
   it around contextual note/project properties, links, tasks, AI, and

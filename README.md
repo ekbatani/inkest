@@ -90,6 +90,12 @@ them.
 | Google Calendar | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` (the callback URL is derived as `${NEXTAUTH_URL}/api/calendar/google/callback`) |
 | Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET` |
 | Attachments | `ATTACHMENT_STORAGE_DRIVER`, `LOCAL_STORAGE_ROOT`, `MAX_UPLOAD_SIZE_MB`, `ALLOWED_UPLOAD_TYPES` |
+
+After signing in, **Settings → AI setup** can store a personal provider, model,
+base URL, and encrypted API key. Personal settings override the selected
+instance environment values only for that account; a blank personal key uses
+the instance default. The settings page shows which source is active without
+revealing the saved key.
 | MinIO | `MINIO_ENDPOINT`, `MINIO_BUCKET`, `MINIO_REGION`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` |
 
 `DATABASE_URL` defaults to `file:./data/local.db`; use a Turso URL with
