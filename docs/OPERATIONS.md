@@ -103,8 +103,8 @@ previously recorded 818 KiB editor script transfer, using the gzip manifest
 measurement as a reproducible conservative proxy for browser transfer.
 
 CodeMirror remains the write-mode dependency. Markdown preview, Mermaid, and
-super-focus remain dynamically imported; the AI panel is now loaded only after
-the AI button or the command-menu action is used. Its separate production chunk
+the focus reader remain dynamically imported; the AI panel is now loaded only
+after the AI button or the command-menu action is used. Its separate production chunk
 is 13.6 KiB raw / 4.6 KiB gzip and is absent from the initial note-route entry
 set. `bun run typecheck` and an isolated `bun run build` passed. Repeat the
 same authenticated browser measurement on representative hardware when browser

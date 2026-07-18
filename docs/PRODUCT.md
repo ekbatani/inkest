@@ -33,8 +33,8 @@ It is designed to be self-hosted, portable, and pleasant to use every day.
 - Private images and document attachments, plus browser speech-to-text and
   text-to-speech.
 - One Markdown writing surface with inline formatting cues, plus an explicit
-  distraction-free reader (including super-focus and text-to-speech) that
-  returns to the editor caret on exit.
+  focus reader with spotlight controls and text-to-speech that returns to the
+  editor caret on exit.
 
 ### Projects and planning
 

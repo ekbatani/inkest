@@ -196,14 +196,26 @@ All of the following must be complete before announcing a public release:
     reached the pre-existing `react-hooks/refs` ref-read error in
     `note-editor.tsx:318`, outside this paste workflow.
 
-- [now] **P1-15 — Merge and harden focus experiences.** Decide which
+- [done] **P1-15 — Merge and harden focus experiences.** Decide which
   distinct capability remains from focus and super-focus, then make it
   consistently discoverable after the unified editor work.
   - Acceptance: there is one understandable focus entry point, a keyboard
     shortcut, accessible exit control, reduced-motion behavior, and no mode
     that appears only in one legacy view.
+  - Evidence: 2026-07-18 — removed the legacy inline editor focus mode and
+    kept the focus reader as the single focus entry point from the note toolbar
+    and `Ctrl+Shift+R`; `Esc` exits back to the editor caret. Added accessible
+    names for the focus reader content, controls, tracking buttons, and exit
+    action; kept the existing reduced-motion CSS for spotlight changes; and
+    aligned README/product/operations wording around one focus reader. Also
+    fixed the editor undo checkpoint render-time ref read that blocked focused
+    ESLint. `bun.cmd run typecheck`, focused `bun.cmd x eslint
+    src/components/notes/note-editor.tsx
+    src/components/notes/super-focus-reader.tsx`, and `bun.cmd run build`
+    passed; the build still reports the pre-existing Turbopack NFT trace
+    warning for the attachment export path.
 
-- [todo] **P1-16 — Complete keyboard-first writing.** Document and implement
+- [now] **P1-16 — Complete keyboard-first writing.** Document and implement
   core shortcuts for create/search/open/save/focus/formatting/navigation;
   assess high-value Vim-like actions such as next/previous match and select
   all occurrences without conflicting with browser assistive technology.

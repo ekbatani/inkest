@@ -211,6 +211,7 @@ export function SuperFocusReader({
       <div
         ref={scrollRef}
         onPointerMove={handlePointerMove}
+        aria-label="Focus reader content"
         className="flex-1 overflow-y-auto px-6 py-16 sm:px-10"
       >
         <div ref={proseWrapperRef} className="mx-auto max-w-[70ch]">
@@ -219,12 +220,17 @@ export function SuperFocusReader({
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center px-4 sm:top-6">
-        <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/10 bg-black/60 p-1 shadow-lg backdrop-blur">
+        <div
+          role="toolbar"
+          aria-label="Focus reader controls"
+          className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/10 bg-black/60 p-1 shadow-lg backdrop-blur"
+        >
           <div className="flex items-center rounded-full bg-white/5 p-0.5">
             <button
               type="button"
               onClick={() => onTrackingModeChange("pointer")}
               aria-pressed={trackingMode === "pointer"}
+              aria-label="Follow pointer"
               title="Follow pointer"
               className={cn(
                 "flex size-7 items-center justify-center rounded-full text-white/60 transition-colors",
@@ -237,6 +243,7 @@ export function SuperFocusReader({
               type="button"
               onClick={() => onTrackingModeChange("auto")}
               aria-pressed={trackingMode === "auto"}
+              aria-label="Auto-advance while scrolling"
               title="Auto-advance while scrolling"
               className={cn(
                 "flex size-7 items-center justify-center rounded-full text-white/60 transition-colors",
@@ -279,6 +286,7 @@ export function SuperFocusReader({
             variant="ghost"
             size="sm"
             onClick={onExit}
+            aria-label="Exit focus reader"
             className="gap-1.5 rounded-full text-white/70 hover:bg-white/10 hover:text-white"
           >
             <X className="size-3.5" />

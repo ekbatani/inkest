@@ -10,8 +10,8 @@ self-hosted, portable, and comfortable for daily writing.
   backlinks, version history, and Markdown/workspace export.
 - Projects, note-backed tasks, checklists, due dates, kanban, tags, folders,
   archive, daily notes, and calendar views.
-- Private image and document attachments; browser speech-to-text; and
-  text-to-speech, focus, super-focus, RTL, and dark-mode reading support.
+- Private image and document attachments; browser speech-to-text; and a
+  focus reader with text-to-speech, RTL, and dark-mode reading support.
 - Explicit AI actions for writing, summaries, task extraction, project plans,
   Mermaid generation, explanations, and translation.
 - Optional Google Calendar and Telegram integrations.
@@ -156,7 +156,7 @@ docker run -p 3000:3000 \
 | `Ctrl+D` | Open today's daily note |
 | `Ctrl+\` | Toggle sidebar |
 | `Ctrl+S` | Force save in the editor |
-| `Ctrl+Shift+R` | Open the distraction-free reader; `Esc` returns to the editor caret |
+| `Ctrl+Shift+R` | Open the focus reader; `Esc` returns to the editor caret |
 
 ## License
 

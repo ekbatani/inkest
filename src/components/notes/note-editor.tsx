@@ -8,7 +8,6 @@ import {
   Pin,
   PinOff,
   Trash2,
-  Maximize,
   ChevronLeft,
   Loader2,
   Check,
@@ -65,7 +64,7 @@ import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
 import type { GoogleCalendarEvent } from "@/server/db/schema";
 
-// Dynamically imported so CodeMirror (write/focus mode) and the react-markdown preview
+// Dynamically imported so CodeMirror and the react-markdown preview
 // stack (read mode, copy-preview) split into separate chunks instead of always loading
 // together — see docs/plan.md Phase 9.
 const MarkdownEditor = dynamic(
@@ -98,7 +97,6 @@ const AiPanel = dynamic(
   },
 );
 
-type EditorMode = "write" | "focus";
 type NoteSnapshot = {
   title: string;
   content: string;
@@ -145,7 +143,6 @@ export function NoteEditor({
   const router = useRouter();
   const [title, setTitle] = React.useState(note.title);
   const [content, setContent] = React.useState(note.contentMd);
-  const [mode, setMode] = React.useState<EditorMode>("write");
   const [showPanel, setShowPanel] = React.useState(true);
   const [showSuperFocus, setShowSuperFocus] = React.useState(false);
   const [aiPanelRequested, setAiPanelRequested] = React.useState(false);
@@ -193,10 +190,13 @@ export function NoteEditor({
   const titleInputRef = React.useRef<HTMLInputElement>(null);
   const previewCopyRef = React.useRef<HTMLDivElement>(null);
   const [copyMenuTouched, setCopyMenuTouched] = React.useState(false);
-  const lastCheckpointRef = React.useRef<NoteSnapshot>({
+  const initialCheckpoint = React.useMemo<NoteSnapshot>(() => ({
     title: note.title,
     content: note.contentMd,
-  });
+  }), [note.contentMd, note.title]);
+  const [lastCheckpointSnapshot, setLastCheckpointSnapshot] =
+    React.useState<NoteSnapshot>(initialCheckpoint);
+  const lastCheckpointRef = React.useRef<NoteSnapshot>(initialCheckpoint);
 
   // CodeMirror keeps the keystroke path local. Its debounced parent update still
   // drives autosave, history, preview, and metadata, but it must not make those
@@ -272,7 +272,9 @@ export function NoteEditor({
   React.useEffect(() => {
     if (skipNextHistoryCheckpoint.current) {
       skipNextHistoryCheckpoint.current = false;
-      lastCheckpointRef.current = { title, content };
+      const nextCheckpoint = { title, content };
+      lastCheckpointRef.current = nextCheckpoint;
+      setLastCheckpointSnapshot(nextCheckpoint);
       return;
     }
 
@@ -288,6 +290,7 @@ export function NoteEditor({
         future: [],
       }));
       lastCheckpointRef.current = nextSnapshot;
+      setLastCheckpointSnapshot(nextSnapshot);
     }, 700);
 
     return () => {
@@ -308,14 +311,13 @@ export function NoteEditor({
     }
   }, [note.id, title, content]);
 
-  const isFocus = mode === "focus";
   const currentSnapshot = React.useMemo(
     () => ({ title, content }),
     [title, content],
   );
   const canUndo =
     historyState.past.length > 0 ||
-    !sameSnapshot(currentSnapshot, lastCheckpointRef.current);
+    !sameSnapshot(currentSnapshot, lastCheckpointSnapshot);
   const canRedo = historyState.future.length > 0;
 
   const applySnapshot = React.useCallback(
@@ -331,6 +333,7 @@ export function NoteEditor({
         skipNextPersist.current = true;
       }
       lastCheckpointRef.current = snapshot;
+      setLastCheckpointSnapshot(snapshot);
       setTitle(snapshot.title);
       setContent(snapshot.content);
       if (options?.nextHistory) {
@@ -407,11 +410,6 @@ export function NoteEditor({
     view.focus();
   }, []);
 
-  const exitFocusMode = React.useCallback(() => {
-    setMode("write");
-    window.setTimeout(() => focusEditorStart(), 0);
-  }, [focusEditorStart]);
-
   const openReader = React.useCallback((autoPlay = false) => {
     setSuperFocusAutoPlay(autoPlay);
     setShowSuperFocus(true);
@@ -426,11 +424,6 @@ export function NoteEditor({
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (e.key === "Escape" && isFocus) {
-        e.preventDefault();
-        exitFocusMode();
-        return;
-      }
       if (!mod) return;
       const key = e.key.toLowerCase();
 
@@ -459,7 +452,7 @@ export function NoteEditor({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [exitFocusMode, forceSave, isFocus, openReader, redo, undo]);
+  }, [forceSave, openReader, redo, undo]);
 
   const onMetadataChange = async (
     field: string,
@@ -591,8 +584,7 @@ export function NoteEditor({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {!isFocus && (
-        <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3 sm:px-4">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3 sm:px-4">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -603,26 +595,15 @@ export function NoteEditor({
           </Button>
           <div className="ml-1 flex items-center gap-1">
             <Button
-              variant={isFocus ? "secondary" : "ghost"}
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setMode((current) => current === "focus" ? "write" : "focus")}
-              aria-pressed={isFocus}
-              aria-label="Toggle focus mode"
-            >
-              <Maximize className="size-3.5" />
-              <span className="ml-1 hidden sm:inline">Focus</span>
-            </Button>
-            <Button
               variant="ghost"
               size="sm"
               className="gap-1.5"
               onClick={() => openReader()}
-              aria-label="Open distraction-free reader"
-              title="Open reader (Ctrl+Shift+R)"
+              aria-label="Open focus reader"
+              title="Open focus reader (Ctrl+Shift+R)"
             >
               <BookOpen className="size-3.5" />
-              <span className="ml-1 hidden sm:inline">Read</span>
+              <span className="ml-1 hidden sm:inline">Focus</span>
             </Button>
           </div>
 
@@ -630,8 +611,8 @@ export function NoteEditor({
             variant="ghost"
             size="icon-sm"
             onClick={() => openReader(true)}
-            aria-label="Listen in the distraction-free reader"
-            title="Listen"
+            aria-label="Listen in the focus reader"
+            title="Listen in focus reader"
           >
             <Headphones className="size-4 text-muted-foreground" />
           </Button>
@@ -752,26 +733,7 @@ export function NoteEditor({
               )}
             </Button>
           </div>
-        </div>
-      )}
-
-      {isFocus && (
-        <div className="flex justify-end px-6 pt-4 sm:px-10">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 rounded-full shadow-sm"
-            onClick={exitFocusMode}
-            aria-label="Exit focus mode"
-          >
-            <ChevronLeft className="size-4" />
-            <span>Exit focus</span>
-            <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-              Esc
-            </kbd>
-          </Button>
-        </div>
-      )}
+      </div>
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
@@ -804,10 +766,7 @@ export function NoteEditor({
           </div>
 
           <div
-            className={cn(
-              "flex min-h-0 flex-1 gap-0",
-              isFocus ? "px-6 sm:px-10" : "px-6 sm:px-10",
-            )}
+            className="flex min-h-0 flex-1 gap-0 px-6 sm:px-10"
             dir={metadata.direction}
           >
             <div className="flex min-h-0 flex-1 flex-col py-6">
@@ -826,7 +785,7 @@ export function NoteEditor({
           </div>
         </div>
 
-        {!isFocus && showPanel && (
+        {showPanel && (
           <aside className="hidden h-full w-80 shrink-0 border-l sm:block">
             <MetadataPanel
               note={note}
