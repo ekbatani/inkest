@@ -28,7 +28,6 @@ import type { NoteTreeNode } from "@/server/notes/service";
 import { usesRtlTitleFont } from "@/lib/text/rtl";
 
 type TreeItem = NoteTreeNode;
-type TreeChild = NoteTreeNode["children"][number];
 
 type DropTarget =
   | { kind: "root"; beforeId: string | null }
@@ -39,14 +38,6 @@ const DROP_ROOT_END = "drop:root:end";
 
 function makeRootDropId(beforeId: string) {
   return `drop:root:${beforeId}`;
-}
-
-function makeChildDropId(parentId: string, beforeId: string) {
-  return `drop:child:${parentId}:${beforeId}`;
-}
-
-function makeChildEndDropId(parentId: string) {
-  return `drop:child:${parentId}:end`;
 }
 
 function makeProjectDropId(parentId: string) {
@@ -84,22 +75,19 @@ function parseDropTarget(value: string): DropTarget | null {
   return null;
 }
 
-function findNodeParentId(nodes: TreeItem[], noteId: string): string | null | undefined {
+function findNodeParentId(nodes: TreeItem[], noteId: string, parentId: string | null = null): string | null | undefined {
   for (const node of nodes) {
-    if (node.id === noteId) return null;
-    if (node.children.some((child) => child.id === noteId)) return node.id;
+    if (node.id === noteId) return parentId;
+    const found = findNodeParentId(node.children, noteId, node.id);
+    if (found !== undefined) return found;
   }
   return undefined;
-}
-
-function findTopLevelNode(nodes: TreeItem[], noteId: string) {
-  return nodes.find((node) => node.id === noteId) ?? null;
 }
 
 function removeNode(
   nodes: TreeItem[],
   noteId: string,
-): { nodes: TreeItem[]; item: TreeItem | TreeChild | null } {
+): { nodes: TreeItem[]; item: TreeItem | null } {
   const topLevelIndex = nodes.findIndex((node) => node.id === noteId);
   if (topLevelIndex >= 0) {
     const nextNodes = nodes.slice();
@@ -108,17 +96,14 @@ function removeNode(
   }
 
   for (const node of nodes) {
-    const childIndex = node.children.findIndex((child) => child.id === noteId);
-    if (childIndex >= 0) {
-      const nextNodes = nodes.map((entry) =>
-        entry.id === node.id
-          ? {
-              ...entry,
-              children: entry.children.filter((child) => child.id !== noteId),
-            }
-          : entry,
-      );
-      return { nodes: nextNodes, item: node.children[childIndex] };
+    const nested = removeNode(node.children, noteId);
+    if (nested.item) {
+      return {
+        nodes: nodes.map((entry) =>
+          entry.id === node.id ? { ...entry, children: nested.nodes } : entry,
+        ),
+        item: nested.item,
+      };
     }
   }
 
@@ -127,20 +112,19 @@ function removeNode(
 
 function insertNode(
   nodes: TreeItem[],
-  item: TreeItem | TreeChild,
+  item: TreeItem,
   target: DropTarget,
 ): TreeItem[] {
   if (target.kind === "root") {
-    const topLevelItem = "children" in item ? item : { ...item, children: [] };
     const nextNodes = nodes.slice();
     const index =
       target.beforeId === null
         ? nextNodes.length
         : nextNodes.findIndex((node) => node.id === target.beforeId);
     if (index >= 0) {
-      nextNodes.splice(index, 0, topLevelItem);
+      nextNodes.splice(index, 0, item);
     } else {
-      nextNodes.push(topLevelItem);
+      nextNodes.push(item);
     }
     return nextNodes;
   }
@@ -148,17 +132,7 @@ function insertNode(
   return nodes.map((node) => {
     if (node.id !== target.parentId) return node;
     const nextChildren = node.children.slice();
-    const childItem =
-      "children" in item
-        ? {
-            id: item.id,
-            title: item.title,
-            slug: item.slug,
-            type: item.type,
-            updatedAt: item.updatedAt,
-            createdAt: item.createdAt,
-          }
-        : item;
+    const childItem = item;
 
     const index =
       target.kind === "project" || target.beforeId === null
@@ -187,14 +161,8 @@ function canDrop(nodes: TreeItem[], noteId: string, target: DropTarget) {
   const currentParentId = findNodeParentId(nodes, noteId);
   if (currentParentId === undefined) return false;
 
-  const activeTopLevel = findTopLevelNode(nodes, noteId);
-  const isParentNode = Boolean(activeTopLevel);
-  const hasChildren = Boolean(activeTopLevel?.children.length);
-
   if (target.kind === "project" || target.kind === "child") {
     if (target.parentId === noteId) return false;
-    if (activeTopLevel?.type === "project") return false;
-    if (isParentNode && hasChildren) return false;
     return true;
   }
 
@@ -383,41 +351,7 @@ export function NotesTree({
                   )}
                 </TreeRow>
 
-                {isOpen && (
-                  <ul className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l pl-1.5">
-                    {node.children.map((child) => (
-                      <li key={child.id} className="notes-tree-row">
-                        <DropZone
-                          id={makeChildDropId(node.id, child.id)}
-                          active={isDropTargetActive(
-                            dragState.activeId,
-                            makeChildDropId(node.id, child.id),
-                            dragState.overId,
-                          )}
-                        />
-                        <TreeRow
-                          noteId={child.id}
-                          title={child.title}
-                          href={`/notes/${child.id}`}
-                          isActive={pathname === `/notes/${child.id}`}
-                          icon={FileText}
-                          onNavigate={onNavigate}
-                        >
-                          <span className="block size-4 shrink-0" />
-                        </TreeRow>
-                      </li>
-                    ))}
-                    <DropZone
-                      id={makeChildEndDropId(node.id)}
-                      active={isDropTargetActive(
-                        dragState.activeId,
-                        makeChildEndDropId(node.id),
-                        dragState.overId,
-                      )}
-                      padded
-                    />
-                  </ul>
-                )}
+                {isOpen && <TreeChildren nodes={node.children} pathname={pathname} open={open} setOpen={setOpen} onNavigate={onNavigate} />}
               </li>
             );
           })}
@@ -433,6 +367,54 @@ export function NotesTree({
         </ul>
       </DndContext>
     </div>
+  );
+}
+
+function TreeChildren({
+  nodes,
+  pathname,
+  open,
+  setOpen,
+  onNavigate,
+}: {
+  nodes: TreeItem[];
+  pathname: string;
+  open: Record<string, boolean>;
+  setOpen: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  onNavigate?: () => void;
+}) {
+  return (
+    <ul className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l pl-1.5">
+      {nodes.map((node) => {
+        const isOpen = Boolean(open[node.id]);
+        const hasChildren = node.children.length > 0;
+        const isProject = node.type === "project";
+        return (
+          <li key={node.id} className="notes-tree-row">
+            <TreeRow
+              noteId={node.id}
+              title={node.title}
+              href={`/notes/${node.id}`}
+              isActive={pathname === `/notes/${node.id}`}
+              icon={isProject ? Folder : FileText}
+              onNavigate={onNavigate}
+            >
+              {hasChildren ? (
+                <button
+                  type="button"
+                  onClick={() => setOpen((current) => ({ ...current, [node.id]: !current[node.id] }))}
+                  className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted"
+                  aria-label={isOpen ? "Collapse" : "Expand"}
+                >
+                  <ChevronRight className={cn("size-3 transition-transform", isOpen && "rotate-90")} />
+                </button>
+              ) : <span className="block size-4 shrink-0" />}
+            </TreeRow>
+            {isOpen && <TreeChildren nodes={node.children} pathname={pathname} open={open} setOpen={setOpen} onNavigate={onNavigate} />}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

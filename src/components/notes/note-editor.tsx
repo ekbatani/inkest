@@ -1085,6 +1085,7 @@ function MetadataPanel({
               noteId={note.id}
               value={metadata.parentId}
               candidates={parentCandidates}
+              projectOnly={metadata.type === "project"}
               onChange={(v) => onChange("parentId", v)}
             />
           </div>

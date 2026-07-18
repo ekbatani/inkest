@@ -6,6 +6,7 @@ import {
   FileText,
   ListChecks,
   FolderClosed,
+  FolderPlus,
   Clock,
 } from "lucide-react";
 import {
@@ -57,6 +58,7 @@ export default async function ProjectDetailPage({
     listNotes({ parentId: id, limit: 100 }),
   ]);
   const referenceNotes = childNotes.filter((note) => !isTaskNote(note));
+  const childProjects = childNotes.filter((childNote) => childNote.type === "project");
 
   return (
     <div className="flex h-full flex-col">
@@ -85,6 +87,15 @@ export default async function ProjectDetailPage({
           )}
         </div>
         <div className="ml-auto flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            nativeButton={false}
+            render={<Link href={`/notes/new?parent=${note.id}&as=project`} aria-label="Create subproject" />}
+          >
+            <FolderPlus className="size-4" /> Subproject
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -132,7 +143,7 @@ export default async function ProjectDetailPage({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-8">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-          {tab === "overview" && <OverviewTab note={note} />}
+          {tab === "overview" && <OverviewTab note={note} childProjects={childProjects} />}
           {tab === "tasks" && (
             <ProjectTaskNotesPanel
               projectId={note.id}
@@ -151,12 +162,14 @@ export default async function ProjectDetailPage({
 
 function OverviewTab({
   note,
+  childProjects,
 }: {
   note: NonNullable<Awaited<ReturnType<typeof getNoteById>>>;
+  childProjects: { id: string; title: string; status: string; updatedAt: Date }[];
 }) {
   const isEmpty = note.contentMd.trim().length === 0;
 
-  if (isEmpty) {
+  if (isEmpty && childProjects.length === 0) {
     return (
       <div className="surface-card-dashed p-10 text-center text-sm text-muted-foreground">
         <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border bg-background">
@@ -169,8 +182,8 @@ function OverviewTab({
   }
 
   return (
-    <section className="mx-auto w-full max-w-3xl">
-      <Card>
+    <section className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      {!isEmpty && <Card>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>Created {formatRelativeDate(note.createdAt)}</span>
@@ -183,7 +196,23 @@ function OverviewTab({
             className="max-w-none font-sans text-[0.98rem] leading-8 tracking-[-0.01em] text-foreground/90 sm:text-[1.02rem]"
           />
         </CardContent>
-      </Card>
+      </Card>}
+      {childProjects.length > 0 && (
+        <div className="surface-card p-4">
+          <h2 className="text-sm font-semibold">Subprojects</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Task boards stay local to each project; use a subproject for its own workstream.</p>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {childProjects.map((project) => (
+              <li key={project.id}>
+                <Link href={`/projects/${project.id}`} className="surface-card-interactive block p-3">
+                  <div className="flex items-center justify-between gap-2"><span className="truncate text-sm font-medium">{project.title}</span><NoteStatusBadge status={project.status as never} /></div>
+                  <span className="mt-1 block text-xs text-muted-foreground">Updated {formatRelativeDate(project.updatedAt)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }

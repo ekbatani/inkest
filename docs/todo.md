@@ -306,11 +306,21 @@ All of the following must be complete before announcing a public release:
     route rather than an indefinite loading screen. `bun.cmd run typecheck`,
     focused ESLint, and `bun.cmd run build` passed.
 
-- [now] **P1-24 — Support nested projects intentionally.** Allow a project
+- [done] **P1-24 — Support nested projects intentionally.** Allow a project
   note to be created in the tree and assigned/reassigned a parent project,
   including cycle prevention and clear project/task roll-up semantics.
   - Acceptance: nesting works from creation and edit flows, cannot create a
     cycle, and hierarchy appears consistently in tree, project, and task views.
+  - Evidence: 2026-07-18 — added server-side parent validation for create,
+    edit, and tree-move paths, including workspace ownership, project-only
+    parents for projects, and descendant-cycle prevention. The sidebar now
+    builds a recursive hierarchy; a project can create a subproject directly,
+    and the parent picker supports reassignment without offering descendants.
+    Project overviews show subprojects while task boards remain local to each
+    project so project notes never appear as task cards. `bun.cmd run
+    typecheck`, focused ESLint, and `bun.cmd run build` passed; the build keeps
+    the pre-existing Turbopack NFT trace warning from the attachment export
+    path.
 
 - [todo] **P1-25 — Accessibility and responsive audit.** Test keyboard-only,
   screen-reader labels, focus order, contrast, zoom, narrow mobile layout,

@@ -42,16 +42,20 @@ export function ParentPicker({
   noteId,
   value,
   candidates,
+  projectOnly = false,
   onChange,
 }: {
   noteId: string;
   value: string | null;
   candidates: ParentCandidate[];
+  projectOnly?: boolean;
   onChange: (v: string | null) => void;
 }) {
   const [open, setOpen] = React.useState(false);
-  const selectedParent =
-    candidates.find((candidate) => candidate.id === value) ?? null;
+  const availableCandidates = projectOnly
+    ? candidates.filter((candidate) => candidate.type === "project")
+    : candidates;
+  const selectedParent = availableCandidates.find((candidate) => candidate.id === value) ?? null;
 
   const handle = (nextValue: string) => {
     onChange(nextValue === NO_PARENT_VALUE ? null : nextValue);
@@ -121,8 +125,9 @@ export function ParentPicker({
           <DialogHeader className="px-5 pt-5 pb-1">
             <DialogTitle>Choose parent note</DialogTitle>
             <DialogDescription>
-              Link this note to a top-level note or project and keep the
-              hierarchy easy to move through.
+              {projectOnly
+                ? "Projects can be nested only inside another project."
+                : "Link this note to a parent note or project and keep the hierarchy easy to move through."}
             </DialogDescription>
           </DialogHeader>
 
@@ -148,7 +153,7 @@ export function ParentPicker({
                   {!selectedParent && <Check className="size-4 text-foreground" />}
                 </CommandItem>
 
-                {candidates.map((candidate) => {
+                {availableCandidates.map((candidate) => {
                   const isSelected = candidate.id === selectedParent?.id;
                   const isProject = candidate.type === "project";
 
@@ -211,9 +216,9 @@ export function ParentPicker({
         </DialogContent>
       </Dialog>
 
-      {candidates.length === 0 && (
+      {availableCandidates.length === 0 && (
         <p className="text-[11px] text-muted-foreground">
-          No notes available as parent yet.
+          No {projectOnly ? "projects" : "notes"} available as parent yet.
         </p>
       )}
     </div>

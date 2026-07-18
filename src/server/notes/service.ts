@@ -74,6 +74,70 @@ function siblingSortColumns() {
   ] as const;
 }
 
+function collectDescendantIds(
+  noteId: string,
+  rows: readonly { id: string; parentId: string | null }[],
+) {
+  const children = new Map<string, string[]>();
+  for (const row of rows) {
+    if (!row.parentId) continue;
+    const entries = children.get(row.parentId) ?? [];
+    entries.push(row.id);
+    children.set(row.parentId, entries);
+  }
+
+  const descendants = new Set<string>();
+  const pending = [...(children.get(noteId) ?? [])];
+  while (pending.length > 0) {
+    const id = pending.pop()!;
+    if (descendants.has(id)) continue;
+    descendants.add(id);
+    pending.push(...(children.get(id) ?? []));
+  }
+  return descendants;
+}
+
+async function assertValidParentAssignment({
+  noteId,
+  noteType,
+  parentId,
+  userId,
+  workspaceId,
+}: {
+  noteId: string;
+  noteType: Note["type"];
+  parentId: string | null;
+  userId: string;
+  workspaceId: string;
+}) {
+  if (!parentId) return;
+  if (parentId === noteId) throw new Error("INVALID_PARENT");
+
+  const rows = await db
+    .select({
+      id: schema.notes.id,
+      parentId: schema.notes.parentId,
+      type: schema.notes.type,
+    })
+    .from(schema.notes)
+    .where(
+      and(
+        eq(schema.notes.userId, userId),
+        eq(schema.notes.workspaceId, workspaceId),
+        isNull(schema.notes.deletedAt),
+        eq(schema.notes.archived, false),
+      ),
+    )
+    .limit(500);
+  const parent = rows.find((row) => row.id === parentId);
+  if (!parent || (noteType === "project" && parent.type !== "project")) {
+    throw new Error("INVALID_PARENT");
+  }
+  if (collectDescendantIds(noteId, rows).has(parentId)) {
+    throw new Error("INVALID_PARENT_CYCLE");
+  }
+}
+
 async function fetchSiblingIds(
   parentId: string | null,
   userId: string,
@@ -130,12 +194,20 @@ export async function createNote(
     priority: input.priority ?? "none",
     dueDate: input.dueDate ?? null,
     pinned: input.pinned ?? false,
+    parentId: input.parentId ?? null,
   });
 
   const id = randomId();
   const title = parsed.title;
   const slug = slugify(title) || `note-${id.slice(0, 8)}`;
   const parentId = input.parentId ?? null;
+  await assertValidParentAssignment({
+    noteId: id,
+    noteType: parsed.type,
+    parentId,
+    userId: user.id,
+    workspaceId: workspace.id,
+  });
   const sortOrder = await getNextSortOrder(parentId, user.id, workspace.id);
 
   await db.insert(schema.notes).values({
@@ -266,6 +338,7 @@ export async function updateNote(
       title: schema.notes.title,
       contentMd: schema.notes.contentMd,
       type: schema.notes.type,
+      parentId: schema.notes.parentId,
     })
     .from(schema.notes)
     .where(and(eq(schema.notes.id, id), eq(schema.notes.userId, user.id)))
@@ -288,9 +361,21 @@ export async function updateNote(
   }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
+  const nextType = parsed.type ?? current[0]?.type;
+  const nextParentId =
+    parsed.parentId === undefined ? current[0]?.parentId ?? null : parsed.parentId;
+  if (nextType && current[0]) {
+    const { workspace } = await getContext();
+    await assertValidParentAssignment({
+      noteId: id,
+      noteType: nextType,
+      parentId: nextParentId,
+      userId: user.id,
+      workspaceId: workspace.id,
+    });
+  }
   if (parsed.title !== undefined) {
     updates.title = parsed.title;
-    const nextType = parsed.type ?? current[0]?.type;
     if (nextType !== "daily") {
       updates.slug = slugify(parsed.title) || `note-${id.slice(0, 8)}`;
     }
@@ -501,9 +586,7 @@ export async function getOrCreateDailyNote(date: Date): Promise<Note> {
 export type NoteTreeNode = Pick<
   Note,
   "id" | "title" | "slug" | "type" | "updatedAt" | "createdAt"
-> & {
-  children: Pick<Note, "id" | "title" | "slug" | "type" | "updatedAt" | "createdAt">[];
-};
+> & { children: NoteTreeNode[] };
 
 /**
  * Build a 2-level tree of notes for the sidebar: top-level notes with their
@@ -511,53 +594,29 @@ export type NoteTreeNode = Pick<
  * predictable. Sorted by tree order with creation time as the fallback.
  */
 export async function listNotesTree(): Promise<NoteTreeNode[]> {
-  const topLevel = await listNotes({
-    topLevelOnly: true,
-    archived: false,
-    limit: 60,
-  });
-
-  const childKeys = (n: Note) =>
-    ({
-      id: n.id,
-      title: n.title,
-      slug: n.slug,
-      type: n.type,
-      updatedAt: n.updatedAt,
-      createdAt: n.createdAt,
-    }) as const;
-
-  // For each top-level note, fetch its children in parallel.
-  const withChildren = await Promise.all(
-    topLevel.map(async (parent) => {
-      const children = await db
-        .select({
-          id: schema.notes.id,
-          title: schema.notes.title,
-          slug: schema.notes.slug,
-          type: schema.notes.type,
-          updatedAt: schema.notes.updatedAt,
-          createdAt: schema.notes.createdAt,
-        })
-        .from(schema.notes)
-        .where(
-          and(
-            eq(schema.notes.userId, parent.userId),
-            eq(schema.notes.parentId, parent.id),
-            isNull(schema.notes.deletedAt),
-            eq(schema.notes.archived, false),
-          ),
-        )
-        .orderBy(...siblingSortColumns())
-        .limit(40);
-      return {
-        ...childKeys(parent),
-        children,
-      } as NoteTreeNode;
-    }),
-  );
-
-  return withChildren;
+  const { user, workspace } = await getContext();
+  const rows = await db
+    .select({ id: schema.notes.id, title: schema.notes.title, slug: schema.notes.slug, type: schema.notes.type, parentId: schema.notes.parentId, updatedAt: schema.notes.updatedAt, createdAt: schema.notes.createdAt })
+    .from(schema.notes)
+    .where(and(eq(schema.notes.userId, user.id), eq(schema.notes.workspaceId, workspace.id), isNull(schema.notes.deletedAt), eq(schema.notes.archived, false)))
+    .orderBy(...siblingSortColumns())
+    .limit(500);
+  const nodes = new Map<string, NoteTreeNode>();
+  const childrenByParent = new Map<string | null, string[]>();
+  for (const row of rows) {
+    nodes.set(row.id, { ...row, children: [] });
+    const siblings = childrenByParent.get(row.parentId) ?? [];
+    siblings.push(row.id);
+    childrenByParent.set(row.parentId, siblings);
+  }
+  const build = (parentId: string | null, ancestors = new Set<string>()): NoteTreeNode[] =>
+    (childrenByParent.get(parentId) ?? []).flatMap((id) => {
+      const node = nodes.get(id);
+      if (!node || ancestors.has(id)) return [];
+      node.children = build(id, new Set([...ancestors, id]));
+      return [node];
+    });
+  return build(null);
 }
 
 /**
@@ -583,13 +642,24 @@ export async function listParentCandidates(
         eq(schema.notes.workspaceId, workspace.id),
         isNull(schema.notes.deletedAt),
         eq(schema.notes.archived, false),
-        isNull(schema.notes.parentId),
         ne(schema.notes.id, noteId),
       ),
     )
     .orderBy(...siblingSortColumns())
     .limit(200);
-  return rows;
+  const allRows = await db
+    .select({ id: schema.notes.id, parentId: schema.notes.parentId })
+    .from(schema.notes)
+    .where(
+      and(
+        eq(schema.notes.userId, user.id),
+        eq(schema.notes.workspaceId, workspace.id),
+        isNull(schema.notes.deletedAt),
+        eq(schema.notes.archived, false),
+      ),
+    );
+  const descendants = collectDescendantIds(noteId, allRows);
+  return rows.filter((row) => !descendants.has(row.id));
 }
 
 export function isTaskNote(note: Pick<Note, "status">): boolean {
@@ -604,10 +674,11 @@ export async function listProjectTaskNotes(projectId: string): Promise<Note[]> {
   return childNotes
     .filter(
       (childNote) =>
-        childNote.status === "todo" ||
-        childNote.status === "doing" ||
-        childNote.status === "paused" ||
-        childNote.status === "done",
+        childNote.type !== "project" &&
+        (childNote.status === "todo" ||
+          childNote.status === "doing" ||
+          childNote.status === "paused" ||
+          childNote.status === "done"),
     )
     .sort((a, b) => {
       if (a.status === "done" && b.status !== "done") return 1;
@@ -668,9 +739,14 @@ export async function moveNoteInTree(
       .limit(1);
 
     const parent = parentRows[0];
-    if (!parent || parent.parentId !== null) {
-      throw new Error("INVALID_PARENT");
-    }
+    if (!parent) throw new Error("INVALID_PARENT");
+    await assertValidParentAssignment({
+      noteId,
+      noteType: note.type,
+      parentId: parent.id,
+      userId: user.id,
+      workspaceId: workspace.id,
+    });
   }
 
   const sourceParentId = note.parentId ?? null;

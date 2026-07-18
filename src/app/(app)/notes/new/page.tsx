@@ -10,10 +10,12 @@ export default async function NewNotePage({
   const parentId =
     parent && typeof parent === "string" ? parent : null;
   const isTask = as === "task";
+  const isProject = as === "project";
   const note = await createNote({
-    title: isTask ? "New task" : "Untitled",
+    title: isProject ? "New subproject" : isTask ? "New task" : "Untitled",
     parentId,
+    type: isProject ? "project" : "note",
     status: isTask ? "todo" : "none",
   });
-  redirect(`/notes/${note.id}?focus=title`);
+  redirect(isProject ? `/projects/${note.id}` : `/notes/${note.id}?focus=title`);
 }
