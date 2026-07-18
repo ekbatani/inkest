@@ -4,6 +4,7 @@ import {
   listParentCandidates,
   listNotes,
   getBacklinks,
+  listProjectTaskNotes,
 } from "@/server/notes/service";
 import {
   getGoogleCalendarStatus,
@@ -38,6 +39,7 @@ export default async function NoteDetailPage({
     calendarStatus,
     dailyEvents,
     settings,
+    projectTaskNotes,
   ] =
     await Promise.all([
       listTags(),
@@ -50,6 +52,7 @@ export default async function NoteDetailPage({
       dailyDate ? getGoogleCalendarStatus() : Promise.resolve(null),
       dailyDate ? listCalendarEventsForDay(dailyDate) : Promise.resolve([]),
       getUserSettings(),
+      note.type === "project" ? listProjectTaskNotes(id) : Promise.resolve([]),
     ]);
 
   return (
@@ -60,6 +63,7 @@ export default async function NoteDetailPage({
       parentCandidates={parentCandidates}
       linkableNotes={linkableNotes}
       backlinks={backlinks.map((b) => ({ id: b.id, title: b.title }))}
+      projectTaskCount={projectTaskNotes.length}
       selectTitleOnMount={focus === "title"}
       superFocusPrefs={{
         trackingMode: settings.superFocus?.trackingMode ?? "pointer",

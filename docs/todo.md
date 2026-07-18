@@ -278,12 +278,19 @@ All of the following must be complete before announcing a public release:
     `README.md` with the instance-versus-personal precedence contract. `bun.cmd
     run typecheck`, focused ESLint, and `bun.cmd run build` passed.
 
-- [todo] **P1-22 — Make the right sidebar useful and predictable.** Redesign
+- [done] **P1-22 — Make the right sidebar useful and predictable.** Redesign
   it around contextual note/project properties, links, tasks, AI, and
   integrations; align collapse behavior and animation with the left sidebar.
   - Acceptance: the panel has clear information hierarchy, a persistent
     accessible collapse control, reduced-motion support, and no layout shift
     that interrupts writing.
+  - Evidence: 2026-07-18 — rebuilt the note metadata rail as a contextual
+    panel with a persistent accessible collapse control, remembered open state,
+    reduced-motion-safe width transition, and overlay positioning that keeps the
+    editor's writing width stable. It now prioritizes note/project properties,
+    project task access and counts, backlinks, explicit AI entry, daily Google
+    Calendar context, tags, and history/lifecycle controls. Verification:
+    `bun.cmd run typecheck`, focused ESLint, and `bun.cmd run build` passed.
 
 - [todo] **P1-23 — Complete daily/calendar information architecture.** Remove
   redundant Daily navigation only after Calendar and Home provide clear daily

@@ -101,6 +101,8 @@ const AiPanel = dynamic(
   },
 );
 
+const CONTEXT_PANEL_STORAGE_KEY = "inkest:note-context-panel-open";
+
 type NoteSnapshot = {
   title: string;
   content: string;
@@ -122,6 +124,7 @@ export function NoteEditor({
   superFocusPrefs,
   ttsPrefs,
   editorPrefs,
+  projectTaskCount = 0,
 }: {
   note: Note;
   allTags?: Tag[];
@@ -137,6 +140,7 @@ export function NoteEditor({
     spellcheck: boolean;
     spellcheckLanguage: "auto" | "en" | "fa";
   };
+  projectTaskCount?: number;
   dailyAgenda?: {
     dateKey: string;
     events: GoogleCalendarEvent[];
@@ -151,7 +155,10 @@ export function NoteEditor({
   const router = useRouter();
   const [title, setTitle] = React.useState(note.title);
   const [content, setContent] = React.useState(note.contentMd);
-  const [showPanel, setShowPanel] = React.useState(true);
+  const [showPanel, setShowPanel] = React.useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem(CONTEXT_PANEL_STORAGE_KEY) !== "false";
+  });
   const [showSuperFocus, setShowSuperFocus] = React.useState(false);
   const [aiPanelRequested, setAiPanelRequested] = React.useState(false);
   const [aiPanelOpen, setAiPanelOpen] = React.useState(false);
@@ -205,6 +212,14 @@ export function NoteEditor({
   const [lastCheckpointSnapshot, setLastCheckpointSnapshot] =
     React.useState<NoteSnapshot>(initialCheckpoint);
   const lastCheckpointRef = React.useRef<NoteSnapshot>(initialCheckpoint);
+
+  const toggleContextPanel = React.useCallback(() => {
+    setShowPanel((open) => {
+      const next = !open;
+      window.localStorage.setItem(CONTEXT_PANEL_STORAGE_KEY, String(next));
+      return next;
+    });
+  }, []);
 
   // CodeMirror keeps the keystroke path local. Its debounced parent update still
   // drives autosave, history, preview, and metadata, but it must not make those
@@ -746,8 +761,19 @@ export function NoteEditor({
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={() => setShowPanel((v) => !v)}
-              aria-label="Toggle metadata panel"
+              onClick={toggleContextPanel}
+              aria-controls="note-context-panel"
+              aria-expanded={showPanel}
+              aria-label={
+                showPanel
+                  ? "Collapse note context panel"
+                  : "Expand note context panel"
+              }
+              title={
+                showPanel
+                  ? "Collapse note context panel"
+                  : "Expand note context panel"
+              }
             >
               {showPanel ? (
                 <PanelRightClose className="size-4" />
@@ -758,7 +784,7 @@ export function NoteEditor({
           </div>
       </div>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="px-6 pt-6 sm:px-10 sm:pt-8">
             <div className="mx-auto w-full max-w-3xl">
@@ -810,8 +836,14 @@ export function NoteEditor({
           </div>
         </div>
 
-        {showPanel && (
-          <aside className="hidden h-full w-80 shrink-0 border-l sm:block">
+        <aside
+          id="note-context-panel"
+          aria-label="Note context"
+          aria-hidden={!showPanel}
+          className="absolute inset-y-0 right-0 z-10 hidden overflow-hidden border-l bg-background shadow-xl transition-[width,box-shadow] duration-200 motion-reduce:transition-none sm:block"
+          style={{ width: showPanel ? 320 : 0 }}
+        >
+          <div className="h-full w-80">
             <MetadataPanel
               note={note}
               metadata={metadata}
@@ -828,9 +860,11 @@ export function NoteEditor({
               onUndo={undo}
               onRedo={redo}
               onRestoreVersion={applyRestoredVersion}
+              projectTaskCount={projectTaskCount}
+              onAskAi={() => requestAiPanel()}
             />
-          </aside>
-        )}
+          </div>
+        </aside>
       </div>
       <div
         ref={previewCopyRef}
@@ -878,6 +912,8 @@ function MetadataPanel({
   onUndo,
   onRedo,
   onRestoreVersion,
+  projectTaskCount,
+  onAskAi,
 }: {
   note: Note;
   metadata: {
@@ -911,11 +947,68 @@ function MetadataPanel({
   onUndo: () => void;
   onRedo: () => void;
   onRestoreVersion: (snapshot: { title: string; contentMd: string }) => void;
+  projectTaskCount: number;
+  onAskAi: () => void;
 }) {
   const showProjectLink = metadata.type === "project";
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex-1 space-y-3 overflow-y-auto p-4 pb-24">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Note context</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Keep this note organized without leaving your writing flow.
+          </p>
+        </div>
+
+        {showProjectLink && (
+          <div className="rounded-2xl border border-border/70 bg-muted/20 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Project workspace
+                </h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {projectTaskCount} task note
+                  {projectTaskCount === 1 ? "" : "s"} linked to this project.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-full px-3 text-xs"
+                nativeButton={false}
+                render={<Link href={`/projects/${note.id}?tab=tasks`} />}
+              >
+                <FolderKanban className="size-3.5" />
+                Tasks
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="rounded-2xl border border-border/70 bg-muted/20 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                AI assistance
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Choose an action and review its result before applying it.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={onAskAi}
+            >
+              <Sparkles className="size-3.5 text-violet-400" />
+              Ask AI
+            </Button>
+          </div>
+        </div>
+
         <div className="rounded-2xl border border-border/70 bg-muted/20 p-3">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
@@ -1014,7 +1107,7 @@ function MetadataPanel({
         {backlinks.length > 0 && (
           <div className="rounded-2xl border border-border/70 p-3">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Linked from
+              Links to this note
             </h3>
             <ul className="flex flex-col gap-1 text-xs">
               {backlinks.map((b) => (
