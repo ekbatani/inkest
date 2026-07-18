@@ -2,7 +2,17 @@
 
 import * as React from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Search, FileText, Loader2, Sparkles } from "lucide-react";
+import {
+  Search,
+  FileText,
+  Loader2,
+  Sparkles,
+  Bold,
+  Italic,
+  Strikethrough,
+  Code2,
+  List,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +37,7 @@ import {
 } from "@/server/notes/actions";
 import { cn } from "@/lib/utils";
 import { usesRtlTitleFont } from "@/lib/text/rtl";
+import type { MarkdownFormat } from "@/components/editor/markdown-editor-utils";
 
 type Props = {
   open: boolean;
@@ -108,6 +119,16 @@ export function CommandMenu({ open, onOpenChange }: Props) {
     router.push(href);
   };
 
+  const formatCurrentNote = (format: MarkdownFormat) => {
+    if (!currentNoteId) return;
+    handleOpenChange(false);
+    window.dispatchEvent(
+      new CustomEvent("inkest:format-markdown", {
+        detail: { noteId: currentNoteId, format },
+      }),
+    );
+  };
+
   const showNotesGroup = query.trim().length >= 2;
   const noteItems = showNotesGroup ? results : recent;
 
@@ -170,8 +191,7 @@ export function CommandMenu({ open, onOpenChange }: Props) {
               </CommandGroup>
             )}
 
-            {!showNotesGroup && (
-              <>
+            <>
                 <CommandSeparator />
                 <CommandGroup heading="Navigate">
                   {mainNav.map((item) => (
@@ -233,8 +253,31 @@ export function CommandMenu({ open, onOpenChange }: Props) {
                     <span>Open today’s daily note</span>
                   </CommandItem>
                 </CommandGroup>
+                {currentNoteId && (
+                  <CommandGroup heading="Format current note">
+                    <CommandItem value="format bold current note" onSelect={() => formatCurrentNote("bold")}>
+                      <Bold className="size-4" />
+                      <span>Bold</span>
+                    </CommandItem>
+                    <CommandItem value="format italic current note" onSelect={() => formatCurrentNote("italic")}>
+                      <Italic className="size-4" />
+                      <span>Italic</span>
+                    </CommandItem>
+                    <CommandItem value="format strikethrough current note" onSelect={() => formatCurrentNote("strikethrough")}>
+                      <Strikethrough className="size-4" />
+                      <span>Strikethrough</span>
+                    </CommandItem>
+                    <CommandItem value="format inline code current note" onSelect={() => formatCurrentNote("inline-code")}>
+                      <Code2 className="size-4" />
+                      <span>Inline code</span>
+                    </CommandItem>
+                    <CommandItem value="format bulleted list current note" onSelect={() => formatCurrentNote("bullet-list")}>
+                      <List className="size-4" />
+                      <span>Bulleted list</span>
+                    </CommandItem>
+                  </CommandGroup>
+                )}
               </>
-            )}
           </CommandList>
         </Command>
       </DialogContent>

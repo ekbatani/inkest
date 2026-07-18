@@ -27,6 +27,16 @@ function getRouteLabel(pathname: string) {
   return navItem?.label ?? "Workspace";
 }
 
+function isEditableTarget(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.getAttribute("role") === "textbox")
+  );
+}
+
 export function Topbar({ notesTree = [] }: { notesTree?: NoteTreeNode[] }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -42,6 +52,8 @@ export function Topbar({ notesTree = [] }: { notesTree?: NoteTreeNode[] }) {
       if (key === "k") {
         e.preventDefault();
         setCommandOpen((v) => !v);
+      } else if (isEditableTarget(e.target)) {
+        return;
       } else if (key === "n" && !e.shiftKey) {
         e.preventDefault();
         router.push("/notes/new");

@@ -215,13 +215,23 @@ All of the following must be complete before announcing a public release:
     passed; the build still reports the pre-existing Turbopack NFT trace
     warning for the attachment export path.
 
-- [now] **P1-16 — Complete keyboard-first writing.** Document and implement
+- [done] **P1-16 — Complete keyboard-first writing.** Document and implement
   core shortcuts for create/search/open/save/focus/formatting/navigation;
   assess high-value Vim-like actions such as next/previous match and select
   all occurrences without conflicting with browser assistive technology.
   - Acceptance: every core writing operation has a discoverable keyboard path,
     command palette support where appropriate, and no shortcut steals input
     from text fields unexpectedly.
+  - Evidence: 2026-07-18 — documented create, open/search, daily, sidebar,
+    save, focus-reader, find/next/previous-match, and core Markdown formatting
+    shortcuts in `README.md`. CodeMirror now handles `Ctrl/Cmd+B`, `I`,
+    `Shift+X`, and `E` for bold, italic, strikethrough, and inline code, and
+    restores native find navigation. The command palette exposes current-note
+    formatting and existing create/open/navigation actions. Global
+    create/daily/sidebar shortcuts now leave text fields alone; `Ctrl/Cmd+K`
+    remains the deliberate conventional command-palette shortcut. Vim-style
+    multi-cursor/select-all-occurrences remains intentionally unbound because
+    browser and assistive-technology conflicts outweigh its value here.
 
 - [todo] **P1-17 — Add spelling and writing suggestions with user control.**
   Evaluate browser-native spellcheck first; layer optional AI suggestions only

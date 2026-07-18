@@ -4,6 +4,7 @@ import type * as React from "react";
 // so callers that only need cursor/format helpers (AiPanel, upload/speech
 // buttons, the format toolbar) don't pull CodeMirror into their chunk.
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import type { EditorView } from "@codemirror/view";
 
 export function insertTextAtCursor(
   ref: React.RefObject<ReactCodeMirrorRef | null>,
@@ -103,6 +104,15 @@ export function applyMarkdownFormat(
 ) {
   const view = ref.current?.view;
   if (!view) return;
+
+  applyMarkdownFormatToView(view, format, options);
+}
+
+export function applyMarkdownFormatToView(
+  view: EditorView,
+  format: MarkdownFormat,
+  options?: { comment?: string },
+) {
 
   const sel = view.state.selection.main;
   const selectedText = view.state.sliceDoc(sel.from, sel.to);

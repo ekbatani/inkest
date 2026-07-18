@@ -63,6 +63,10 @@ import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
 import type { GoogleCalendarEvent } from "@/server/db/schema";
+import {
+  applyMarkdownFormat,
+  type MarkdownFormat,
+} from "@/components/editor/markdown-editor-utils";
 
 // Dynamically imported so CodeMirror and the react-markdown preview
 // stack (read mode, copy-preview) split into separate chunks instead of always loading
@@ -581,6 +585,21 @@ export function NoteEditor({
     window.addEventListener("inkest:ask-ai", onAskAi);
     return () => window.removeEventListener("inkest:ask-ai", onAskAi);
   }, [note.id, requestAiPanel]);
+
+  React.useEffect(() => {
+    const onFormatMarkdown = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        noteId?: string;
+        format?: MarkdownFormat;
+      }>).detail;
+      if (detail?.noteId !== note.id || !detail.format) return;
+      applyMarkdownFormat(editorRef, detail.format);
+    };
+
+    window.addEventListener("inkest:format-markdown", onFormatMarkdown);
+    return () =>
+      window.removeEventListener("inkest:format-markdown", onFormatMarkdown);
+  }, [note.id]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

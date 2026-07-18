@@ -16,6 +16,7 @@ import {
 import {
   Decoration,
   EditorView,
+  keymap,
   WidgetType,
 } from "@codemirror/view";
 import { Prec, type EditorState, type Range } from "@codemirror/state";
@@ -27,6 +28,7 @@ import {
   resolveNoteHref,
   type WikiLinkTarget,
 } from "@/lib/markdown/wiki";
+import { applyMarkdownFormatToView } from "@/components/editor/markdown-editor-utils";
 
 type Props = {
   value: string;
@@ -41,6 +43,37 @@ type Props = {
 
 const LARGE_PASTE_THRESHOLD = 1500;
 const PARENT_UPDATE_DELAY_MS = 120;
+
+const markdownFormattingKeymap = keymap.of([
+  {
+    key: "Mod-b",
+    run: (view) => {
+      applyMarkdownFormatToView(view, "bold");
+      return true;
+    },
+  },
+  {
+    key: "Mod-i",
+    run: (view) => {
+      applyMarkdownFormatToView(view, "italic");
+      return true;
+    },
+  },
+  {
+    key: "Mod-Shift-x",
+    run: (view) => {
+      applyMarkdownFormatToView(view, "strikethrough");
+      return true;
+    },
+  },
+  {
+    key: "Mod-e",
+    run: (view) => {
+      applyMarkdownFormatToView(view, "inline-code");
+      return true;
+    },
+  },
+]);
 
 const fencedCodeLanguages = [
   LanguageDescription.of({
@@ -127,6 +160,7 @@ export function MarkdownEditor({
   const extensions = React.useMemo(
     () => [
       markdown({ base: markdownLanguage, codeLanguages: fencedCodeLanguages }),
+      markdownFormattingKeymap,
       syntaxHighlighting(fencedCodeHighlightStyle),
       EditorView.lineWrapping,
       EditorView.decorations.of(buildStyledMarkdownDecorations(linkableNotes)),
@@ -303,7 +337,7 @@ export function MarkdownEditor({
           bracketMatching: true,
           closeBrackets: true,
           autocompletion: false,
-          searchKeymap: false,
+          searchKeymap: true,
         }}
         style={{ height: "100%" }}
       />

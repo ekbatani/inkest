@@ -157,6 +157,14 @@ docker run -p 3000:3000 \
 | `Ctrl+\` | Toggle sidebar |
 | `Ctrl+S` | Force save in the editor |
 | `Ctrl+Shift+R` | Open the focus reader; `Esc` returns to the editor caret |
+| `Ctrl+F` / `Enter` / `Shift+Enter` | Find in the current note / next match / previous match |
+| `Ctrl+B`, `Ctrl+I`, `Ctrl+Shift+X`, `Ctrl+E` | Bold, italic, strikethrough, inline code in the editor |
+
+On macOS, use `Cmd` in place of `Ctrl`. Use the command palette to open a
+specific note, navigate the workspace, or apply additional current-note
+formatting such as a bulleted list. Vim-style multi-cursor/select-all-occurrences
+shortcuts are intentionally not reserved: their browser and assistive-technology
+conflicts are too high for a global writing shortcut.
 
 ## License
 
