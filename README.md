@@ -156,7 +156,7 @@ docker run -p 3000:3000 \
 | `Ctrl+D` | Open today's daily note |
 | `Ctrl+\` | Toggle sidebar |
 | `Ctrl+S` | Force save in the editor |
-| `Ctrl+E` | Toggle edit/preview in the editor |
+| `Ctrl+Shift+R` | Open the distraction-free reader; `Esc` returns to the editor caret |
 
 ## License
 

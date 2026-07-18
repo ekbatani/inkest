@@ -29,8 +29,7 @@ export default async function SettingsPage() {
       <ProfileSection email={user?.email ?? ""} name={user?.name} />
 
       <EditorPrefsSection
-        key={`editor:${settings.editor?.defaultMode}:${settings.editor?.autosaveDelayMs}:${settings.editor?.showLineNumbers}`}
-        defaultMode={settings.editor?.defaultMode}
+        key={`editor:${settings.editor?.autosaveDelayMs}:${settings.editor?.showLineNumbers}`}
         autosaveDelayMs={settings.editor?.autosaveDelayMs}
         showLineNumbers={settings.editor?.showLineNumbers}
       />

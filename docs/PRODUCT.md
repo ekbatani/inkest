@@ -32,7 +32,9 @@ It is designed to be self-hosted, portable, and pleasant to use every day.
   backlinks, version history, and Markdown/workspace export.
 - Private images and document attachments, plus browser speech-to-text and
   text-to-speech.
-- Reading-focused tools including focus and super-focus modes.
+- One Markdown writing surface with inline formatting cues, plus an explicit
+  distraction-free reader (including super-focus and text-to-speech) that
+  returns to the editor caret on exit.
 
 ### Projects and planning
 

@@ -132,15 +132,12 @@ export function ProfileSection({
 }
 
 export function EditorPrefsSection({
-  defaultMode,
   autosaveDelayMs,
   showLineNumbers,
 }: {
-  defaultMode?: "edit" | "split" | "preview" | "focus";
   autosaveDelayMs?: number;
   showLineNumbers?: boolean;
 }) {
-  const [mode, setMode] = React.useState(defaultMode ?? "edit");
   const [delay, setDelay] = React.useState(String(autosaveDelayMs ?? 1500));
   const [lineNumbers, setLineNumbers] = React.useState(!!showLineNumbers);
   const [saving, setSaving] = React.useState(false);
@@ -152,7 +149,6 @@ export function EditorPrefsSection({
       await import("@/server/users/settings-actions").then((m) =>
         m.updateUserSettingsAction({
           editor: {
-            defaultMode: mode,
             autosaveDelayMs: delayMs,
             showLineNumbers: lineNumbers,
           },
@@ -169,21 +165,7 @@ export function EditorPrefsSection({
   return (
     <section className="surface-card flex flex-col gap-4 p-5">
       <h2 className="text-sm font-semibold">Editor</h2>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="flex flex-col gap-1.5">
-          <Label className="text-xs text-muted-foreground">Default mode</Label>
-          <Select value={mode} onValueChange={(v) => v && setMode(v as typeof mode)}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="edit">Edit</SelectItem>
-              <SelectItem value="split">Split</SelectItem>
-              <SelectItem value="preview">Preview</SelectItem>
-              <SelectItem value="focus">Focus</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-muted-foreground">
             Autosave delay (ms)

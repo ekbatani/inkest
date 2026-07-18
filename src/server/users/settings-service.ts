@@ -5,7 +5,6 @@ import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
 import { decryptSecret, encryptSecret } from "@/server/crypto/secret-box";
 
-export const editorModeEnum = z.enum(["edit", "split", "preview", "focus"]);
 export const superFocusTrackingModeEnum = z.enum(["pointer", "auto"]);
 export const aiProviderSettingsSchema = z
   .object({
@@ -19,7 +18,6 @@ export const aiProviderSettingsSchema = z
 export const userSettingsSchema = z.object({
   editor: z
     .object({
-      defaultMode: editorModeEnum.optional(),
       autosaveDelayMs: z.number().int().min(0).max(60_000).optional(),
       showLineNumbers: z.boolean().optional(),
       pasteToPreview: z.boolean().optional(),
@@ -67,7 +65,6 @@ export type UserSettings = z.infer<typeof userSettingsSchema>;
 
 const DEFAULTS: UserSettings = {
   editor: {
-    defaultMode: "edit",
     autosaveDelayMs: 1500,
     showLineNumbers: false,
     pasteToPreview: true,

@@ -151,23 +151,38 @@ All of the following must be complete before announcing a public release:
     installed locally, so repeat the authenticated browser waterfall on
     representative hardware when available.
 
-- [now] **P0-12 — Repair Markdown code-block editing.** Reproduce the
+- [done] **P0-12 — Repair Markdown code-block editing.** Reproduce the
   reported inability to enter/edit code areas and the rounded-border-per-line
   visual defect; fix the editor integration and add regression coverage or a
   precise manual test.
   - Acceptance: users can place the caret, select, paste, edit, and exit
     fenced code blocks; each block renders as one coherent surface in light,
     dark, LTR, and RTL notes.
+  - Evidence: 2026-07-18 — replaced the fenced-block replacement-widget path
+    with native editing; removed layout-changing code decorations that broke
+    mouse and keyboard navigation; added parser-backed syntax highlighting and
+    an explicit code-block formatter. Read-mode fenced blocks preserve their
+    semantic `<pre>` surface while Mermaid remains custom-rendered. `bun run
+    typecheck`, focused ESLint, and `bun run build` passed; marked done at the
+    user's direction pending further visual refinement.
 
-- [todo] **P0-13 — Unify editing and reading into one note surface.** Replace
+- [done] **P0-13 — Unify editing and reading into one note surface.** Replace
   the separate read/edit mental model with an intentional inline editing and
   preview experience, while preserving an explicit distraction-free reader
   when it has distinct value.
   - Acceptance: a user can write, inspect formatted output, and return to the
     caret without route/mode confusion or lost draft content; the final
     interaction is documented with keyboard behavior.
+  - Evidence: 2026-07-18 — removed the separate Read mode and obsolete
+    Edit/Split/Preview/Focus default-mode setting. Notes now stay on one
+    CodeMirror writing surface with inline Markdown formatting; Reader opens
+    the existing distraction-free super-focus overlay, and `Esc` returns focus
+    to the editor caret. `Ctrl+Shift+R` opens Reader, and the shortcut is
+    documented in `README.md`. `bun.cmd run typecheck` and `bun.cmd run build`
+    passed; the build retains the pre-existing Next/Turbopack NFT trace warning
+    from the attachment export path.
 
-- [todo] **P1-14 — Improve large-Markdown paste.** Detect substantial
+- [now] **P1-14 — Improve large-Markdown paste.** Detect substantial
   Markdown pastes, offer a fast preview/formatting path, and retain an easy
   immediate return to source editing.
   - Acceptance: a large paste does not lock the editor; users can decline the

@@ -22,7 +22,6 @@ import {
   Undo2,
   Redo2,
   BookOpen,
-  Flashlight,
   Headphones,
   Sparkles,
 } from "lucide-react";
@@ -36,10 +35,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
 import {
   Select,
   SelectContent,
@@ -103,7 +98,7 @@ const AiPanel = dynamic(
   },
 );
 
-type EditorMode = "write" | "focus" | "read";
+type EditorMode = "write" | "focus";
 type NoteSnapshot = {
   title: string;
   content: string;
@@ -311,9 +306,7 @@ export function NoteEditor({
     }
   }, [note.id, title, content]);
 
-  const showEditor = mode === "write" || mode === "focus";
   const isFocus = mode === "focus";
-  const isRead = mode === "read";
   const currentSnapshot = React.useMemo(
     () => ({ title, content }),
     [title, content],
@@ -417,6 +410,16 @@ export function NoteEditor({
     window.setTimeout(() => focusEditorStart(), 0);
   }, [focusEditorStart]);
 
+  const openReader = React.useCallback((autoPlay = false) => {
+    setSuperFocusAutoPlay(autoPlay);
+    setShowSuperFocus(true);
+  }, []);
+
+  const closeReader = React.useCallback(() => {
+    setShowSuperFocus(false);
+    window.setTimeout(() => editorRef.current?.view?.focus(), 0);
+  }, []);
+
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
@@ -427,6 +430,12 @@ export function NoteEditor({
       }
       if (!mod) return;
       const key = e.key.toLowerCase();
+
+      if (key === "r" && e.shiftKey) {
+        e.preventDefault();
+        openReader();
+        return;
+      }
 
       if (key === "s") {
         e.preventDefault();
@@ -447,7 +456,7 @@ export function NoteEditor({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [exitFocusMode, forceSave, isFocus, redo, undo]);
+  }, [exitFocusMode, forceSave, isFocus, openReader, redo, undo]);
 
   const onMetadataChange = async (
     field: string,
@@ -547,9 +556,9 @@ export function NoteEditor({
 
   const onLargeMarkdownPaste = React.useCallback(() => {
     if (!pasteToPreview) return;
-    setMode("read");
+    openReader();
     toast("Pasted as Markdown — showing preview.", {
-      action: { label: "Edit", onClick: () => setMode("write") },
+      action: { label: "Keep writing", onClick: () => closeReader() },
       cancel: {
         label: "Don't do this again",
         onClick: () => {
@@ -558,7 +567,7 @@ export function NoteEditor({
         },
       },
     });
-  }, [pasteToPreview]);
+  }, [closeReader, openReader, pasteToPreview]);
 
   const requestAiPanel = React.useCallback((initialAction?: "summarize") => {
     setAiInitialAction(initialAction ?? null);
@@ -589,53 +598,44 @@ export function NoteEditor({
           >
             <ChevronLeft className="size-4" />
           </Button>
-          <ToggleGroup
-            value={mode === "write" ? [] : [mode]}
-            onValueChange={(v) => setMode((v[0] as EditorMode | undefined) ?? "write")}
-            className="ml-1"
-          >
-            <ToggleGroupItem value="focus" aria-label="Focus mode">
+          <div className="ml-1 flex items-center gap-1">
+            <Button
+              variant={isFocus ? "secondary" : "ghost"}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setMode((current) => current === "focus" ? "write" : "focus")}
+              aria-pressed={isFocus}
+              aria-label="Toggle focus mode"
+            >
               <Maximize className="size-3.5" />
               <span className="ml-1 hidden sm:inline">Focus</span>
-            </ToggleGroupItem>
-            <ToggleGroupItem value="read" aria-label="Read mode">
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => openReader()}
+              aria-label="Open distraction-free reader"
+              title="Open reader (Ctrl+Shift+R)"
+            >
               <BookOpen className="size-3.5" />
               <span className="ml-1 hidden sm:inline">Read</span>
-            </ToggleGroupItem>
-          </ToggleGroup>
+            </Button>
+          </div>
 
-          {isRead && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  setSuperFocusAutoPlay(false);
-                  setShowSuperFocus(true);
-                }}
-              >
-                <Flashlight className="size-4 text-muted-foreground" />
-                <span className="hidden sm:inline">Super focus</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  setSuperFocusAutoPlay(true);
-                  setShowSuperFocus(true);
-                }}
-              >
-                <Headphones className="size-4 text-muted-foreground" />
-                <span className="hidden sm:inline">Listen</span>
-              </Button>
-            </>
-          )}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => openReader(true)}
+            aria-label="Listen in the distraction-free reader"
+            title="Listen"
+          >
+            <Headphones className="size-4 text-muted-foreground" />
+          </Button>
 
-          {showEditor && <AttachmentUploadButton editorRef={editorRef} />}
-          {showEditor && <SpeechToTextButton editorRef={editorRef} />}
-          {showEditor &&
+          <AttachmentUploadButton editorRef={editorRef} />
+          <SpeechToTextButton editorRef={editorRef} />
+          {
             (aiPanelRequested ? (
               <AiPanel
                 noteId={note.id}
@@ -655,8 +655,7 @@ export function NoteEditor({
                 <span className="hidden sm:inline text-violet-400">AI</span>
               </Button>
             ))}
-          {showEditor && (
-            <>
+          <>
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -678,9 +677,7 @@ export function NoteEditor({
                 <Redo2 className="size-4" />
               </Button>
             </>
-          )}
-          {(showEditor || isRead) && (
-            <DropdownMenu onOpenChange={(open) => open && setCopyMenuTouched(true)}>
+          <DropdownMenu onOpenChange={(open) => open && setCopyMenuTouched(true)}>
               <DropdownMenuTrigger
                 render={<Button variant="ghost" size="sm" className="gap-1.5" />}
               >
@@ -695,10 +692,8 @@ export function NoteEditor({
                   Copy preview
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          {(showEditor || isRead) && (
-            <Button
+          </DropdownMenu>
+          <Button
               variant="ghost"
               size="sm"
               className="gap-1.5"
@@ -713,8 +708,7 @@ export function NoteEditor({
             >
               <Download className="size-4 text-muted-foreground" />
               <span className="hidden sm:inline">Export</span>
-            </Button>
-          )}
+          </Button>
 
           <div className="ml-auto flex items-center gap-1">
             {saveState !== "idle" && (
@@ -813,8 +807,7 @@ export function NoteEditor({
             )}
             dir={metadata.direction}
           >
-            {showEditor && (
-              <div className="flex min-h-0 flex-1 flex-col py-6">
+            <div className="flex min-h-0 flex-1 flex-col py-6">
                 <MarkdownEditor
                   value={content}
                   onChange={handleEditorChange}
@@ -826,17 +819,7 @@ export function NoteEditor({
                   onLargeMarkdownPaste={onLargeMarkdownPaste}
                 />
                 <FloatingMarkdownFormatToolbar editorRef={editorRef} />
-              </div>
-            )}
-            {isRead && (
-              <div className="min-h-0 flex-1 overflow-y-auto py-6">
-                <MarkdownPreview
-                  content={content}
-                  direction={metadata.direction}
-                  linkableNotes={linkableNotes}
-                />
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -867,7 +850,7 @@ export function NoteEditor({
         aria-hidden="true"
         className="pointer-events-none absolute -left-[9999px] top-0 w-[48rem] opacity-0"
       >
-        {(isRead || copyMenuTouched) && (
+        {copyMenuTouched && (
           <MarkdownPreview content={content} direction={metadata.direction} />
         )}
       </div>
@@ -885,7 +868,7 @@ export function NoteEditor({
           onTtsRateChange={setTtsRate}
           onTtsVoiceChange={setTtsVoiceURI}
           autoPlayTts={superFocusAutoPlay}
-          onExit={() => setShowSuperFocus(false)}
+          onExit={closeReader}
         />
       )}
     </div>
