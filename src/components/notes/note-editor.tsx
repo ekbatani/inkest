@@ -163,6 +163,8 @@ export function NoteEditor({
   const [pasteToPreview, setPasteToPreview] = React.useState(
     editorPrefs?.pasteToPreview ?? true,
   );
+  const [largePastePreviewContent, setLargePastePreviewContent] =
+    React.useState<string | null>(null);
   const superFocusPrefsTimer = React.useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -417,6 +419,7 @@ export function NoteEditor({
 
   const closeReader = React.useCallback(() => {
     setShowSuperFocus(false);
+    setLargePastePreviewContent(null);
     window.setTimeout(() => editorRef.current?.view?.focus(), 0);
   }, []);
 
@@ -554,20 +557,20 @@ export function NoteEditor({
     }
   }, []);
 
-  const onLargeMarkdownPaste = React.useCallback(() => {
+  const onLargeMarkdownPaste = React.useCallback((pastedContent: string) => {
     if (!pasteToPreview) return;
-    openReader();
-    toast("Pasted as Markdown — showing preview.", {
-      action: { label: "Keep writing", onClick: () => closeReader() },
+    setLargePastePreviewContent(pastedContent);
+    toast("Large Markdown pasted. Your source stays intact.", {
+      action: { label: "Preview", onClick: () => openReader() },
       cancel: {
-        label: "Don't do this again",
+        label: "Keep editing",
         onClick: () => {
           setPasteToPreview(false);
           void updateUserSettingsAction({ editor: { pasteToPreview: false } });
         },
       },
     });
-  }, [closeReader, openReader, pasteToPreview]);
+  }, [openReader, pasteToPreview]);
 
   const requestAiPanel = React.useCallback((initialAction?: "summarize") => {
     setAiInitialAction(initialAction ?? null);
@@ -856,7 +859,7 @@ export function NoteEditor({
       </div>
       {showSuperFocus && (
         <SuperFocusReader
-          content={content}
+          content={largePastePreviewContent ?? content}
           direction={metadata.direction}
           linkableNotes={linkableNotes}
           trackingMode={trackingMode}

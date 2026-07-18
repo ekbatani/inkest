@@ -36,7 +36,7 @@ type Props = {
   editorRef?: React.RefObject<ReactCodeMirrorRef | null>;
   linkableNotes?: WikiLinkTarget[];
   onOpenLink?: (href: string) => void;
-  onLargeMarkdownPaste?: (text: string) => void;
+  onLargeMarkdownPaste?: (content: string) => void;
 };
 
 const LARGE_PASTE_THRESHOLD = 1500;
@@ -132,11 +132,15 @@ export function MarkdownEditor({
       EditorView.decorations.of(buildStyledMarkdownDecorations(linkableNotes)),
       EditorView.domEventHandlers({
         click: (event, view) => handleEditorLinkClick(event, view, onOpenLink),
-        paste: (event) => {
+        paste: (event, view) => {
           if (!onLargeMarkdownPaste) return false;
           const text = event.clipboardData?.getData("text/plain") ?? "";
           if (text.length > LARGE_PASTE_THRESHOLD && looksLikeMarkdown(text)) {
-            queueMicrotask(() => onLargeMarkdownPaste(text));
+            // Let CodeMirror apply the paste first. The parent note state is
+            // intentionally debounced for typing performance, so pass the
+            // editor's post-paste document to the optional preview instead of
+            // waiting for that parent update.
+            queueMicrotask(() => onLargeMarkdownPaste(view.state.doc.toString()));
           }
           return false;
         },

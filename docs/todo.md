@@ -182,13 +182,21 @@ All of the following must be complete before announcing a public release:
     passed; the build retains the pre-existing Next/Turbopack NFT trace warning
     from the attachment export path.
 
-- [now] **P1-14 — Improve large-Markdown paste.** Detect substantial
+- [done] **P1-14 — Improve large-Markdown paste.** Detect substantial
   Markdown pastes, offer a fast preview/formatting path, and retain an easy
   immediate return to source editing.
   - Acceptance: a large paste does not lock the editor; users can decline the
     assist, undo it, and keep original Markdown intact.
+  - Evidence: 2026-07-18 — large Markdown pastes remain native CodeMirror
+    source edits, then offer an optional Reader preview using the exact
+    post-paste editor document rather than stale debounced route state. Users
+    can keep editing, disable the prompt, exit Reader directly back to the
+    editor, or use the existing undo controls/standard `Ctrl/Cmd+Z`; no
+    Markdown is transformed. `bun.cmd run typecheck` passed. Focused ESLint
+    reached the pre-existing `react-hooks/refs` ref-read error in
+    `note-editor.tsx:318`, outside this paste workflow.
 
-- [todo] **P1-15 — Merge and harden focus experiences.** Decide which
+- [now] **P1-15 — Merge and harden focus experiences.** Decide which
   distinct capability remains from focus and super-focus, then make it
   consistently discoverable after the unified editor work.
   - Acceptance: there is one understandable focus entry point, a keyboard
