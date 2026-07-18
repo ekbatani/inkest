@@ -172,6 +172,13 @@ formatting such as a bulleted list. Vim-style multi-cursor/select-all-occurrence
 shortcuts are intentionally not reserved: their browser and assistive-technology
 conflicts are too high for a global writing shortcut.
 
+## Daily notes and Calendar
+
+Open today&apos;s daily note from **Home**, `Ctrl+D`, or the command palette. Use
+**Calendar** to browse any date; choosing a day preserves the Calendar URL and
+**Open daily note** takes you to that date&apos;s note. Google Calendar is optional:
+the day and note remain available when it is not configured or connected.
+
 ## Writing suggestions
 
 Native browser spellcheck is enabled by default for notes. Set its language to

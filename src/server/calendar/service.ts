@@ -65,13 +65,21 @@ export function formatMonthKey(date: Date) {
 export function parseDateKey(dateKey?: string | null) {
   if (!dateKey || !DATE_KEY_RE.test(dateKey)) return null;
   const [year, month, day] = dateKey.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  const value = new Date(year, month - 1, day);
+  return value.getFullYear() === year &&
+    value.getMonth() === month - 1 &&
+    value.getDate() === day
+    ? value
+    : null;
 }
 
 export function parseMonthKey(monthKey?: string | null) {
   if (!monthKey || !/^\d{4}-\d{2}$/.test(monthKey)) return null;
   const [year, month] = monthKey.split("-").map(Number);
-  return new Date(year, month - 1, 1);
+  const value = new Date(year, month - 1, 1);
+  return value.getFullYear() === year && value.getMonth() === month - 1
+    ? value
+    : null;
 }
 
 function startOfDay(date: Date) {

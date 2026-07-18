@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "@/components/brand/logo-mark";
 import {
@@ -78,23 +78,14 @@ export function Sidebar({
         </span>
       </Link>
 
-      <div className="flex items-center gap-2 px-3 pb-3">
+      <div className="px-3 pb-3">
         <Link
           href="/notes/new"
           onClick={onNavigate}
-          className="flex h-9 flex-1 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-xs font-semibold text-background shadow-sm transition-opacity hover:opacity-90"
+          className="flex h-9 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-xs font-semibold text-background shadow-sm transition-opacity hover:opacity-90"
         >
           <Plus className="size-3.5" />
           Capture note
-        </Link>
-        <Link
-          href="/daily"
-          onClick={onNavigate}
-          aria-label="Open today's daily note"
-          title="Open today's daily note"
-          className="flex size-9 items-center justify-center rounded-xl border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <CalendarDays className="size-4" />
         </Link>
       </div>
 

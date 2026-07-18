@@ -18,6 +18,7 @@ import type { Note } from "@/server/db/schema";
 import { QuickCapture } from "./quick-capture";
 import { cn } from "@/lib/utils";
 import { usesRtlTitleFont } from "@/lib/text/rtl";
+import { formatDateKey } from "@/server/calendar/service";
 
 export default async function DashboardPage() {
   const [recentNotes, pinnedNotes, activeProjects, dueTasks] =
@@ -38,6 +39,7 @@ export default async function DashboardPage() {
     month: "long",
     day: "numeric",
   }).format(new Date());
+  const todayKey = formatDateKey(new Date());
 
   return (
     <div className="app-page gap-8 sm:gap-10">
@@ -62,7 +64,7 @@ export default async function DashboardPage() {
               variant="outline"
               className="rounded-xl"
               nativeButton={false}
-              render={<Link href="/daily" />}
+              render={<Link href={`/daily?date=${todayKey}`} />}
             >
               <CalendarDays className="size-4" />
               Open daily

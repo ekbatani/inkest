@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarDays, Menu, Plus, Search } from "lucide-react";
+import { Menu, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 import {
@@ -118,15 +118,6 @@ export function Topbar({ notesTree = [] }: { notesTree?: NoteTreeNode[] }) {
         </Button>
 
         <div className="ml-auto flex items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden gap-1.5 text-muted-foreground lg:flex"
-            onClick={() => router.push("/daily")}
-          >
-            <CalendarDays className="size-4" />
-            Today
-          </Button>
           <Button
             size="sm"
             className="gap-1.5 rounded-xl px-3.5 shadow-sm"

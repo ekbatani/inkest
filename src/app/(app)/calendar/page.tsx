@@ -97,6 +97,7 @@ export default async function CalendarPage({
   ]);
   const eventsByDay = toDayMap(events);
   const selectedKey = formatDateKey(selectedDate);
+  const todayKey = formatDateKey(new Date());
   const selectedEvents = eventsByDay.get(selectedKey) ?? [];
   const prevMonth = formatMonthKey(subMonths(monthStart, 1));
   const nextMonth = formatMonthKey(addMonths(monthStart, 1));
@@ -172,6 +173,16 @@ export default async function CalendarPage({
             </div>
             <CardAction>
               <div className="flex items-center gap-2">
+                {selectedKey !== todayKey && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    nativeButton={false}
+                    render={<Link href={`/calendar?month=${todayKey.slice(0, 7)}&date=${todayKey}`} />}
+                  >
+                    Today
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="icon-sm"

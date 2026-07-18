@@ -292,14 +292,21 @@ All of the following must be complete before announcing a public release:
     Calendar context, tags, and history/lifecycle controls. Verification:
     `bun.cmd run typecheck`, focused ESLint, and `bun.cmd run build` passed.
 
-- [todo] **P1-23 — Complete daily/calendar information architecture.** Remove
+- [done] **P1-23 — Complete daily/calendar information architecture.** Remove
   redundant Daily navigation only after Calendar and Home provide clear daily
   entry points, deep links, and empty states.
   - Acceptance: opening any day reliably reaches its daily note; navigation,
     browser history, and Google Calendar-connected/disconnected states are
     unambiguous.
+  - Evidence: 2026-07-18 — consolidated persistent navigation around Home and
+    Calendar by removing the duplicate Daily sidebar/topbar entries; Home now
+    opens an explicit date URL and Calendar supplies a Today reset plus a
+    selected-day deep link. Invalid day/month URL values no longer normalize to
+    a different date, and a failed daily-note open gives a recoverable Calendar
+    route rather than an indefinite loading screen. `bun.cmd run typecheck`,
+    focused ESLint, and `bun.cmd run build` passed.
 
-- [todo] **P1-24 — Support nested projects intentionally.** Allow a project
+- [now] **P1-24 — Support nested projects intentionally.** Allow a project
   note to be created in the tree and assigned/reassigned a parent project,
   including cycle prevention and clear project/task roll-up semantics.
   - Acceptance: nesting works from creation and edit flows, cannot create a
