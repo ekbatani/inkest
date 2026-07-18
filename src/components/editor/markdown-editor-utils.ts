@@ -24,6 +24,7 @@ export type MarkdownFormat =
   | "italic"
   | "strikethrough"
   | "inline-code"
+  | "code-block"
   | "heading-1"
   | "heading-2"
   | "heading-3"
@@ -115,6 +116,24 @@ export function applyMarkdownFormat(
       selection: selectedText
         ? { anchor: sel.from + insert.length }
         : { anchor: sel.from + inline.before.length, head: sel.from + inline.before.length + text.length },
+    });
+    view.focus();
+    return;
+  }
+
+  if (format === "code-block") {
+    const text = selectedText || "code";
+    const before = sel.from > 0 ? "\n\n" : "";
+    const after = sel.to < view.state.doc.length ? "\n\n" : "";
+    const insert = `${before}\`\`\`\n${text}\n\`\`\`${after}`;
+    const contentFrom = sel.from + before.length + 4;
+    const contentTo = contentFrom + text.length;
+
+    view.dispatch({
+      changes: { from: sel.from, to: sel.to, insert },
+      selection: selectedText
+        ? { anchor: contentTo }
+        : { anchor: contentFrom, head: contentTo },
     });
     view.focus();
     return;

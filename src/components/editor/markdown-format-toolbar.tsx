@@ -82,6 +82,9 @@ export function MarkdownFormatToolbar({ editorRef, className, onAction }: Props)
       <ToolButton label="Inline code" onClick={() => apply("inline-code")}>
         <Code2 className="size-3.5" />
       </ToolButton>
+      <ToolButton label="Code block" onClick={() => apply("code-block")}>
+        <Code2 className="size-3.5" strokeWidth={1.5} />
+      </ToolButton>
 
       <DropdownMenu>
         <DropdownMenuTrigger
