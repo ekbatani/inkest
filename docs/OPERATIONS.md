@@ -94,6 +94,32 @@ These are post-change development measurements, not a production or throttled
 before/after comparison. Capture that comparison on representative hardware
 before declaring the P0-10 performance gate complete.
 
+## Accessibility and responsive audit
+
+### 2026-07-18 application-shell audit
+
+The authenticated application shell has a skip-to-content link, a labelled
+`main` landmark, labelled navigation, visible keyboard focus for sidebar
+navigation and controls, and a keyboard-operable desktop sidebar resizer.
+When the resizer has focus, use Left/Right Arrow to change its width by 20 px,
+Shift+Arrow to change it by 50 px, or Home/End for its minimum/maximum width.
+The note editor route also supplies a descriptive document title so Next.js
+route announcements do not fall back to an opaque URL.
+
+Static review covered the core authenticated shell, the mobile navigation
+sheet, focus reader, editor direction handling, and global reduced-motion
+rules. `bun.cmd run typecheck` passed. Focused ESLint remains blocked by the
+pre-existing `react-hooks/set-state-in-effect` warning in
+`sidebar-toggle-wrapper.tsx` when it restores the saved sidebar width; it is
+unrelated to the keyboard-resizer change.
+
+Before public release, the release maintainer (P0) must complete the manual
+assistive-technology pass on a real mobile device and desktop browser: keyboard
+order at 200% zoom, NVDA/VoiceOver landmark and dialog announcements, light and
+dark contrast checks, and mixed Persian/English note editing. No known
+user-facing blocker is deferred by this note; this is the required final
+environment-specific validation.
+
 ### Editor route code-splitting measurement — 2026-07-14
 
 The P0-11 production build was inspected through the generated client-reference

@@ -14,6 +14,11 @@ import {
 import { listTags, listTagsForNote } from "@/server/tags/service";
 import { getUserSettings } from "@/server/users/settings-service";
 import { NoteEditor } from "@/components/notes/note-editor";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Note editor",
+};
 
 export default async function NoteDetailPage({
   params,

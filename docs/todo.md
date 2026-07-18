@@ -322,13 +322,24 @@ All of the following must be complete before announcing a public release:
     the pre-existing Turbopack NFT trace warning from the attachment export
     path.
 
-- [todo] **P1-25 — Accessibility and responsive audit.** Test keyboard-only,
+- [done] **P1-25 — Accessibility and responsive audit.** Test keyboard-only,
   screen-reader labels, focus order, contrast, zoom, narrow mobile layout,
   RTL/mixed-direction notes, and reduced motion across core routes.
   - Acceptance: critical violations are fixed; remaining limitations are
     documented with an owner and priority.
+  - Evidence: 2026-07-18 — added an application-shell skip link and labelled
+    main landmark; made sidebar navigation focus-visible; and made the desktop
+    sidebar resize separator keyboard-operable with Arrow, Shift+Arrow, Home,
+    and End. The note-editor route now has a descriptive title for Next.js
+    route announcements. Static review confirmed the mobile Sheet, focus
+    reader, RTL note direction, and reduced-motion paths; `bun.cmd run
+    typecheck` and `git diff --check` passed. The focused ESLint check reaches
+    the pre-existing `react-hooks/set-state-in-effect` finding in
+    `sidebar-toggle-wrapper.tsx:40`. The required final device and
+    assistive-technology pass is recorded in `docs/OPERATIONS.md` with the
+    release maintainer as P0 owner.
 
-- [todo] **P2-26 — Add curated themes and font choices.** Build on the shared
+- [now] **P2-26 — Add curated themes and font choices.** Build on the shared
   token system; do not introduce premium-only claims before licensing and
   billing decisions exist.
   - Acceptance: choices persist per user, meet contrast requirements, do not

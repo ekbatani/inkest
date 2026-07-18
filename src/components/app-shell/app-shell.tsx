@@ -7,11 +7,23 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const notesTree = await listNotesTree().catch(() => []);
 
   return (
-    <SidebarToggleWrapper sidebar={<Sidebar notesTree={notesTree} />}>
-      <Topbar notesTree={notesTree} />
-      <main className="app-canvas min-h-0 min-w-0 flex-1 overflow-y-auto">
-        {children}
-      </main>
-    </SidebarToggleWrapper>
+    <>
+      <a
+        href="#main-content"
+        className="sr-only fixed start-4 top-4 z-[60] rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg focus:not-sr-only focus:outline-none focus:ring-3 focus:ring-ring/50"
+      >
+        Skip to main content
+      </a>
+      <SidebarToggleWrapper sidebar={<Sidebar notesTree={notesTree} />}>
+        <Topbar notesTree={notesTree} />
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="app-canvas min-h-0 min-w-0 flex-1 overflow-y-auto focus:outline-none"
+        >
+          {children}
+        </main>
+      </SidebarToggleWrapper>
+    </>
   );
 }

@@ -27,7 +27,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
       onClick={onNavigate}
       aria-current={isActive(item.href) ? "page" : undefined}
       className={cn(
-        "group flex min-h-9 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-[color,background-color,box-shadow]",
+        "group flex min-h-9 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-[color,background-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
         "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         isActive(item.href) &&
           "bg-background text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.05)] ring-1 ring-border/70",
@@ -65,7 +65,7 @@ export function Sidebar({
       <Link
         href="/dashboard"
         onClick={onNavigate}
-        className="flex items-center gap-3 px-5 py-5"
+        className="flex items-center gap-3 rounded-xl px-5 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
       >
         <span className="flex size-9 items-center justify-center rounded-xl bg-foreground text-background shadow-sm">
           <LogoMark className="size-[1.1rem]" />
@@ -82,7 +82,7 @@ export function Sidebar({
         <Link
           href="/notes/new"
           onClick={onNavigate}
-          className="flex h-9 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-xs font-semibold text-background shadow-sm transition-opacity hover:opacity-90"
+          className="flex h-9 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-xs font-semibold text-background shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
           <Plus className="size-3.5" />
           Capture note
@@ -105,7 +105,7 @@ export function Sidebar({
                 : undefined
             }
             className={cn(
-              "group flex min-h-9 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors",
+              "group flex min-h-9 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
               "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               (pathname === item.href || pathname.startsWith(`${item.href}/`)) &&
                 "bg-background text-foreground ring-1 ring-border/70",
