@@ -9,6 +9,10 @@ const MermaidRenderer = dynamic(
   { ssr: false },
 );
 
+function MermaidCodeBlock({ code }: { code: string }) {
+  return <MermaidRenderer code={code} />;
+}
+
 export function useMermaidCodeComponent(): Components {
   return React.useMemo(
     () => ({
@@ -18,7 +22,7 @@ export function useMermaidCodeComponent(): Components {
         const text = String(children).replace(/\n$/, "");
 
         if (lang === "mermaid") {
-          return <MermaidRenderer code={text} />;
+          return <MermaidCodeBlock code={text} />;
         }
 
         return (
@@ -27,8 +31,22 @@ export function useMermaidCodeComponent(): Components {
           </code>
         );
       },
-      pre({ children }) {
-        return <>{children}</>;
+      pre({ children, ...props }) {
+        // React Markdown wraps every fenced block in <pre>. Mermaid replaces
+        // that wrapper with its renderer, but ordinary fenced blocks must keep
+        // it so they remain distinct, scrollable block-level code surfaces.
+        if (
+          React.Children.toArray(children).some(
+            (child) =>
+              React.isValidElement<{ className?: string }>(child) &&
+              (child.type === MermaidCodeBlock ||
+                /(^|\s)language-mermaid(\s|$)/.test(child.props.className ?? "")),
+          )
+        ) {
+          return <>{children}</>;
+        }
+
+        return <pre {...props}>{children}</pre>;
       },
     }),
     [],
