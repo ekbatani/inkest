@@ -233,16 +233,22 @@ All of the following must be complete before announcing a public release:
     multi-cursor/select-all-occurrences remains intentionally unbound because
     browser and assistive-technology conflicts outweigh its value here.
 
-- [todo] **P1-17 — Add spelling and writing suggestions with user control.**
+- [done] **P1-17 — Add spelling and writing suggestions with user control.**
   Evaluate browser-native spellcheck first; layer optional AI suggestions only
   behind explicit consent and selected text.
   - Acceptance: typo suggestions work for configured languages, can be
     disabled, never send text to an AI provider implicitly, and preserve the
     original text until accepted.
+  - Evidence: 2026-07-18 — added per-user native browser spellcheck controls
+    for browser-default, English, and Persian dictionaries in Settings; passed
+    the persisted preference to CodeMirror's editable DOM without any network
+    or AI request. Documented that existing AI writing actions remain manual,
+    selection-based, and reviewable before replacement. `bun.cmd run
+    typecheck`, focused ESLint, and `bun.cmd run build` passed.
 
 ## Phase 2 — product coherence, navigation, and accessibility
 
-- [todo] **P0-20 — Establish and apply one design system.** Audit the landing
+- [now] **P0-20 — Establish and apply one design system.** Audit the landing
   page, application shell, settings, editor, panels, empty states, and
   notifications; define shared tokens and reusable patterns for color,
   typography, radius, spacing, elevation, and motion.

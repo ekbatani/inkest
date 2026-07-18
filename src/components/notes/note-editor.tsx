@@ -132,7 +132,11 @@ export function NoteEditor({
   selectTitleOnMount?: boolean;
   superFocusPrefs?: { trackingMode: SuperFocusTrackingMode; radius: number };
   ttsPrefs?: { rate: number; voiceURI: string | undefined };
-  editorPrefs?: { pasteToPreview: boolean };
+  editorPrefs?: {
+    pasteToPreview: boolean;
+    spellcheck: boolean;
+    spellcheckLanguage: "auto" | "en" | "fa";
+  };
   dailyAgenda?: {
     dateKey: string;
     events: GoogleCalendarEvent[];
@@ -798,6 +802,8 @@ export function NoteEditor({
                   linkableNotes={linkableNotes}
                   onOpenLink={(href) => router.push(href)}
                   onLargeMarkdownPaste={onLargeMarkdownPaste}
+                  spellcheck={editorPrefs?.spellcheck ?? true}
+                  spellcheckLanguage={editorPrefs?.spellcheckLanguage ?? "auto"}
                 />
                 <FloatingMarkdownFormatToolbar editorRef={editorRef} />
             </div>

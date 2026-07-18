@@ -39,6 +39,8 @@ type Props = {
   linkableNotes?: WikiLinkTarget[];
   onOpenLink?: (href: string) => void;
   onLargeMarkdownPaste?: (content: string) => void;
+  spellcheck?: boolean;
+  spellcheckLanguage?: "auto" | "en" | "fa";
 };
 
 const LARGE_PASTE_THRESHOLD = 1500;
@@ -130,6 +132,8 @@ export function MarkdownEditor({
   linkableNotes = [],
   onOpenLink,
   onLargeMarkdownPaste,
+  spellcheck = true,
+  spellcheckLanguage = "auto",
 }: Props) {
   // Keep CodeMirror's controlled value local while a user is typing. Updating the
   // note route for every character rerenders its toolbars, panels, and metadata
@@ -163,6 +167,13 @@ export function MarkdownEditor({
       markdownFormattingKeymap,
       syntaxHighlighting(fencedCodeHighlightStyle),
       EditorView.lineWrapping,
+      // CodeMirror owns the editable DOM, so native browser spellcheck must
+      // be enabled on its content element rather than on the React wrapper.
+      // This stays entirely in the browser: no note text is sent anywhere.
+      EditorView.contentAttributes.of({
+        spellcheck: String(spellcheck),
+        ...(spellcheckLanguage === "auto" ? {} : { lang: spellcheckLanguage }),
+      }),
       EditorView.decorations.of(buildStyledMarkdownDecorations(linkableNotes)),
       EditorView.domEventHandlers({
         click: (event, view) => handleEditorLinkClick(event, view, onOpenLink),
@@ -315,7 +326,14 @@ export function MarkdownEditor({
         }),
       ),
     ],
-    [editorFontFamily, linkableNotes, onOpenLink, onLargeMarkdownPaste],
+    [
+      editorFontFamily,
+      linkableNotes,
+      onOpenLink,
+      onLargeMarkdownPaste,
+      spellcheck,
+      spellcheckLanguage,
+    ],
   );
 
   const dir = direction === "auto" ? undefined : direction;

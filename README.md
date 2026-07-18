@@ -166,6 +166,14 @@ formatting such as a bulleted list. Vim-style multi-cursor/select-all-occurrence
 shortcuts are intentionally not reserved: their browser and assistive-technology
 conflicts are too high for a global writing shortcut.
 
+## Writing suggestions
+
+Native browser spellcheck is enabled by default for notes. Set its language to
+your browser default, English, or Persian (or disable it) in **Settings →
+Editor**. Dictionaries and suggestions are supplied locally by the browser;
+Inkest does not send note text to an AI provider for spelling. AI writing
+actions remain manual and only use text you explicitly select.
+
 ## License
 
 Private project.

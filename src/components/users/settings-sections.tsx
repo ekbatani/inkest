@@ -134,12 +134,20 @@ export function ProfileSection({
 export function EditorPrefsSection({
   autosaveDelayMs,
   showLineNumbers,
+  spellcheck,
+  spellcheckLanguage,
 }: {
   autosaveDelayMs?: number;
   showLineNumbers?: boolean;
+  spellcheck?: boolean;
+  spellcheckLanguage?: "auto" | "en" | "fa";
 }) {
   const [delay, setDelay] = React.useState(String(autosaveDelayMs ?? 1500));
   const [lineNumbers, setLineNumbers] = React.useState(!!showLineNumbers);
+  const [spellcheckEnabled, setSpellcheckEnabled] = React.useState(
+    spellcheck ?? true,
+  );
+  const [language, setLanguage] = React.useState(spellcheckLanguage ?? "auto");
   const [saving, setSaving] = React.useState(false);
 
   const save = async () => {
@@ -151,6 +159,8 @@ export function EditorPrefsSection({
           editor: {
             autosaveDelayMs: delayMs,
             showLineNumbers: lineNumbers,
+            spellcheck: spellcheckEnabled,
+            spellcheckLanguage: language,
           },
         }),
       );
@@ -190,7 +200,41 @@ export function EditorPrefsSection({
             {lineNumbers ? "On" : "Off"}
           </Button>
         </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Spellcheck</Label>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 justify-start"
+            aria-pressed={spellcheckEnabled}
+            onClick={() => setSpellcheckEnabled((value) => !value)}
+          >
+            {spellcheckEnabled ? "On" : "Off"}
+          </Button>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground" htmlFor="spellcheck-language">
+            Writing language
+          </Label>
+          <Select
+            value={language}
+            onValueChange={(value) => setLanguage(value as "auto" | "en" | "fa")}
+            disabled={!spellcheckEnabled}
+          >
+            <SelectTrigger id="spellcheck-language" className="h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">Browser default</SelectItem>
+              <SelectItem value="en">English</SelectItem>
+              <SelectItem value="fa">Persian</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Suggestions come from your browser and its installed dictionaries. Inkest never sends note text to AI for spellcheck; AI writing actions remain manual and use only text you select.
+      </p>
       <div>
         <Button size="sm" onClick={save} disabled={saving}>
           Save editor prefs

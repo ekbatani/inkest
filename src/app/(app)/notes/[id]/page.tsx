@@ -71,6 +71,8 @@ export default async function NoteDetailPage({
       }}
       editorPrefs={{
         pasteToPreview: settings.editor?.pasteToPreview ?? true,
+        spellcheck: settings.editor?.spellcheck ?? true,
+        spellcheckLanguage: settings.editor?.spellcheckLanguage ?? "auto",
       }}
       dailyAgenda={
         dailyDate && calendarStatus

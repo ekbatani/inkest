@@ -21,6 +21,8 @@ export const userSettingsSchema = z.object({
       autosaveDelayMs: z.number().int().min(0).max(60_000).optional(),
       showLineNumbers: z.boolean().optional(),
       pasteToPreview: z.boolean().optional(),
+      spellcheck: z.boolean().optional(),
+      spellcheckLanguage: z.enum(["auto", "en", "fa"]).optional(),
     })
     .optional(),
   ai: aiProviderSettingsSchema.optional(),
@@ -68,6 +70,8 @@ const DEFAULTS: UserSettings = {
     autosaveDelayMs: 1500,
     showLineNumbers: false,
     pasteToPreview: true,
+    spellcheck: true,
+    spellcheckLanguage: "auto",
   },
   ai: {},
   theme: { preference: "system" },
