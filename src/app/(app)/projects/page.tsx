@@ -22,7 +22,7 @@ export default async function ProjectsPage() {
   const projects = await listNotes({ type: "project", limit: 200 });
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-10 sm:px-8 sm:py-14">
+    <div className="app-page gap-6">
       <header className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <FolderKanban className="size-5 text-muted-foreground" />

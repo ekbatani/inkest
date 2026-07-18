@@ -102,7 +102,7 @@ export default async function CalendarPage({
   const nextMonth = formatMonthKey(addMonths(monthStart, 1));
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-8 sm:px-8 sm:py-10">
+    <div className="app-page-wide gap-6">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -142,14 +142,14 @@ export default async function CalendarPage({
       </header>
 
       {params.connected === "1" && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="notice notice-success">
           Google Calendar connected. Run a sync to pull your latest events into
           InkNest.
         </div>
       )}
 
       {params.error && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="notice notice-warning">
           {params.error === "google-calendar-not-configured" &&
             "Google Calendar OAuth is not configured yet."}
           {params.error === "google-calendar-access-denied" &&

@@ -7,6 +7,7 @@ does not keep implementation diaries, duplicate exports, or agent prompts.
 | --- | --- |
 | [Product](PRODUCT.md) | Product purpose, scope, principles, and roadmap |
 | [Architecture](ARCHITECTURE.md) | Application boundaries, data, security, and integration contracts |
+| [Design system](design-system.md) | Shared visual tokens, components, interaction rules, and intentional exceptions |
 | [Operations](OPERATIONS.md) | Configuration, deployment, verification, and performance work |
 | [Beta feedback](beta-feedback.md) | Public beta bug reporting, privacy rules, severity, and triage cadence |
 

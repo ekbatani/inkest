@@ -86,6 +86,12 @@
   --ai-ink: oklch(0.36 0.11 278);
   --ai-border: color-mix(in oklch, var(--ai-start) 55%, white 45%);
   --ai-surface: color-mix(in oklch, var(--ai-start) 10%, white 90%);
+  --success: oklch(0.57 0.15 154);
+  --success-foreground: oklch(0.31 0.08 154);
+  --success-surface: color-mix(in oklch, var(--success) 11%, var(--background));
+  --warning: oklch(0.72 0.14 78);
+  --warning-foreground: oklch(0.39 0.09 70);
+  --warning-surface: color-mix(in oklch, var(--warning) 13%, var(--background));
   --font-rtl: "Vazir", var(--font-rtl-fallback), Tahoma, sans-serif;
   --background: oklch(1 0 0);
   --foreground: oklch(0.148 0.004 228.8);
@@ -128,6 +134,12 @@
   --ai-ink: oklch(0.9 0.06 285);
   --ai-border: color-mix(in oklch, var(--ai-start) 55%, black 45%);
   --ai-surface: color-mix(in oklch, var(--ai-start) 16%, black 84%);
+  --success: oklch(0.7 0.14 154);
+  --success-foreground: oklch(0.86 0.08 154);
+  --success-surface: color-mix(in oklch, var(--success) 16%, var(--background));
+  --warning: oklch(0.8 0.13 82);
+  --warning-foreground: oklch(0.9 0.09 88);
+  --warning-surface: color-mix(in oklch, var(--warning) 17%, var(--background));
 }
 
 @layer base {
@@ -852,8 +864,28 @@
     @apply mx-auto flex w-full max-w-5xl flex-col px-5 py-8 sm:px-8 sm:py-10;
   }
 
+  .app-page-wide {
+    @apply mx-auto flex w-full max-w-7xl flex-col px-5 py-8 sm:px-8 sm:py-10;
+  }
+
   .section-label {
     @apply font-mono text-[0.68rem] font-semibold uppercase tracking-[0.13em] text-muted-foreground;
+  }
+
+  .notice {
+    @apply rounded-2xl border px-4 py-3 text-sm;
+  }
+
+  .notice-success {
+    border-color: color-mix(in oklch, var(--success) 42%, var(--border));
+    background: var(--success-surface);
+    color: var(--success-foreground);
+  }
+
+  .notice-warning {
+    border-color: color-mix(in oklch, var(--warning) 42%, var(--border));
+    background: var(--warning-surface);
+    color: var(--warning-foreground);
   }
 }
 

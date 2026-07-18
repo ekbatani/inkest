@@ -248,14 +248,23 @@ All of the following must be complete before announcing a public release:
 
 ## Phase 2 — product coherence, navigation, and accessibility
 
-- [now] **P0-20 — Establish and apply one design system.** Audit the landing
+- [done] **P0-20 — Establish and apply one design system.** Audit the landing
   page, application shell, settings, editor, panels, empty states, and
   notifications; define shared tokens and reusable patterns for color,
   typography, radius, spacing, elevation, and motion.
   - Acceptance: app and landing share a coherent visual language in light and
     dark themes; one-off styles are removed or intentionally documented.
+  - Evidence: 2026-07-18 — added `docs/design-system.md` as the maintained
+    visual contract for tokens, typography, spacing, surfaces, feedback, motion,
+    and intentional marketing/AI/focus exceptions; linked it from the docs
+    index. Added shared success/warning semantic tokens plus `notice`,
+    `app-page`, and `app-page-wide` patterns in `src/app/globals.css`; applied
+    them to Calendar feedback and the Calendar, Projects, and Settings route
+    layouts so they no longer rely on one-off fixed palette/layout classes.
+    Verification: `bun.cmd run typecheck`, focused ESLint, and `bun.cmd run
+    build` passed.
 
-- [todo] **P1-21 — Refine settings and AI setup UX.** Group settings by
+- [now] **P1-21 — Refine settings and AI setup UX.** Group settings by
   purpose, clarify instance versus user configuration, make provider setup
   easy, and show actionable validation/error messages.
   - Acceptance: a new user can configure an OpenAI-compatible provider or
