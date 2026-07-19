@@ -26,9 +26,12 @@ optional integrations. Set secrets in the deployment platform, never commit
 them, and rotate a secret if it is exposed.
 
 Instance-level AI and Telegram variables are suitable for simple self-hosting.
-User-specific settings and integrations must remain isolated by user. Before a
-hosted offering, encrypt stored provider credentials and review token lifecycle
-and deletion behavior.
+User-specific settings and integrations must remain isolated by user.
+`AI_CREDENTIAL_ENCRYPTION_KEYS` is required before users store an AI provider
+key or connect Google Calendar. Keep it only in the deployment secret store;
+the first `id:base64-32-byte-key` entry encrypts new values and subsequent
+entries allow a staged rotation. The complete rotation, migration, and rollback
+procedure is documented in [Architecture](ARCHITECTURE.md#stored-credential-encryption-and-rotation).
 
 ## Verification
 

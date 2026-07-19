@@ -120,8 +120,33 @@ is available for a key-required provider, requests return the actionable
 not-configured response (HTTP 503 from the AI route); they never switch to a
 different provider or key. Personal API keys are encrypted in the user settings
 record, decrypted only on the server for provider resolution, and never returned
-by the settings action. Key rotation and lifecycle hardening are tracked by
-P0-31.
+by the settings action.
+
+### Stored credential encryption and rotation
+
+Personal AI provider keys and Google Calendar access/refresh tokens use
+AES-256-GCM with a dedicated, server-only key ring in
+`AI_CREDENTIAL_ENCRYPTION_KEYS`. Its comma-separated entries have the form
+`key-id:base64-encoded-32-byte-key`; the first is active for encryption and the
+others are decrypt-only rotation keys. Ciphertext records include their key id,
+but never the key itself. Values are never serialized to the browser, included
+in exports, or logged by these services.
+
+Before enabling user credentials, generate a unique key with `openssl rand
+-base64 32` and configure, for example, `2026-07:generated-value`. To rotate,
+deploy `2026-10:new-value,2026-07:old-value`, leave both keys available while
+authenticated settings/calendar reads lazily re-encrypt records, then remove the
+old key only after confirming no `enc:v2:2026-07:` records remain in the backup
+or database. Do not rotate this key by changing `NEXTAUTH_SECRET`.
+
+The existing JSON settings and calendar-token columns need no schema migration:
+legacy plaintext and the earlier `enc:v1` `NEXTAUTH_SECRET`-derived values are
+read only to migrate them on the next authenticated use. Take a database backup
+before the rollout. If rollback is needed after v2 values have been written,
+restore that backup with the prior release; otherwise keep this release and the
+full key ring deployed until migration is complete. Missing, corrupt, or
+retired-key credentials are treated as unavailable and require the owner to
+save a new provider key or reconnect Google Calendar.
 
 Text actions return Markdown; task, project-plan, and Mermaid actions use
 structured output before the application renders or inserts it. Add a new action

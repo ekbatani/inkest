@@ -3,6 +3,11 @@ import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
 import { getWorkspaceForUser } from "@/server/auth/users";
 import { randomId } from "@/lib/slug";
+import {
+  decryptSecret,
+  encryptSecret,
+  shouldReencryptSecret,
+} from "@/server/crypto/secret-box";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -118,7 +123,31 @@ async function getConnectionRow(userId: string) {
     .where(eq(schema.googleCalendarConnections.userId, userId))
     .limit(1);
 
-  return rows[0] ?? null;
+  const connection = rows[0];
+  if (!connection) return null;
+
+  try {
+    const accessToken = decryptSecret(connection.accessToken);
+    const refreshToken = connection.refreshToken
+      ? decryptSecret(connection.refreshToken)
+      : null;
+    if (
+      shouldReencryptSecret(connection.accessToken) ||
+      (connection.refreshToken && shouldReencryptSecret(connection.refreshToken))
+    ) {
+      await db
+        .update(schema.googleCalendarConnections)
+        .set({
+          accessToken: encryptSecret(accessToken),
+          refreshToken: refreshToken ? encryptSecret(refreshToken) : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.googleCalendarConnections.id, connection.id));
+    }
+    return { ...connection, accessToken, refreshToken };
+  } catch {
+    throw new Error("GOOGLE_CALENDAR_RECONNECT_REQUIRED");
+  }
 }
 
 async function exchangeCodeForTokens(code: string) {
@@ -206,8 +235,8 @@ async function getValidAccessToken(
   await db
     .update(schema.googleCalendarConnections)
     .set({
-      accessToken: refreshed.access_token,
-      refreshToken: refreshed.refresh_token ?? connection.refreshToken,
+      accessToken: encryptSecret(refreshed.access_token),
+      refreshToken: encryptSecret(refreshed.refresh_token ?? connection.refreshToken),
       tokenType: refreshed.token_type ?? connection.tokenType,
       scope: refreshed.scope ?? connection.scope,
       accessTokenExpiresAt,
@@ -308,12 +337,15 @@ export async function connectGoogleCalendarWithCode(code: string) {
     : null;
 
   if (existing) {
+    const refreshToken = tokens.refresh_token ?? existing.refreshToken;
     await db
       .update(schema.googleCalendarConnections)
       .set({
         googleEmail: profile.email ?? existing.googleEmail,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token ?? existing.refreshToken,
+        accessToken: encryptSecret(tokens.access_token),
+        refreshToken: refreshToken
+          ? encryptSecret(refreshToken)
+          : null,
         tokenType: tokens.token_type ?? existing.tokenType,
         scope: tokens.scope ?? existing.scope,
         accessTokenExpiresAt,
@@ -330,8 +362,8 @@ export async function connectGoogleCalendarWithCode(code: string) {
     workspaceId: workspace.id,
     googleEmail: profile.email ?? null,
     calendarId: "primary",
-    accessToken: tokens.access_token,
-    refreshToken: tokens.refresh_token ?? null,
+    accessToken: encryptSecret(tokens.access_token),
+    refreshToken: tokens.refresh_token ? encryptSecret(tokens.refresh_token) : null,
     tokenType: tokens.token_type ?? null,
     scope: tokens.scope ?? null,
     accessTokenExpiresAt,

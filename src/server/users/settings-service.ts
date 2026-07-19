@@ -3,7 +3,11 @@ import { z } from "zod";
 import { AI_PROVIDER_IDS } from "@/lib/ai/providers";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
-import { decryptSecret, encryptSecret } from "@/server/crypto/secret-box";
+import {
+  decryptSecret,
+  encryptSecret,
+  shouldReencryptSecret,
+} from "@/server/crypto/secret-box";
 
 export const superFocusTrackingModeEnum = z.enum(["pointer", "auto"]);
 export const aiProviderSettingsSchema = z
@@ -122,15 +126,60 @@ export async function getUserSettings(): Promise<UserSettings> {
     .from(schema.users)
     .where(eq(schema.users.id, user.id))
     .limit(1);
-  const settings = mergeWithDefaults(parse(rows[0]?.settings ?? null));
+  const storedSettings = mergeWithDefaults(parse(rows[0]?.settings ?? null));
+  const settings = structuredClone(storedSettings);
+  let needsMigration = false;
   if (settings.ai?.apiKey) {
     try {
       settings.ai = { ...settings.ai, apiKey: decryptSecret(settings.ai.apiKey) };
+      needsMigration ||= shouldReencryptSecret(storedSettings.ai?.apiKey ?? "");
     } catch {
       // NEXTAUTH_SECRET rotated or the value is corrupt — treat the stored key as unusable
       // rather than crashing the settings page or leaking ciphertext into the UI.
       settings.ai = { ...settings.ai, apiKey: "" };
     }
+  }
+  if (settings.googleCalendar?.accessToken) {
+    try {
+      settings.googleCalendar = {
+        ...settings.googleCalendar,
+        accessToken: decryptSecret(settings.googleCalendar.accessToken),
+        refreshToken: settings.googleCalendar.refreshToken
+          ? decryptSecret(settings.googleCalendar.refreshToken)
+          : undefined,
+      };
+      needsMigration ||= shouldReencryptSecret(storedSettings.googleCalendar?.accessToken ?? "");
+      if (storedSettings.googleCalendar?.refreshToken) {
+        needsMigration ||= shouldReencryptSecret(storedSettings.googleCalendar.refreshToken);
+      }
+    } catch {
+      settings.googleCalendar = {
+        ...settings.googleCalendar,
+        accessToken: undefined,
+        refreshToken: undefined,
+      };
+    }
+  }
+  if (needsMigration) {
+    const migrated: UserSettings = {
+      ...settings,
+      ai: settings.ai?.apiKey
+        ? { ...settings.ai, apiKey: encryptSecret(settings.ai.apiKey) }
+        : settings.ai,
+      googleCalendar: settings.googleCalendar?.accessToken
+        ? {
+            ...settings.googleCalendar,
+            accessToken: encryptSecret(settings.googleCalendar.accessToken),
+            refreshToken: settings.googleCalendar.refreshToken
+              ? encryptSecret(settings.googleCalendar.refreshToken)
+              : undefined,
+          }
+        : settings.googleCalendar,
+    };
+    await db
+      .update(schema.users)
+      .set({ settings: JSON.stringify(migrated), updatedAt: new Date() })
+      .where(eq(schema.users.id, user.id));
   }
   return settings;
 }
@@ -153,9 +202,21 @@ export async function updateUserSettings(patch: Partial<UserSettings>): Promise<
     notifications: { ...current.notifications, ...patch.notifications },
   };
 
-  const stored: UserSettings = next.ai?.apiKey
-    ? { ...next, ai: { ...next.ai, apiKey: encryptSecret(next.ai.apiKey) } }
-    : next;
+  const stored: UserSettings = {
+    ...next,
+    ai: next.ai?.apiKey
+      ? { ...next.ai, apiKey: encryptSecret(next.ai.apiKey) }
+      : next.ai,
+    googleCalendar: next.googleCalendar?.accessToken
+      ? {
+          ...next.googleCalendar,
+          accessToken: encryptSecret(next.googleCalendar.accessToken),
+          refreshToken: next.googleCalendar.refreshToken
+            ? encryptSecret(next.googleCalendar.refreshToken)
+            : undefined,
+        }
+      : next.googleCalendar,
+  };
 
   await db
     .update(schema.users)

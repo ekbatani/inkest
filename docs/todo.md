@@ -383,15 +383,25 @@ All of the following must be complete before announcing a public release:
     provider precedence and unavailable-provider behavior; aligned `README.md`.
     `bun.cmd run typecheck` and `git diff --check` passed.
 
-- [todo] **P0-31 — Encrypt stored user provider credentials and secure their
+- [done] **P0-31 — Encrypt stored user provider credentials and secure their
   lifecycle.** Review existing secret storage, add migration/rotation/deletion
   behavior as needed, and ensure keys are never returned to the browser,
   exported, or logged.
   - Acceptance: credentials are encrypted at rest with documented key
     management, redacted from logs, removable by the user, and covered by a
     migration/rollback plan.
+  - Evidence: 2026-07-19 - replaced the `NEXTAUTH_SECRET`-derived AI-key
+    cipher with versioned AES-256-GCM credential encryption using the dedicated
+    `AI_CREDENTIAL_ENCRYPTION_KEYS` key ring. Personal AI keys and Google
+    Calendar access/refresh tokens are encrypted for new writes and lazily
+    re-encrypted from legacy plaintext, v1 ciphertext, or a retired key during
+    authenticated use. Keys remain server-only, settings actions never return
+    them, explicit key removal and account deletion remove the stored values,
+    and `docs/ARCHITECTURE.md` now records rotation, migration, and rollback.
+    Added focused crypto rotation tests; `bun test
+    src/server/crypto/secret-box.test.ts` and `bun run typecheck` passed.
 
-- [todo] **P1-32 — Add user-editable AI orchestration controls.** Provide
+- [now] **P1-32 — Add user-editable AI orchestration controls.** Provide
   safe per-user controls for model/provider, temperature, input/output token
   limits, instructions, and guardrails, with validated server-side bounds and
   sensible defaults.
