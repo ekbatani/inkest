@@ -10,6 +10,7 @@ import {
   readAttachmentData,
   writeAttachmentData,
 } from "@/server/attachments/storage";
+import { hasExpectedFileSignature } from "@/server/attachments/validation";
 
 const MAX_UPLOAD_SIZE_MB = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 20);
 const MAX_UPLOAD_SIZE = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
@@ -71,11 +72,7 @@ function getStoragePath(
   return { relativePath };
 }
 
-function resolveMimeType(file: File, originalName: string) {
-  if (file.type && ALLOWED_TYPES.includes(file.type)) {
-    return file.type;
-  }
-
+function resolveMimeType(originalName: string) {
   const fallback = FALLBACK_MIME_TYPES[path.extname(originalName).toLowerCase()];
   if (fallback && ALLOWED_TYPES.includes(fallback)) {
     return fallback;
@@ -95,22 +92,29 @@ function buildAttachmentMarkdown(originalName: string, attachmentId: string, mim
 
 export async function saveLocalAttachment(
   file: File,
-): Promise<{ attachment: Attachment; markdown: string } | { error: string }> {
+): Promise<
+  | { attachment: Attachment; markdown: string }
+  | { error: string; status: number }
+> {
   const user = await getCurrentUser();
-  if (!user) return { error: "Unauthorized" };
+  if (!user) return { error: "Unauthorized", status: 401 };
 
   if (file.size > MAX_UPLOAD_SIZE) {
-    return { error: `File too large. Max ${MAX_UPLOAD_SIZE_MB}MB.` };
+    return { error: `File too large. Max ${MAX_UPLOAD_SIZE_MB}MB.`, status: 413 };
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const checksum = createHash("sha256").update(buffer).digest("hex");
   const attachmentId = randomId();
   const originalName = file.name || `upload-${attachmentId.slice(0, 8)}`;
-  const mimeType = resolveMimeType(file, originalName);
+  const mimeType = resolveMimeType(originalName);
 
   if (!mimeType) {
-    return { error: `File type ${file.type || path.extname(originalName)} not allowed.` };
+    return { error: `File type ${file.type || path.extname(originalName)} not allowed.`, status: 400 };
+  }
+
+  if (!hasExpectedFileSignature(mimeType, buffer)) {
+    return { error: "File content does not match its extension.", status: 400 };
   }
 
   const ext = path.extname(originalName);
@@ -122,7 +126,11 @@ export async function saveLocalAttachment(
     fileName,
   );
 
-  await writeAttachmentData(relativePath, buffer, mimeType);
+  try {
+    await writeAttachmentData(relativePath, buffer, mimeType);
+  } catch {
+    return { error: "Upload could not be completed.", status: 500 };
+  }
 
   await db.insert(schema.attachments).values({
     id: attachmentId,

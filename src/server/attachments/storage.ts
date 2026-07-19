@@ -1,6 +1,7 @@
 import path from "node:path";
 import fs from "node:fs/promises";
 import { createHash, createHmac } from "node:crypto";
+import { isSafeAttachmentStoragePath } from "@/server/attachments/validation";
 
 const LOCAL_STORAGE_ROOT = process.env.LOCAL_STORAGE_ROOT ?? "./storage";
 const STORAGE_DRIVER = (process.env.ATTACHMENT_STORAGE_DRIVER ?? "local").toLowerCase();
@@ -51,12 +52,29 @@ function getMinioConfig() {
   };
 }
 
+function assertSafeStoragePath(storagePath: string) {
+  if (!isSafeAttachmentStoragePath(storagePath)) {
+    throw new Error("Invalid attachment storage path.");
+  }
+}
+
+function getLocalFilePath(storagePath: string) {
+  assertSafeStoragePath(storagePath);
+  const root = path.resolve(LOCAL_STORAGE_ROOT);
+  const filePath = path.resolve(root, ...storagePath.split("/"));
+  if (!filePath.startsWith(`${root}${path.sep}`)) {
+    throw new Error("Invalid attachment storage path.");
+  }
+  return filePath;
+}
+
 function buildMinioRequest(
   method: "PUT" | "GET" | "DELETE",
   objectKey: string,
   body: Buffer | null,
   contentType?: string,
 ) {
+  assertSafeStoragePath(objectKey);
   const config = getMinioConfig();
   const now = new Date();
   const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "");
@@ -151,7 +169,7 @@ export async function writeAttachmentData(
     return;
   }
 
-  const filePath = path.join(LOCAL_STORAGE_ROOT, storagePath);
+  const filePath = getLocalFilePath(storagePath);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, data);
 }
@@ -169,7 +187,7 @@ export async function readAttachmentData(storagePath: string): Promise<Buffer | 
     return Buffer.from(await response.arrayBuffer());
   }
 
-  const filePath = path.join(LOCAL_STORAGE_ROOT, storagePath);
+  const filePath = getLocalFilePath(storagePath);
   try {
     return await fs.readFile(filePath);
   } catch {
@@ -190,7 +208,7 @@ export async function deleteAttachmentData(storagePath: string) {
     return;
   }
 
-  const filePath = path.join(LOCAL_STORAGE_ROOT, storagePath);
+  const filePath = getLocalFilePath(storagePath);
   try {
     await fs.unlink(filePath);
   } catch {

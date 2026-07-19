@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { serveAttachment } from "@/server/attachments/service";
+import {
+  contentDispositionFileName,
+  contentDispositionType,
+} from "@/server/attachments/validation";
 
 function getContentDisposition(fileName: string, mimeType: string) {
-  const sanitizedName = fileName.replace(/["\\]/g, "_");
-  const dispositionType =
-    mimeType.startsWith("image/") || mimeType === "application/pdf"
-      ? "inline"
-      : "attachment";
+  const sanitizedName = contentDispositionFileName(fileName);
+  const dispositionType = contentDispositionType(mimeType);
 
   return `${dispositionType}; filename="${sanitizedName}"`;
 }
@@ -21,7 +22,10 @@ export async function GET(
   if ("error" in result) {
     return NextResponse.json(
       { error: result.error },
-      { status: result.status },
+      {
+        status: result.status,
+        headers: { "Cache-Control": "private, no-store" },
+      },
     );
   }
 
@@ -32,7 +36,8 @@ export async function GET(
         result.originalName || result.fileName,
         result.mimeType,
       ),
-      "Cache-Control": "private, max-age=31536000, immutable",
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

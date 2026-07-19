@@ -515,12 +515,26 @@ All of the following must be complete before announcing a public release:
     production build was blocked only by this runner's unavailable Google Fonts;
     the pre-existing attachment-export NFT trace warning was also reported.
 
-- [now] **P0-41 — Verify private attachment security.** Test file type/size
+- [blocked] **P0-41 — Verify private attachment security.** Test file type/size
   validation, path handling, ownership checks, storage-driver parity, download
   headers, error responses, and cache behavior.
   - Acceptance: an unauthenticated or different user cannot retrieve an
     attachment; invalid uploads fail safely; approved downloads work using both
     local and MinIO/S3-compatible configurations when supported.
+  - Evidence: 2026-07-19 — hardened upload/download handling before the live
+    drill: validated allowed filename extensions against conservative file
+    signatures, rejected malformed paths below storage, returned cache-disabled
+    private errors, disabled storage of authenticated responses, forced SVG to
+    download, and added `nosniff`. Added focused validation coverage in
+    `src/server/attachments/validation.test.ts`; `bun test
+    src/server/attachments/validation.test.ts`, `bun run typecheck`, focused
+    ESLint, and `git diff --check` passed. The complete repeatable Account
+    A/Account B and local/MinIO checklist is in
+    `docs/attachment-security-test.md`.
+  - Blocker: the local MinIO profile is disabled and Docker is inaccessible in
+    this runner, so the required authenticated cross-user and live
+    S3-compatible parity drill has not yet been performed. `bun run build` was
+    also blocked only by unavailable Google Fonts in this environment.
 
 - [todo] **P0-42 — Prove backup, restore, and export.** Document backup of the
   database, attachments, secrets/configuration boundaries, and restore steps;
