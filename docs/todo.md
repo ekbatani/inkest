@@ -401,13 +401,22 @@ All of the following must be complete before announcing a public release:
     Added focused crypto rotation tests; `bun test
     src/server/crypto/secret-box.test.ts` and `bun run typecheck` passed.
 
-- [now] **P1-32 — Add user-editable AI orchestration controls.** Provide
+- [done] **P1-32 — Add user-editable AI orchestration controls.** Provide
   safe per-user controls for model/provider, temperature, input/output token
   limits, instructions, and guardrails, with validated server-side bounds and
   sensible defaults.
   - Acceptance: settings apply only to the owning user, invalid limits are
     rejected, action-specific schemas remain enforced, and reset-to-default is
     available.
+  - Evidence: 2026-07-19 — added per-user Settings controls for generation
+    temperature, input/output token limits, personal instructions, and extra
+    guardrails. Server actions validate every field and update only the
+    authenticated user's settings; the AI runner enforces the input budget and
+    provider requests receive the output budget. Custom text can only add to
+    the action contract, never override its JSON schema or mandatory rules.
+    Reset restores defaults without changing provider credentials. `bun.cmd run
+    typecheck`, focused ESLint, and `bun.cmd run build` passed; the build retains
+    the pre-existing attachment-export Turbopack NFT trace warning.
 
 - [todo] **P1-33 — Integrate AI into the right-side workflow.** Make the AI
   panel contextual to the open note/selection and support review before

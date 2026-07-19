@@ -84,12 +84,16 @@ instructs it to focus on a selection.
 | Apply comments | Note title, full note Markdown containing inline comment annotations, and optional guidance | Revised complete Markdown shown for review; the user chooses whether to replace the note. |
 | Create note from prompt | Dashboard prompt only; no existing note data | A title and Markdown draft are immediately saved as a new note after a successful request. |
 
-All current actions use JSON-mode requests with temperature `0.4`. The app does
-not currently send an explicit input or output token limit: limits, billing, and
-retention at the provider are governed by the selected model/provider account.
-The separate `runTextAction` helper uses temperature `0.7`, but no shipped
-action currently calls it. New actions must declare an explicit limit before
-using that helper or adding provider parameters.
+All current actions use JSON-mode requests. Each user can set their own
+temperature (default `0.4`), input budget (default `8,000` tokens), output
+budget (default `1,200` tokens), personal instructions, and additional
+guardrails in Settings. The server validates those bounds (temperature `0–2`,
+input `256–32,768`, output `64–8,192`, and each text field up to 2,000
+characters), truncates oversized input with a conservative provider-neutral
+estimate, and passes the output budget to compatible OpenAI-style providers.
+Instructions can refine style and guardrails can add restrictions, but neither
+can override an action's JSON schema or mandatory action rules. Reset restores
+these defaults only for the owning user; provider credentials remain unchanged.
 
 Successful requests write an `ai_events` row with the acting user, optional
 note id, action id, SHA-256 hash of the action's primary input, provider, model,

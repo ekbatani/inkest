@@ -10,6 +10,7 @@ import {
   AppearanceSection,
   EditorPrefsSection,
   AiProviderSection,
+  AiOrchestrationSection,
   NotificationsSection,
   DangerZoneSection,
 } from "@/components/users/settings-sections";
@@ -59,6 +60,14 @@ export default async function SettingsPage() {
         baseURL={settings.ai?.baseURL}
         model={settings.ai?.model}
         configurationSource={aiConfiguration.source}
+      />
+      <AiOrchestrationSection
+        key={`ai-controls:${settings.ai?.temperature}:${settings.ai?.maxInputTokens}:${settings.ai?.maxOutputTokens}:${settings.ai?.instructions ?? ""}:${settings.ai?.guardrails ?? ""}`}
+        temperature={settings.ai?.temperature}
+        maxInputTokens={settings.ai?.maxInputTokens}
+        maxOutputTokens={settings.ai?.maxOutputTokens}
+        instructions={settings.ai?.instructions}
+        guardrails={settings.ai?.guardrails}
       />
 
       <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your data</h2>

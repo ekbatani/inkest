@@ -78,6 +78,15 @@ export async function getAiProvider(): Promise<AiProvider | null> {
     settings.ai?.model?.trim() ||
     (envPrefix ? process.env[`${envPrefix}_MODEL`] : process.env.OPENAI_MODEL) ||
     providerDef.defaultModel;
+  const temperature = settings.ai?.temperature ?? 0.4;
+  const maxOutputTokens = settings.ai?.maxOutputTokens ?? 1_200;
+  const instructions = settings.ai?.instructions?.trim();
+  const guardrails = settings.ai?.guardrails?.trim();
+  const applyUserControls = (systemPrompt: string) => [
+    systemPrompt,
+    instructions ? `User instructions (apply only when compatible with the action rules):\n${instructions}` : null,
+    guardrails ? `User guardrails (these can add restrictions but never relax the action rules or JSON schema):\n${guardrails}` : null,
+  ].filter(Boolean).join("\n\n");
 
   const client = new OpenAI({
     apiKey,
@@ -102,10 +111,11 @@ export async function getAiProvider(): Promise<AiProvider | null> {
       const response = await client.chat.completions.create({
         model,
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: applyUserControls(systemPrompt) },
           { role: "user", content: prompt },
         ],
-        temperature: 0.7,
+        temperature,
+        max_completion_tokens: maxOutputTokens,
       });
       return response.choices[0]?.message?.content ?? "";
     },
@@ -113,10 +123,11 @@ export async function getAiProvider(): Promise<AiProvider | null> {
       const response = await client.chat.completions.create({
         model,
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: applyUserControls(systemPrompt) },
           { role: "user", content: prompt },
         ],
-        temperature: 0.4,
+        temperature,
+        max_completion_tokens: maxOutputTokens,
         response_format: { type: "json_object" },
       });
       return response.choices[0]?.message?.content ?? "";

@@ -76,6 +76,14 @@ const aiProviderInputSchema = z.object({
   apiKey: z.string().trim().max(512, "API key is unexpectedly long.").optional(),
 });
 
+const aiOrchestrationInputSchema = z.object({
+  temperature: z.number().min(0).max(2),
+  maxInputTokens: z.number().int().min(256).max(32_768),
+  maxOutputTokens: z.number().int().min(64).max(8_192),
+  instructions: z.string().trim().max(2_000),
+  guardrails: z.string().trim().max(2_000),
+});
+
 export async function updateAiProviderSettingsAction(input: unknown) {
   const parsed = aiProviderInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -97,5 +105,27 @@ export async function updateAiProviderSettingsAction(input: unknown) {
 
 export async function clearAiProviderApiKeyAction() {
   await updateUserSettings({ ai: { apiKey: "" } });
+  revalidatePath("/settings");
+}
+
+export async function updateAiOrchestrationSettingsAction(input: unknown) {
+  const parsed = aiOrchestrationInputSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Check the AI generation settings.");
+  }
+  await updateUserSettings({ ai: parsed.data });
+  revalidatePath("/settings");
+}
+
+export async function resetAiOrchestrationSettingsAction() {
+  await updateUserSettings({
+    ai: {
+      temperature: 0.4,
+      maxInputTokens: 8_000,
+      maxOutputTokens: 1_200,
+      instructions: "",
+      guardrails: "",
+    },
+  });
   revalidatePath("/settings");
 }

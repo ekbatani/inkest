@@ -16,6 +16,11 @@ export const aiProviderSettingsSchema = z
     apiKey: z.string().optional(),
     baseURL: z.string().url().optional().or(z.literal("")),
     model: z.string().optional(),
+    temperature: z.number().min(0).max(2).optional(),
+    maxInputTokens: z.number().int().min(256).max(32_768).optional(),
+    maxOutputTokens: z.number().int().min(64).max(8_192).optional(),
+    instructions: z.string().trim().max(2_000).optional(),
+    guardrails: z.string().trim().max(2_000).optional(),
   })
   .partial();
 
@@ -79,7 +84,13 @@ const DEFAULTS: UserSettings = {
     spellcheck: true,
     spellcheckLanguage: "auto",
   },
-  ai: {},
+  ai: {
+    temperature: 0.4,
+    maxInputTokens: 8_000,
+    maxOutputTokens: 1_200,
+    instructions: "",
+    guardrails: "",
+  },
   theme: { preference: "system", palette: "paper", font: "sans" },
   googleCalendar: {},
   superFocus: { trackingMode: "pointer", radius: 1 },

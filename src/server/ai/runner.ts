@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
 import { getAiProvider } from "./provider";
+import { getUserSettings } from "@/server/users/settings-service";
 import { randomId } from "@/lib/slug";
 
 export type AiActionResult<T = string> =
@@ -10,6 +11,15 @@ export type AiActionResult<T = string> =
 
 export const AI_NOT_CONFIGURED_ERROR =
   "AI is not configured. Add an AI provider in Settings or set the server AI environment variables.";
+
+function limitPromptToInputBudget(prompt: string, maxInputTokens: number) {
+  // Tokenizers differ between providers. Four characters per token is a
+  // conservative, provider-neutral ceiling that prevents an unbounded note
+  // from bypassing the user's server-enforced request budget.
+  const maxCharacters = maxInputTokens * 4;
+  if (prompt.length <= maxCharacters) return prompt;
+  return `${prompt.slice(0, maxCharacters)}\n\n[Input truncated to your AI input limit.]`;
+}
 
 export async function getCurrentUserOrError(): Promise<
   { ok: true; userId: string } | { ok: false; error: string }
@@ -49,14 +59,21 @@ export async function runTextAction(args: {
   const user = await getCurrentUserOrError();
   if (!user.ok) return { ok: false, error: user.error };
 
-  const { ok, result, provider } = await getProviderOrUnconfigured();
+  const [providerResult, settings] = await Promise.all([
+    getProviderOrUnconfigured(),
+    getUserSettings(),
+  ]);
+  const { ok, result, provider } = providerResult;
   if (!ok || !provider) return result;
 
   const inputHash = createHash("sha256").update(args.inputForAudit).digest("hex");
   const providerName = provider.id;
 
   try {
-    const output = await provider.complete(args.promptToModel, args.systemPrompt);
+    const output = await provider.complete(
+      limitPromptToInputBudget(args.promptToModel, settings.ai?.maxInputTokens ?? 8_000),
+      args.systemPrompt,
+    );
     await db.insert(schema.aiEvents).values({
       id: randomId(),
       userId: user.userId,
@@ -95,14 +112,21 @@ export async function runJsonAction<T>(args: {
   const user = await getCurrentUserOrError();
   if (!user.ok) return { ok: false, error: user.error };
 
-  const { ok, result, provider } = await getProviderOrUnconfigured();
+  const [providerResult, settings] = await Promise.all([
+    getProviderOrUnconfigured(),
+    getUserSettings(),
+  ]);
+  const { ok, result, provider } = providerResult;
   if (!ok || !provider) return result;
 
   const inputHash = createHash("sha256").update(args.inputForAudit).digest("hex");
   const providerName = provider.id;
 
   try {
-    const raw = await provider.completeJson(args.promptToModel, args.systemPrompt);
+    const raw = await provider.completeJson(
+      limitPromptToInputBudget(args.promptToModel, settings.ai?.maxInputTokens ?? 8_000),
+      args.systemPrompt,
+    );
     const parsed = args.parse(raw);
     if (parsed === null) {
       return { ok: false, error: "AI returned invalid JSON." };

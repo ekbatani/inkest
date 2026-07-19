@@ -10,6 +10,7 @@ import {
 } from "@/lib/ai/providers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -469,6 +470,69 @@ export function AiProviderSection({
           </Button>
         ) : null}
       </div>
+    </section>
+  );
+}
+
+export function AiOrchestrationSection({
+  temperature = 0.4,
+  maxInputTokens = 8_000,
+  maxOutputTokens = 1_200,
+  instructions = "",
+  guardrails = "",
+}: {
+  temperature?: number;
+  maxInputTokens?: number;
+  maxOutputTokens?: number;
+  instructions?: string;
+  guardrails?: string;
+}) {
+  const [nextTemperature, setNextTemperature] = React.useState(String(temperature));
+  const [nextInputTokens, setNextInputTokens] = React.useState(String(maxInputTokens));
+  const [nextOutputTokens, setNextOutputTokens] = React.useState(String(maxOutputTokens));
+  const [nextInstructions, setNextInstructions] = React.useState(instructions);
+  const [nextGuardrails, setNextGuardrails] = React.useState(guardrails);
+  const [saving, setSaving] = React.useState(false);
+
+  const save = async () => {
+    const values = { temperature: Number(nextTemperature), maxInputTokens: Number(nextInputTokens), maxOutputTokens: Number(nextOutputTokens), instructions: nextInstructions.trim(), guardrails: nextGuardrails.trim() };
+    if (!Number.isFinite(values.temperature) || values.temperature < 0 || values.temperature > 2) { toast.error("Temperature must be between 0 and 2."); return; }
+    if (!Number.isInteger(values.maxInputTokens) || values.maxInputTokens < 256 || values.maxInputTokens > 32_768) { toast.error("Input limit must be a whole number from 256 to 32,768."); return; }
+    if (!Number.isInteger(values.maxOutputTokens) || values.maxOutputTokens < 64 || values.maxOutputTokens > 8_192) { toast.error("Output limit must be a whole number from 64 to 8,192."); return; }
+    setSaving(true);
+    try {
+      await import("@/server/users/settings-actions").then((m) => m.updateAiOrchestrationSettingsAction(values));
+      toast.success("AI generation controls saved.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save AI generation controls.");
+    } finally { setSaving(false); }
+  };
+
+  const reset = async () => {
+    setSaving(true);
+    try {
+      await import("@/server/users/settings-actions").then((m) => m.resetAiOrchestrationSettingsAction());
+      setNextTemperature("0.4"); setNextInputTokens("8000"); setNextOutputTokens("1200"); setNextInstructions(""); setNextGuardrails("");
+      toast.success("AI generation controls reset to defaults.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to reset AI generation controls.");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <section className="surface-card flex flex-col gap-4 p-5">
+      <div><h2 className="text-sm font-semibold">AI generation controls</h2><p className="mt-1 text-xs text-muted-foreground">Personal limits apply on the server to every AI request. Action schemas and safety rules stay enforced.</p></div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="flex flex-col gap-1.5"><Label htmlFor="ai-temperature" className="text-xs text-muted-foreground">Temperature (0–2)</Label><Input id="ai-temperature" type="number" min="0" max="2" step="0.1" value={nextTemperature} onChange={(event) => setNextTemperature(event.target.value)} /></div>
+        <div className="flex flex-col gap-1.5"><Label htmlFor="ai-input-tokens" className="text-xs text-muted-foreground">Input token limit</Label><Input id="ai-input-tokens" type="number" min="256" max="32768" step="1" value={nextInputTokens} onChange={(event) => setNextInputTokens(event.target.value)} /></div>
+        <div className="flex flex-col gap-1.5"><Label htmlFor="ai-output-tokens" className="text-xs text-muted-foreground">Output token limit</Label><Input id="ai-output-tokens" type="number" min="64" max="8192" step="1" value={nextOutputTokens} onChange={(event) => setNextOutputTokens(event.target.value)} /></div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5"><Label htmlFor="ai-instructions" className="text-xs text-muted-foreground">Personal instructions</Label><Textarea id="ai-instructions" value={nextInstructions} maxLength={2000} rows={4} onChange={(event) => setNextInstructions(event.target.value)} placeholder="For example: prefer concise, direct language." /></div>
+        <div className="flex flex-col gap-1.5"><Label htmlFor="ai-guardrails" className="text-xs text-muted-foreground">Additional guardrails</Label><Textarea id="ai-guardrails" value={nextGuardrails} maxLength={2000} rows={4} onChange={(event) => setNextGuardrails(event.target.value)} placeholder="For example: do not suggest legal or medical advice." /></div>
+      </div>
+      <p className="text-xs text-muted-foreground">The input limit uses a conservative provider-neutral estimate; large requests are truncated before sending. Output limit is passed to compatible OpenAI-style providers.</p>
+      <div className="flex flex-wrap gap-2"><Button size="sm" onClick={save} disabled={saving}>Save generation controls</Button><Button size="sm" variant="outline" onClick={reset} disabled={saving}>Reset defaults</Button></div>
     </section>
   );
 }
