@@ -86,6 +86,7 @@ export default async function SettingsPage() {
       <NotificationsSection
         key={`notifications:${telegramStatus.linked}`}
         initialLinked={telegramStatus.linked}
+        inApp={settings.notifications?.inApp}
         aiResults={settings.notifications?.aiResults}
         taskDueReminders={settings.notifications?.taskDueReminders}
         dailyNoteNudge={settings.notifications?.dailyNoteNudge}

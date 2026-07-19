@@ -57,6 +57,7 @@ export const userSettingsSchema = z.object({
     .optional(),
   notifications: z
     .object({
+      inApp: z.boolean().optional(),
       aiResults: z.boolean().optional(),
       taskDueReminders: z.boolean().optional(),
       dailyNoteNudge: z.boolean().optional(),
@@ -80,6 +81,7 @@ const DEFAULTS: UserSettings = {
   superFocus: { trackingMode: "pointer", radius: 1 },
   tts: { rate: 1 },
   notifications: {
+    inApp: true,
     aiResults: true,
     taskDueReminders: false,
     dailyNoteNudge: false,

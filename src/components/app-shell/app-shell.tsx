@@ -2,9 +2,13 @@ import { Sidebar } from "@/components/app-shell/sidebar";
 import { Topbar } from "@/components/app-shell/topbar";
 import { SidebarToggleWrapper } from "@/components/app-shell/sidebar-toggle-wrapper";
 import { listNotesTree } from "@/server/notes/service";
+import { listInboxNotifications } from "@/server/notifications/service";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const notesTree = await listNotesTree().catch(() => []);
+  const [notesTree, notifications] = await Promise.all([
+    listNotesTree().catch(() => []),
+    listInboxNotifications().catch(() => []),
+  ]);
 
   return (
     <>
@@ -15,7 +19,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         Skip to main content
       </a>
       <SidebarToggleWrapper sidebar={<Sidebar notesTree={notesTree} />}>
-        <Topbar notesTree={notesTree} />
+        <Topbar notesTree={notesTree} notifications={notifications} />
         <main
           id="main-content"
           tabIndex={-1}

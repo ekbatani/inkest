@@ -475,11 +475,13 @@ export function AiProviderSection({
 
 export function NotificationsSection({
   initialLinked,
+  inApp,
   aiResults,
   taskDueReminders,
   dailyNoteNudge,
 }: {
   initialLinked: boolean;
+  inApp?: boolean;
   aiResults?: boolean;
   taskDueReminders?: boolean;
   dailyNoteNudge?: boolean;
@@ -489,6 +491,7 @@ export function NotificationsSection({
   const [generating, setGenerating] = React.useState(false);
   const [unlinking, setUnlinking] = React.useState(false);
   const [prefs, setPrefs] = React.useState({
+    inApp: inApp ?? true,
     aiResults: aiResults ?? true,
     taskDueReminders: taskDueReminders ?? false,
     dailyNoteNudge: dailyNoteNudge ?? false,
@@ -591,7 +594,13 @@ export function NotificationsSection({
         </div>
       )}
 
-      <div className="grid gap-2 border-t pt-4 sm:grid-cols-3">
+      <div className="grid gap-2 border-t pt-4 sm:grid-cols-2 lg:grid-cols-4">
+        <NotificationToggle
+          label="In-app activity"
+          checked={prefs.inApp}
+          disabled={savingPrefs}
+          onChange={(v) => savePrefs({ ...prefs, inApp: v })}
+        />
         <NotificationToggle
           label="AI action results"
           checked={prefs.aiResults}

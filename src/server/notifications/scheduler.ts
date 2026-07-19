@@ -2,10 +2,12 @@ import { and, eq, isNull, isNotNull, lte, ne } from "drizzle-orm";
 import { db, schema } from "@/server/db/client";
 import { sendTelegramNotification, telegramBotToken } from "@/server/notifications/telegram";
 import { formatDateKey } from "@/server/calendar/service";
+import { createNotification } from "@/server/notifications/service";
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 type NotificationPrefs = {
+  inApp?: boolean;
   taskDueReminders?: boolean;
   dailyNoteNudge?: boolean;
 };
@@ -27,6 +29,8 @@ async function checkDueTaskReminders() {
       taskId: schema.tasks.id,
       title: schema.tasks.title,
       dueDate: schema.tasks.dueDate,
+      userId: schema.tasks.userId,
+      noteId: schema.tasks.noteId,
       noteTitle: schema.notes.title,
       chatId: schema.users.telegramChatId,
       settings: schema.users.settings,
@@ -41,13 +45,27 @@ async function checkDueTaskReminders() {
         isNull(schema.tasks.dueReminderSentAt),
         ne(schema.tasks.status, "done"),
         ne(schema.tasks.status, "canceled"),
-        isNotNull(schema.users.telegramChatId),
       ),
     );
 
   for (const row of rows) {
+    const prefs = parseNotificationPrefs(row.settings);
+    if (prefs.taskDueReminders !== true) continue;
+
+    if (prefs.inApp !== false) {
+      await createNotification({
+        userId: row.userId,
+        type: "task_due",
+        title: "Task due",
+        body: `${row.title} is due${row.dueDate ? ` (${row.dueDate.toLocaleDateString()})` : ""}.`,
+        href: `/notes/${row.noteId}`,
+        dedupeKey: `task-due:${row.taskId}:${row.dueDate?.getTime() ?? "none"}`,
+      });
+    }
+
+    // Telegram is an independent delivery channel. The persistent inbox above
+    // remains available when Telegram is unlinked or disabled.
     if (!row.chatId) continue;
-    if (parseNotificationPrefs(row.settings).taskDueReminders !== true) continue;
 
     const result = await sendTelegramNotification(
       {
@@ -66,6 +84,15 @@ async function checkDueTaskReminders() {
         .update(schema.tasks)
         .set({ dueReminderSentAt: new Date() })
         .where(eq(schema.tasks.id, row.taskId));
+    } else if (prefs.inApp !== false) {
+      await createNotification({
+        userId: row.userId,
+        type: "delivery_failed",
+        title: "Telegram reminder was not delivered",
+        body: "Check your Telegram connection or server bot configuration, then retry by changing the task due date.",
+        href: "/settings",
+        dedupeKey: `telegram-task-failed:${row.taskId}:${row.dueDate?.getTime() ?? "none"}`,
+      });
     }
   }
 }

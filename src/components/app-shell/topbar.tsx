@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Menu, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
+import { NotificationInbox } from "@/components/app-shell/notification-inbox";
 import {
   Sheet,
   SheetContent,
@@ -15,6 +16,7 @@ import { Sidebar } from "@/components/app-shell/sidebar";
 import { CommandMenu } from "@/components/app-shell/command-menu";
 import { mainNav, settingsNav } from "@/components/app-shell/nav-items";
 import type { NoteTreeNode } from "@/server/notes/service";
+import type { InboxNotification } from "@/server/notifications/service";
 
 function getRouteLabel(pathname: string) {
   const navItem = [...mainNav, ...settingsNav].find(
@@ -37,7 +39,7 @@ function isEditableTarget(target: EventTarget | null) {
   );
 }
 
-export function Topbar({ notesTree = [] }: { notesTree?: NoteTreeNode[] }) {
+export function Topbar({ notesTree = [], notifications = [] }: { notesTree?: NoteTreeNode[]; notifications?: InboxNotification[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const [commandOpen, setCommandOpen] = React.useState(false);
@@ -126,6 +128,7 @@ export function Topbar({ notesTree = [] }: { notesTree?: NoteTreeNode[] }) {
             <Plus className="size-4" />
             <span className="hidden sm:inline">New note</span>
           </Button>
+          <NotificationInbox notifications={notifications} />
           <ThemeToggle />
         </div>
       </header>

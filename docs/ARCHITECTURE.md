@@ -27,16 +27,17 @@ components, and database schema/migrations in `src/server/db` and `drizzle`.
 | Tags | Workspace-scoped classification and OR-based filtering |
 | Attachments | Validated private upload, metadata, and authenticated retrieval |
 | AI | Provider configuration, action specifications, structured parsing, action history |
-| Calendar and notifications | Google Calendar sync and Telegram linking/delivery |
+| Calendar and notifications | Google Calendar sync, durable in-app activity, and Telegram linking/delivery |
 | Export/import | Portable Markdown and workspace archive flows |
 
 ## Data model
 
 The primary records are `users`, `workspaces`, `notes`, `tags`, `note_tags`,
-`tasks`, `attachments`, `note_versions`, and `ai_events`. Calendar connections
-and synced events are stored separately. A note belongs to one user and
-workspace and may be a regular, project, or daily note. Tasks belong to both a
-note and user; attachments and AI events are user-owned.
+`tasks`, `attachments`, `note_versions`, `ai_events`, and `notifications`.
+Calendar connections and synced events are stored separately. A note belongs to
+one user and workspace and may be a regular, project, or daily note. Tasks
+belong to both a note and user; attachments, AI events, and notifications are
+user-owned. Notification dedupe keys make scheduler retries safe.
 
 The schema is the source of truth: [schema.ts](../src/server/db/schema.ts).
 Apply schema changes through Drizzle migrations; do not hand-edit a deployed
@@ -78,6 +79,9 @@ exposing it through the existing authenticated AI route and review UI.
   that user/workspace.
 - Telegram supports user linking with an instance-level fallback for simple
   self-hosted deployments. Webhooks must validate their configured secret.
+- Task due alerts require the user's reminder preference. In-app activity is a
+  separate opt-in delivery channel; Telegram delivery is also opt-in and a
+  failed Telegram send creates one deduplicated in-app action to check Settings.
 - Storage drivers have the same authorization contract; switching from local
   storage to MinIO must not make files public.
 

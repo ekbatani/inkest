@@ -1,4 +1,10 @@
-import { sqliteTable, text, integer, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  text,
+  integer,
+  uniqueIndex,
+  type AnySQLiteColumn,
+} from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 // Helpers
@@ -141,6 +147,26 @@ export const tasks = sqliteTable("tasks", {
     .default(sql`(unixepoch())`),
 });
 
+// Durable, user-scoped activity items. `dedupeKey` makes scheduler retries and
+// multiple server processes safe: an event can be delivered only once.
+export const notifications = sqliteTable(
+  "notifications",
+  {
+    id: idCol(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type", { enum: ["task_due", "delivery_failed"] }).notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    href: text("href"),
+    dedupeKey: text("dedupe_key").notNull(),
+    readAt: integer("read_at", { mode: "timestamp" }),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => [uniqueIndex("notifications_user_dedupe_unique").on(table.userId, table.dedupeKey)],
+);
+
 // ── attachments ──────────────────────────────────────────────────────────
 export const attachments = sqliteTable("attachments", {
   id: idCol(),
@@ -265,6 +291,7 @@ export type Note = typeof notes.$inferSelect;
 export type NewNote = typeof notes.$inferInsert;
 export type Tag = typeof tags.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
 export type Attachment = typeof attachments.$inferSelect;
 export type AiEvent = typeof aiEvents.$inferSelect;
 export type NoteVersion = typeof noteVersions.$inferSelect;

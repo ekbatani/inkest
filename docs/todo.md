@@ -354,11 +354,20 @@ All of the following must be complete before announcing a public release:
     `git diff --check`, and `bun.cmd run build` passed; build retains the
     pre-existing attachment-export NFT trace warning.
 
-- [todo] **P2-27 — Improve notifications based on real workflows.** Define
+- [done] **P2-27 — Improve notifications based on real workflows.** Define
   reminders, due-date alerts, integration failures, and delivery preferences
   before adding notification volume.
   - Acceptance: each notification has an opt-in preference, a useful action,
     and is deduplicated; Telegram and in-app behavior are tested separately.
+  - Status: [done] 2026-07-19. Added persisted, user-scoped in-app activity
+    with an inbox action that opens the relevant note or Settings. Due-task
+    alerts require the existing task-reminder preference and have a separate
+    in-app delivery opt-in; Telegram remains independently configured. Unique
+    per-user dedupe keys make scheduler retries safe, and a failed Telegram
+    due reminder creates one actionable in-app Settings notice. Added Drizzle
+    migration `0004_pretty_the_leader.sql`. `bun.cmd run typecheck`, focused
+    ESLint, and `bun.cmd run build` passed; the build keeps the pre-existing
+    attachment-export Turbopack NFT trace warning.
 
 ## Phase 3 — AI that is explicit, safe, and useful
 
