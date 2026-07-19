@@ -15,17 +15,17 @@ type TelegramUpdate = {
 // Always ack with 200 quickly — Telegram retries (and eventually disables) webhooks that
 // don't respond promptly, so we never want a slow/failed downstream call to surface here.
 export async function POST(request: NextRequest) {
+  const botToken = telegramBotToken();
+  if (!botToken) return NextResponse.json({ ok: true });
+
   const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
-  if (webhookSecret) {
-    const header = request.headers.get("x-telegram-bot-api-secret-token");
-    if (header !== webhookSecret) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+  if (!webhookSecret) {
+    return NextResponse.json({ error: "Telegram webhook secret is not configured." }, { status: 503 });
   }
 
-  const botToken = telegramBotToken();
-  if (!botToken) {
-    return NextResponse.json({ ok: true });
+  const header = request.headers.get("x-telegram-bot-api-secret-token");
+  if (header !== webhookSecret) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   let update: TelegramUpdate;

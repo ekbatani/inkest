@@ -493,13 +493,29 @@ All of the following must be complete before announcing a public release:
 
 ## Phase 4 — privacy, security, reliability, and operations
 
-- [now] **P0-40 — Run a release security audit.** Trace authorization on all
+- [done] **P0-40 — Run a release security audit.** Trace authorization on all
   server actions and API routes, especially notes, tasks, exports, versions,
   attachments, AI events, calendar OAuth, and Telegram webhooks.
   - Acceptance: cross-user access attempts are tested; all findings are fixed,
     accepted with rationale, or tracked as release blockers.
+  - Evidence: 2026-07-19 — audited server actions, note/task/tag/version
+    services, attachment and export routes, AI, Calendar OAuth, and Telegram.
+    Fixed an authenticated cross-user tag disclosure by scoping both update
+    reads to the current user; prevented AI output from falling back to the
+    instance-wide Telegram chat for unlinked users; switched Telegram link-code
+    generation to cryptographic randomness; and reject unauthenticated or
+    declared-oversize attachment uploads before multipart parsing. Also fixed
+    Calendar OAuth-token serialization, arbitrary personal AI endpoint/instance
+    credential exfiltration, missing Telegram webhook-secret enforcement,
+    non-atomic link-code consumption, known Compose session secrets, and public
+    MinIO/default-admin deployment configuration. The completed scan report and
+    coverage ledger are in `.security-scan-artifacts/`; chunked multipart
+    uploads and in-memory workspace exports remain explicitly deferred to
+    P0-41/P0-42. `bun.cmd run typecheck` and `git diff --check` passed. A
+    production build was blocked only by this runner's unavailable Google Fonts;
+    the pre-existing attachment-export NFT trace warning was also reported.
 
-- [todo] **P0-41 — Verify private attachment security.** Test file type/size
+- [now] **P0-41 — Verify private attachment security.** Test file type/size
   validation, path handling, ownership checks, storage-driver parity, download
   headers, error responses, and cache behavior.
   - Acceptance: an unauthenticated or different user cannot retrieve an

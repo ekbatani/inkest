@@ -148,9 +148,9 @@ export default function HelpPage() {
             </p>
             <CopyCodeBlock code={`curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=<YOUR_DOMAIN>/api/telegram/webhook"`} />
             <p>
-              Optional: set <code>TELEGRAM_WEBHOOK_SECRET</code> on the server and pass{" "}
+              Set <code>TELEGRAM_WEBHOOK_SECRET</code> on the server and pass{" "}
               <code>&amp;secret_token=&lt;same value&gt;</code> in the URL above, so the
-              webhook route rejects requests that aren&apos;t really from Telegram.
+              webhook route rejects requests that aren&apos;t really from Telegram. This is required whenever the bot is enabled.
             </p>
           </GuideCard>
 

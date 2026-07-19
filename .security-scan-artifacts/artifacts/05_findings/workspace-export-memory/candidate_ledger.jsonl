@@ -1,0 +1,3 @@
+﻿{"phase":"discovery","candidate_id":"workspace-export-memory","status":"complete","evidence":"src/server/export/service.ts:199 candidate source/control/sink traced."}
+{"phase":"validation","candidate_id":"workspace-export-memory","status":"deferred","evidence":"Requires streaming archive plus aggregate quota/concurrency policy; P0-42.","method":"static trace and current-worktree inspection"}
+{"phase":"attack_path","candidate_id":"workspace-export-memory","status":"deferred","evidence":"Requires streaming archive plus aggregate quota/concurrency policy; P0-42.","reportability":"deferred"}

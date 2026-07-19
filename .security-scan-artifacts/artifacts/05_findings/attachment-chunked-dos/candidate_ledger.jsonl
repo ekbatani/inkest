@@ -1,0 +1,3 @@
+﻿{"phase":"discovery","candidate_id":"attachment-chunked-dos","status":"complete","evidence":"src/app/api/attachments/route.ts:17 candidate source/control/sink traced."}
+{"phase":"validation","candidate_id":"attachment-chunked-dos","status":"deferred","evidence":"Requires platform/streaming multipart body cap; P0-41.","method":"static trace and current-worktree inspection"}
+{"phase":"attack_path","candidate_id":"attachment-chunked-dos","status":"deferred","evidence":"Requires platform/streaming multipart body cap; P0-41.","reportability":"deferred"}

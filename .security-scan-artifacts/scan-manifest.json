@@ -1,0 +1,94 @@
+﻿{
+    "documentType":  "codex-security.scan-manifest",
+    "schemaVersion":  "1.0",
+    "scan":  {
+                 "id":  "a99f69ddaf6b4201aa763052932d625f2f051aff_20260719",
+                 "producer":  {
+                                  "name":  "codex-security-plugin",
+                                  "version":  "0.1.11"
+                              },
+                 "status":  "completed",
+                 "startedAt":  "2026-07-19T00:00:00Z",
+                 "completedAt":  "2026-07-19T00:30:00Z",
+                 "sealedAt":  "2026-07-19T00:30:00Z",
+                 "target":  {
+                                "kind":  "git_revision",
+                                "targetId":  "inknest@a99f69ddaf6b4201aa763052932d625f2f051aff",
+                                "displayName":  "inknest",
+                                "revision":  "a99f69ddaf6b4201aa763052932d625f2f051aff"
+                            },
+                 "scope":  {
+                               "includePaths":  [
+                                                    "src/",
+                                                    "next.config.ts",
+                                                    "docker-compose.yml",
+                                                    "Dockerfile",
+                                                    "docker-entrypoint.sh",
+                                                    "scripts/"
+                                                ],
+                               "excludePaths":  [
+                                                    ".next/**",
+                                                    ".claude/**",
+                                                    "docs/**",
+                                                    "drizzle/**",
+                                                    "src/components/marketing/**",
+                                                    "src/components/ui/**"
+                                                ],
+                               "summary":  "Repository security scan of runtime server, API, deployment, auth, integration, and data ownership surfaces.",
+                               "artifactsReviewed":  [
+                                                         "artifacts/01_context/threat_model.md",
+                                                         "artifacts/02_discovery/rank_input.jsonl",
+                                                         "artifacts/02_discovery/deep_review_input.jsonl"
+                                                     ],
+                               "runtimeStatus":  "TypeScript typecheck passed; dynamic hostile-request reproduction was not run.",
+                               "validationMode":  "Static source-to-sink trace, configuration inspection, and targeted typecheck.",
+                               "limitations":  [
+                                                   "Generated .next output excluded as non-authoritative.",
+                                                   "Multipart streaming and export-size behavior require deployment/runtime validation."
+                                               ]
+                           },
+                 "threatModel":  {
+                                     "summary":  "Self-hosted multi-user Markdown workspace with private notes, attachments, exports, encrypted provider credentials, OAuth, AI and Telegram integrations.",
+                                     "assets":  [
+                                                    "notes",
+                                                    "attachments",
+                                                    "exports",
+                                                    "provider credentials",
+                                                    "OAuth tokens"
+                                                ],
+                                     "trustBoundaries":  [
+                                                             "browser to server",
+                                                             "session to user/workspace",
+                                                             "application to third-party providers",
+                                                             "application to storage"
+                                                         ],
+                                     "attackerCapabilities":  [
+                                                                  "authenticated user-controlled IDs, content, provider settings, multipart bodies",
+                                                                  "unauthenticated webhook requests"
+                                                              ],
+                                     "securityObjectives":  [
+                                                                "cross-user isolation",
+                                                                "secret confidentiality",
+                                                                "private attachment access",
+                                                                "controlled outbound requests"
+                                                            ],
+                                     "assumptions":  [
+                                                         "operator protects environment configuration and deployment network"
+                                                     ]
+                                 },
+                 "coverageRef":  "coverage.json",
+                 "findingsRef":  "findings.json",
+                 "artifacts":  [
+                                   {
+                                       "path":  "findings.json",
+                                       "sha256":  "1237f8776ed481bee3a7930963c83922a2d17cb6460ab8b9d95586cdc9307d8a",
+                                       "mediaType":  "application/json"
+                                   },
+                                   {
+                                       "path":  "coverage.json",
+                                       "sha256":  "1e8b0c323d2048c3004e6cff532a855059f23fb18c9cadb59d31083c3fe347ab",
+                                       "mediaType":  "application/json"
+                                   }
+                               ]
+             }
+}

@@ -1,0 +1,3 @@
+﻿{"phase":"discovery","candidate_id":"compose-minio-default","status":"complete","evidence":"docker-compose.yml:35 candidate source/control/sink traced."}
+{"phase":"validation","candidate_id":"compose-minio-default","status":"suppressed","evidence":"Patched: MinIO credentials are required and ports are not published.","method":"static trace and current-worktree inspection"}
+{"phase":"attack_path","candidate_id":"compose-minio-default","status":"suppressed","evidence":"Patched: MinIO credentials are required and ports are not published.","reportability":"ignore"}

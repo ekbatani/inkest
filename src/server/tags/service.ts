@@ -121,7 +121,13 @@ export async function updateTag(
 
   if (Object.keys(updates).length === 0) {
     return (
-      (await db.select().from(schema.tags).where(eq(schema.tags.id, id)).limit(1))[0] ?? null
+      (
+        await db
+          .select()
+          .from(schema.tags)
+          .where(and(eq(schema.tags.id, id), eq(schema.tags.userId, user.id)))
+          .limit(1)
+      )[0] ?? null
     );
   }
 
@@ -133,7 +139,7 @@ export async function updateTag(
   const rows = await db
     .select()
     .from(schema.tags)
-    .where(eq(schema.tags.id, id))
+    .where(and(eq(schema.tags.id, id), eq(schema.tags.userId, user.id)))
     .limit(1);
   return rows[0] ?? null;
 }

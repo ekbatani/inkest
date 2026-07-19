@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveLocalAttachment } from "@/server/attachments/service";
+import { getCurrentUser } from "@/server/auth";
+
+const MAX_UPLOAD_SIZE = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 20) * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
+  if (!(await getCurrentUser())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_UPLOAD_SIZE) {
+    return NextResponse.json({ error: "File too large." }, { status: 413 });
+  }
+
   const formData = await request.formData();
   const file = formData.get("file");
 

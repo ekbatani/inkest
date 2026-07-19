@@ -1,0 +1,3 @@
+﻿{"phase":"discovery","candidate_id":"calendar-token-serialization","status":"complete","evidence":"src/server/users/settings-actions.ts:18 candidate source/control/sink traced."}
+{"phase":"validation","candidate_id":"calendar-token-serialization","status":"suppressed","evidence":"Patched: access and refresh tokens are omitted from server-action result.","method":"static trace and current-worktree inspection"}
+{"phase":"attack_path","candidate_id":"calendar-token-serialization","status":"suppressed","evidence":"Patched: access and refresh tokens are omitted from server-action result.","reportability":"ignore"}

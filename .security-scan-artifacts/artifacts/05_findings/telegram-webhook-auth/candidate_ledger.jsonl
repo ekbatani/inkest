@@ -1,0 +1,3 @@
+﻿{"phase":"discovery","candidate_id":"telegram-webhook-auth","status":"complete","evidence":"src/app/api/telegram/webhook/route.ts:22 candidate source/control/sink traced."}
+{"phase":"validation","candidate_id":"telegram-webhook-auth","status":"suppressed","evidence":"Patched: enabled bot requires webhook secret before body parsing.","method":"static trace and current-worktree inspection"}
+{"phase":"attack_path","candidate_id":"telegram-webhook-auth","status":"suppressed","evidence":"Patched: enabled bot requires webhook secret before body parsing.","reportability":"ignore"}

@@ -17,9 +17,17 @@ import { AI_PROVIDER_IDS } from "@/lib/ai/providers";
 
 export async function getUserSettingsAction(): Promise<UserSettings> {
   const settings = await getUserSettings();
-  // API keys are only decrypted for server-side provider resolution. Do not
+  // Credentials are decrypted only for server-side provider resolution. Do not
   // return them from a Server Action, even to the account that saved them.
-  return { ...settings, ai: { ...settings.ai, apiKey: undefined } };
+  return {
+    ...settings,
+    ai: { ...settings.ai, apiKey: undefined },
+    googleCalendar: {
+      ...settings.googleCalendar,
+      accessToken: undefined,
+      refreshToken: undefined,
+    },
+  };
 }
 
 export async function updateUserSettingsAction(patch: Partial<UserSettings>) {

@@ -1,4 +1,5 @@
 import { and, eq, gt } from "drizzle-orm";
+import { randomInt } from "node:crypto";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
 
@@ -10,7 +11,7 @@ const LINK_CODE_LENGTH = 6;
 function randomLinkCode(): string {
   let code = "";
   for (let i = 0; i < LINK_CODE_LENGTH; i++) {
-    code += LINK_CODE_ALPHABET[Math.floor(Math.random() * LINK_CODE_ALPHABET.length)];
+    code += LINK_CODE_ALPHABET[randomInt(LINK_CODE_ALPHABET.length)];
   }
   return code;
 }
@@ -61,29 +62,17 @@ export async function consumeTelegramLinkCode(
   code: string,
   chatId: string,
 ): Promise<{ ok: true } | { ok: false }> {
-  const rows = await db
-    .select({ id: schema.users.id })
-    .from(schema.users)
-    .where(
-      and(
-        eq(schema.users.telegramLinkCode, code),
-        gt(schema.users.telegramLinkCodeExpiresAt, new Date()),
-      ),
-    )
-    .limit(1);
-
-  const userId = rows[0]?.id;
-  if (!userId) return { ok: false };
-
   try {
-    await db
+    const rows = await db
       .update(schema.users)
       .set({
         telegramChatId: chatId,
         telegramLinkCode: null,
         telegramLinkCodeExpiresAt: null,
       })
-      .where(eq(schema.users.id, userId));
+      .where(and(eq(schema.users.telegramLinkCode, code), gt(schema.users.telegramLinkCodeExpiresAt, new Date())))
+      .returning({ id: schema.users.id });
+    if (!rows[0]) return { ok: false };
   } catch {
     // Most likely the unique constraint on telegramChatId — this chat is already linked
     // to a different Inkest account.

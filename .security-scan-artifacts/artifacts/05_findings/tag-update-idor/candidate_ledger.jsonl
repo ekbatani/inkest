@@ -1,0 +1,3 @@
+﻿{"phase":"discovery","candidate_id":"tag-update-idor","status":"complete","evidence":"src/server/tags/service.ts:124 candidate source/control/sink traced."}
+{"phase":"validation","candidate_id":"tag-update-idor","status":"suppressed","evidence":"Patched: both no-op and post-update reads include userId.","method":"static trace and current-worktree inspection"}
+{"phase":"attack_path","candidate_id":"tag-update-idor","status":"suppressed","evidence":"Patched: both no-op and post-update reads include userId.","reportability":"ignore"}

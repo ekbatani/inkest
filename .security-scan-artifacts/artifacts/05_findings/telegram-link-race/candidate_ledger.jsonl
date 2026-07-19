@@ -1,0 +1,3 @@
+﻿{"phase":"discovery","candidate_id":"telegram-link-race","status":"complete","evidence":"src/server/notifications/telegram-link.ts:68 candidate source/control/sink traced."}
+{"phase":"validation","candidate_id":"telegram-link-race","status":"suppressed","evidence":"Patched: compare-and-consume update is atomic and link code uses crypto randomInt.","method":"static trace and current-worktree inspection"}
+{"phase":"attack_path","candidate_id":"telegram-link-race","status":"suppressed","evidence":"Patched: compare-and-consume update is atomic and link code uses crypto randomInt.","reportability":"ignore"}

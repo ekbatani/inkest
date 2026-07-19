@@ -124,6 +124,10 @@ export async function notifyAiActionResult(args: {
   if (settings.notifications?.aiResults === false) return;
 
   const chatId = await getTelegramChatIdForUser(user.id);
+  // AI output is user content. Never fall back to the instance-wide chat for
+  // an account that has not explicitly linked its own Telegram destination.
+  if (!chatId) return;
+
   const result = await sendTelegramNotification(
     {
       title: "Inkest AI decision output",

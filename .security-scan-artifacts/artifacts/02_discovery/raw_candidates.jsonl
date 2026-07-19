@@ -1,0 +1,9 @@
+﻿{"candidate_id":"tag-update-idor","path":"src/server/tags/service.ts","line":124,"disposition":"suppressed","note":"Patched: both no-op and post-update reads include userId."}
+{"candidate_id":"calendar-token-serialization","path":"src/server/users/settings-actions.ts","line":18,"disposition":"suppressed","note":"Patched: access and refresh tokens are omitted from server-action result."}
+{"candidate_id":"ai-custom-endpoint-ssrf","path":"src/server/users/settings-service.ts","line":23,"disposition":"suppressed","note":"Patched: user base URL must be built-in or operator-approved HTTPS origin."}
+{"candidate_id":"telegram-webhook-auth","path":"src/app/api/telegram/webhook/route.ts","line":22,"disposition":"suppressed","note":"Patched: enabled bot requires webhook secret before body parsing."}
+{"candidate_id":"telegram-link-race","path":"src/server/notifications/telegram-link.ts","line":68,"disposition":"suppressed","note":"Patched: compare-and-consume update is atomic and link code uses crypto randomInt."}
+{"candidate_id":"compose-nextauth-default","path":"docker-compose.yml","line":10,"disposition":"suppressed","note":"Patched: Compose requires an explicitly supplied secret."}
+{"candidate_id":"compose-minio-default","path":"docker-compose.yml","line":35,"disposition":"suppressed","note":"Patched: MinIO credentials are required and ports are not published."}
+{"candidate_id":"attachment-chunked-dos","path":"src/app/api/attachments/route.ts","line":17,"disposition":"deferred","note":"Requires platform/streaming multipart body cap; P0-41."}
+{"candidate_id":"workspace-export-memory","path":"src/server/export/service.ts","line":199,"disposition":"deferred","note":"Requires streaming archive plus aggregate quota/concurrency policy; P0-42."}

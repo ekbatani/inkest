@@ -9,6 +9,27 @@ import {
   shouldReencryptSecret,
 } from "@/server/crypto/secret-box";
 
+const BUILT_IN_PERSONAL_AI_ORIGINS = new Set([
+  "https://api.openai.com",
+  "https://openrouter.ai",
+  "https://opencode.ai",
+]);
+
+function isAllowedPersonalAiBaseUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+
+    const operatorAllowedOrigins = (process.env.AI_ALLOWED_BASE_URLS ?? "")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+    return BUILT_IN_PERSONAL_AI_ORIGINS.has(url.origin) || operatorAllowedOrigins.includes(url.origin);
+  } catch {
+    return false;
+  }
+}
+
 export const superFocusTrackingModeEnum = z.enum(["pointer", "auto"]);
 export const aiProviderSettingsSchema = z
   .object({
@@ -201,18 +222,23 @@ export async function updateUserSettings(patch: Partial<UserSettings>): Promise<
   const user = await getCurrentUser();
   if (!user) throw new Error("UNAUTHORIZED");
 
+  const parsedPatch = userSettingsSchema.partial().parse(patch);
+  if (parsedPatch.ai?.baseURL && !isAllowedPersonalAiBaseUrl(parsedPatch.ai.baseURL)) {
+    throw new Error("This AI base URL is not approved by the instance operator.");
+  }
+
   const current = await getUserSettings();
   const next: UserSettings = {
-    editor: { ...current.editor, ...patch.editor },
-    ai: { ...current.ai, ...patch.ai },
-    theme: { ...current.theme, ...patch.theme },
+    editor: { ...current.editor, ...parsedPatch.editor },
+    ai: { ...current.ai, ...parsedPatch.ai },
+    theme: { ...current.theme, ...parsedPatch.theme },
     googleCalendar: {
       ...current.googleCalendar,
-      ...patch.googleCalendar,
+      ...parsedPatch.googleCalendar,
     },
-    superFocus: { ...current.superFocus, ...patch.superFocus },
-    tts: { ...current.tts, ...patch.tts },
-    notifications: { ...current.notifications, ...patch.notifications },
+    superFocus: { ...current.superFocus, ...parsedPatch.superFocus },
+    tts: { ...current.tts, ...parsedPatch.tts },
+    notifications: { ...current.notifications, ...parsedPatch.notifications },
   };
 
   const stored: UserSettings = {
