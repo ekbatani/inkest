@@ -577,13 +577,23 @@ All of the following must be complete before announcing a public release:
     registry ownership plus `DOCKERHUB_NAMESPACE`, `DOCKERHUB_USERNAME`, and
     `DOCKERHUB_TOKEN` before a public image can be published.
 
-- [todo] **P1-44 — Investigate browser memory growth.** Reproduce the reported
+- [blocked] **P1-44 — Investigate browser memory growth.** Reproduce the reported
   memory increase across note switching, preview/Mermaid, AI panel, uploads,
   and refresh; use heap snapshots to identify retained objects before fixing.
   - Acceptance: a reproducible scenario and before/after memory evidence show
     no unbounded growth in the confirmed workflow.
+  - Evidence: 2026-07-19 — added the privacy-safe, repeatable Chrome DevTools
+    heap-snapshot protocol in `docs/browser-memory-investigation.md`, covering
+    baseline and post-cycle snapshots for note switching, Mermaid/focus reader,
+    AI-panel mounting, and attachments, plus the comparison and recording
+    criteria. `git diff --check` passed.
+  - Blocker: this runner has no available browser-automation executable,
+    Chrome/Edge binary, or Playwright/Puppeteer runtime, and no supplied
+    reproduction profile or heap snapshots. Run the documented drill in a
+    disposable authenticated browser profile, attach only the aggregate
+    measurements and retained-constructor findings, then reopen this task.
 
-- [todo] **P1-45 — Establish error monitoring and privacy-safe diagnostics.**
+- [now] **P1-45 — Establish error monitoring and privacy-safe diagnostics.**
   Select a self-host-compatible monitoring approach, redact note content and
   secrets, define retention, and verify alert paths.
   - Acceptance: a deliberate test error is observable with useful metadata but
