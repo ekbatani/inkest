@@ -48,7 +48,10 @@ import {
   replaceEntireEditorContent,
 } from "@/components/editor/markdown-editor-utils";
 import { AiBadge, AiIcon } from "@/components/ai/ai-badge";
-import { createTaskAction } from "@/server/tasks/actions";
+import {
+  getAiPlanningContextAction,
+  saveAiTaskPlanAction,
+} from "@/server/ai/planning-actions";
 import { cn } from "@/lib/utils";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 
@@ -96,7 +99,19 @@ type AiState =
 
 type ExtractedTask = {
   title: string;
+  description?: string | null;
   priority: "none" | "low" | "medium" | "high";
+  dueDate?: string | null;
+};
+
+type PlanningContext = {
+  currentProject: { id: string; title: string } | null;
+  projects: { id: string; title: string; parentId: string | null }[];
+};
+
+type PlannedTask = ExtractedTask & {
+  status: "todo" | "doing" | "done" | "canceled";
+  dueDate: string;
 };
 
 const SELECTION_ONLY_ACTIONS: ActionId[] = [
@@ -124,6 +139,13 @@ export function AiPanel({
   const [targetLanguage, setTargetLanguage] = React.useState("English");
   const [promptHint, setPromptHint] = React.useState("");
   const [insertingTasks, setInsertingTasks] = React.useState(false);
+  const [planningContext, setPlanningContext] = React.useState<PlanningContext | null>(null);
+  const [planningOpen, setPlanningOpen] = React.useState(false);
+  const [plannedTasks, setPlannedTasks] = React.useState<PlannedTask[]>([]);
+  const [destinationKind, setDestinationKind] = React.useState<"current" | "existing" | "new" | "subproject">("current");
+  const [existingProjectId, setExistingProjectId] = React.useState("");
+  const [projectTitle, setProjectTitle] = React.useState("");
+  const [parentProjectId, setParentProjectId] = React.useState("");
 
   const getSelection = React.useCallback(
     (): string | null => getSelectedEditorText(editorRef),
@@ -299,31 +321,81 @@ export function AiPanel({
     close();
   };
 
-  const onInsertTasks = async () => {
+  const openPlanning = async () => {
     if (state.status !== "tasks") return;
     setInsertingTasks(true);
-    let inserted = 0;
-    for (const t of state.tasks) {
-      try {
-        await createTaskAction({
-          noteId,
-          title: t.title,
-          priority: t.priority,
-          status: "todo",
-          source: "ai",
-        });
-        inserted++;
-      } catch {
-        /* continue */
-      }
+    try {
+      const context = await getAiPlanningContextAction(noteId);
+      setPlanningContext(context);
+      setPlannedTasks(state.tasks.map((task) => ({
+        ...task,
+        status: "todo",
+        dueDate: task.dueDate ? task.dueDate.slice(0, 10) : "",
+      })));
+      const defaultParent = context.currentProject?.id ?? context.projects[0]?.id ?? "";
+      setParentProjectId(defaultParent);
+      setExistingProjectId(context.currentProject?.id ?? context.projects[0]?.id ?? "");
+      setDestinationKind(context.currentProject ? "current" : "existing");
+      setPlanningOpen(true);
+    } catch {
+      toast.error("Could not load your projects.");
+    } finally {
+      setInsertingTasks(false);
     }
-    setInsertingTasks(false);
-    if (inserted > 0) {
-      toast.success(`Added ${inserted} task${inserted === 1 ? "" : "s"}.`);
-    } else {
-      toast.error("Failed to insert tasks.");
+  };
+
+  const updatePlannedTask = (index: number, patch: Partial<PlannedTask>) => {
+    setPlannedTasks((tasks) => tasks.map((task, taskIndex) => taskIndex === index ? { ...task, ...patch } : task));
+  };
+
+  const savePlan = async () => {
+    const tasks = plannedTasks.filter((task) => task.title.trim());
+    if (tasks.length === 0) {
+      toast.error("Keep at least one task to save.");
+      return;
     }
-    close();
+    if ((destinationKind === "new" || destinationKind === "subproject") && !projectTitle.trim()) {
+      toast.error("Name the project before saving.");
+      return;
+    }
+    if (destinationKind === "existing" && !existingProjectId) {
+      toast.error("Choose an existing project.");
+      return;
+    }
+    if (destinationKind === "subproject" && !parentProjectId) {
+      toast.error("Choose the parent project.");
+      return;
+    }
+
+    setInsertingTasks(true);
+    try {
+      const destination = destinationKind === "current"
+        ? { kind: "current" as const }
+        : destinationKind === "existing"
+          ? { kind: "existing" as const, projectId: existingProjectId }
+          : destinationKind === "new"
+            ? { kind: "new" as const, title: projectTitle }
+            : { kind: "subproject" as const, parentProjectId, title: projectTitle };
+      const result = await saveAiTaskPlanAction({
+        sourceNoteId: noteId,
+        destination,
+        tasks: tasks.map(({ title, description, priority, status, dueDate }) => ({
+          title,
+          description: description?.trim() || null,
+          priority,
+          status,
+          dueDate: dueDate || null,
+        })),
+      });
+      toast.success(`Created ${result.created} task${result.created === 1 ? "" : "s"}${result.skipped ? `; skipped ${result.skipped} duplicate${result.skipped === 1 ? "" : "s"}.` : "."}`);
+      setPlanningOpen(false);
+      close();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save the plan.";
+      toast.error(message === "DUPLICATE_PROJECT" ? "A project with that name already exists there. Choose it instead." : "Failed to save the plan.");
+    } finally {
+      setInsertingTasks(false);
+    }
   };
 
   return (
@@ -394,9 +466,9 @@ export function AiPanel({
 
           {state.status === "tasks" && (
             <div className="mt-3 space-y-2">
-              <p className="text-xs text-muted-foreground">Review the extracted tasks before creating them for this note.</p>
-              <ul className="max-h-40 space-y-1 overflow-y-auto rounded-xl border bg-background/80 p-2 text-xs">{state.tasks.map((task, index) => <li key={`${task.title}-${index}`}>{task.title}</li>)}</ul>
-              <div className="flex flex-wrap justify-end gap-1.5"><Button variant="outline" size="xs" onClick={() => setState({ status: "idle" })}>Cancel</Button><Button size="xs" onClick={onInsertTasks} disabled={insertingTasks}>{insertingTasks ? <Loader2 className="animate-spin" /> : <Plus />} Create tasks</Button></div>
+              <p className="text-xs text-muted-foreground">Review tasks, dates, and their project destination before saving. Ownership is you in this personal workspace.</p>
+              <ul className="max-h-40 space-y-1 overflow-y-auto rounded-xl border bg-background/80 p-2 text-xs">{state.tasks.map((task, index) => <li key={`${task.title}-${index}`}>{task.title}{task.dueDate ? <span className="text-muted-foreground"> · due {task.dueDate}</span> : null}</li>)}</ul>
+              <div className="flex flex-wrap justify-end gap-1.5"><Button variant="outline" size="xs" onClick={() => setState({ status: "idle" })}>Cancel</Button><Button size="xs" onClick={() => void openPlanning()} disabled={insertingTasks}>{insertingTasks ? <Loader2 className="animate-spin" /> : <ListChecks />} Review plan</Button></div>
             </div>
           )}
         </section>
@@ -530,6 +602,26 @@ export function AiPanel({
         </DialogContent>
       </Dialog>
 
+      <Dialog open={planningOpen} onOpenChange={setPlanningOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Review AI task plan</DialogTitle>
+            <DialogDescription>Nothing is created until you confirm. Blank dates mean no deadline was assumed; any suggested date came from the source and remains editable.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs"><p className="font-medium">Ownership: you</p><p className="mt-1 text-muted-foreground">Inkest currently has personal workspaces, so every task is owned by the signed-in user.</p></div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="space-y-1.5"><Label htmlFor="ai-plan-destination">Destination</Label><select id="ai-plan-destination" className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={destinationKind} onChange={(event) => setDestinationKind(event.target.value as typeof destinationKind)}>{planningContext?.currentProject ? <option value="current">Current: {planningContext.currentProject.title}</option> : null}<option value="existing">Existing project</option><option value="new">New top-level project</option><option value="subproject">New subproject</option></select></div>
+              {destinationKind === "existing" ? <div className="space-y-1.5"><Label htmlFor="ai-plan-existing">Project</Label><select id="ai-plan-existing" className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={existingProjectId} onChange={(event) => setExistingProjectId(event.target.value)}><option value="">Choose a project</option>{planningContext?.projects.map((project) => <option key={project.id} value={project.id}>{project.parentId ? "↳ " : ""}{project.title}</option>)}</select></div> : null}
+              {destinationKind === "subproject" ? <div className="space-y-1.5"><Label htmlFor="ai-plan-parent">Parent project</Label><select id="ai-plan-parent" className="h-9 w-full rounded-md border bg-background px-3 text-sm" value={parentProjectId} onChange={(event) => setParentProjectId(event.target.value)}><option value="">Choose a parent project</option>{planningContext?.projects.map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}</select></div> : null}
+            </div>
+            {(destinationKind === "new" || destinationKind === "subproject") ? <div className="space-y-1.5"><Label htmlFor="ai-plan-title">{destinationKind === "new" ? "New project name" : "Subproject name"}</Label><Input id="ai-plan-title" value={projectTitle} onChange={(event) => setProjectTitle(event.target.value)} placeholder="e.g. Website refresh" /></div> : null}
+            <div className="space-y-2"><p className="text-sm font-medium">Tasks</p>{plannedTasks.map((task, index) => <div key={`${task.title}-${index}`} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_8rem_8rem]"><div className="space-y-1.5"><Label htmlFor={`ai-task-title-${index}`} className="text-xs">Task</Label><Input id={`ai-task-title-${index}`} value={task.title} onChange={(event) => updatePlannedTask(index, { title: event.target.value })} /><Input aria-label={`Description for ${task.title || "task"}`} value={task.description ?? ""} onChange={(event) => updatePlannedTask(index, { description: event.target.value || null })} placeholder="Description (optional)" /></div><div className="space-y-1.5"><Label htmlFor={`ai-task-status-${index}`} className="text-xs">Status</Label><select id={`ai-task-status-${index}`} className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={task.status} onChange={(event) => updatePlannedTask(index, { status: event.target.value as PlannedTask["status"] })}><option value="todo">To do</option><option value="doing">In progress</option><option value="done">Done</option><option value="canceled">Canceled</option></select><select aria-label={`Priority for ${task.title || "task"}`} className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={task.priority} onChange={(event) => updatePlannedTask(index, { priority: event.target.value as PlannedTask["priority"] })}><option value="none">No priority</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div><div className="space-y-1.5"><Label htmlFor={`ai-task-due-${index}`} className="text-xs">Due date</Label><Input id={`ai-task-due-${index}`} type="date" value={task.dueDate} onChange={(event) => updatePlannedTask(index, { dueDate: event.target.value })} /><Button variant="ghost" size="xs" className="w-full" onClick={() => setPlannedTasks((tasks) => tasks.filter((_, taskIndex) => taskIndex !== index))}>Remove</Button></div></div>)}</div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setPlanningOpen(false)} disabled={insertingTasks}>Cancel</Button><Button onClick={() => void savePlan()} disabled={insertingTasks}>{insertingTasks ? <Loader2 className="animate-spin" /> : <Check />} Confirm and create</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog
         open={
           variant === "menu" && (state.status === "result" ||
@@ -614,10 +706,7 @@ export function AiPanel({
                 <DialogTitle className="flex items-center gap-2">
                   <ListChecks className="size-4" /> Extracted tasks
                 </DialogTitle>
-                <DialogDescription>
-                  Insert these as tasks for this note, or copy them as a Markdown
-                  checklist.
-                </DialogDescription>
+                <DialogDescription>Review editable task details and choose a project before anything is created.</DialogDescription>
               </DialogHeader>
               <ScrollArea className="max-h-[50vh] rounded-lg border p-4">
                 <ul className="flex flex-col gap-1.5">
@@ -664,7 +753,7 @@ export function AiPanel({
                 </Button>
                 <Button
                   size="sm"
-                  onClick={onInsertTasks}
+                  onClick={() => void openPlanning()}
                   disabled={insertingTasks}
                   className="gap-1.5"
                 >
@@ -673,7 +762,7 @@ export function AiPanel({
                   ) : (
                     <Plus className="size-4" />
                   )}
-                  Add as tasks
+                  Review plan
                 </Button>
               </div>
             </>

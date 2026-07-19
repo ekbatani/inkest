@@ -434,14 +434,25 @@ All of the following must be complete before announcing a public release:
     and `bun.cmd run build` passed; the build retains the existing attachment
     export Turbopack NFT trace warning.
 
-- [now] **P1-34 — Complete AI task extraction and project planning.** Let the
+- [done] **P1-34 — Complete AI task extraction and project planning.** Let the
   user review destination (current project, new project, sub-project, or
   existing project), ownership, status, due dates, and editable planning
   instructions before saving.
   - Acceptance: generated tasks are structured, editable, user-confirmed, and
     never create duplicate/cyclic projects; due-date assumptions are visible.
+  - Evidence: 2026-07-19 — task extraction now opens an explicit planning
+    review before saving. Users can edit title, description, status, priority,
+    and due date; see blank dates as no inferred deadline; and select the
+    current project, an existing project, a new top-level project, or a new
+    subproject. Tasks are owned by the signed-in user in this personal-workspace
+    model. The authenticated server action rechecks every project ID, blocks
+    duplicate project titles at the destination, relies on the existing
+    parent-assignment guard for valid project nesting, and skips duplicate task
+    titles. Updated `docs/ARCHITECTURE.md`; `bun.cmd run typecheck`, `git diff
+    --check`, and `bun.cmd run build` passed. The build retains the existing
+    attachment-export Turbopack NFT trace warning.
 
-- [todo] **P1-35 — Add concise AI onboarding and privacy hints.** Explain
+- [now] **P1-35 — Add concise AI onboarding and privacy hints.** Explain
   what each action does, what content is sent, provider costs/limits, and how
   to use custom keys without overwhelming regular writing.
   - Acceptance: first use has contextual help and links to the full privacy/AI

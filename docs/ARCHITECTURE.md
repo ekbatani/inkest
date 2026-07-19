@@ -76,7 +76,7 @@ instructs it to focus on a selection.
 
 | Action | Context sent to the provider | Result and user-controlled persistence |
 | --- | --- | --- |
-| Summarize; improve writing; extract tasks | Note title, full note Markdown, and optional selected text | Markdown or structured task suggestions. The editor only inserts/replaces Markdown after the user chooses an action; extracted tasks remain suggestions. |
+| Summarize; improve writing; extract tasks | Note title, full note Markdown, and optional selected text | Markdown or structured task suggestions. Extracted tasks stay provisional until the user edits and confirms them, chooses a current, existing, new, or sub-project destination, and saves. Task title, description, status, priority, and due date are editable; blank due dates explicitly mean no deadline was assumed. |
 | Create project plan | Note title, full note Markdown, and optional planning hint | Markdown plan shown for review; the user may insert it. |
 | Generate Mermaid | Note title, full note Markdown, optional selected text, and optional guidance | Mermaid Markdown shown for review; the user may insert it. |
 | Explain; translate | Note title, selected text, and, for translation, target language | Markdown shown for review; the user may replace the selection or insert it. |
