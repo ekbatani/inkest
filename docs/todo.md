@@ -339,11 +339,20 @@ All of the following must be complete before announcing a public release:
     assistive-technology pass is recorded in `docs/OPERATIONS.md` with the
     release maintainer as P0 owner.
 
-- [now] **P2-26 — Add curated themes and font choices.** Build on the shared
+- [done] **P2-26 — Add curated themes and font choices.** Build on the shared
   token system; do not introduce premium-only claims before licensing and
   billing decisions exist.
   - Acceptance: choices persist per user, meet contrast requirements, do not
     cause layout shifts, and work in editor/preview/marketing routes.
+  - Evidence: 2026-07-19 — added persisted system/light/dark mode, Paper,
+    Forest, and Violet semantic palettes, plus bundled clean-sans, editorial,
+    and Persian-friendly writing-font choices. Authenticated appearance sync
+    applies the saved setting to the app, while the top-bar selector persists
+    its mode choice too; the editor/preview inherit the selected writing font
+    and marketing routes share the selected color mode/palette in the browser.
+    Updated `docs/design-system.md`. `bun.cmd run typecheck`, focused ESLint,
+    `git diff --check`, and `bun.cmd run build` passed; build retains the
+    pre-existing attachment-export NFT trace warning.
 
 - [todo] **P2-27 — Improve notifications based on real workflows.** Define
   reminders, due-date alerts, integration failures, and delivery preferences

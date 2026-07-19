@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { AppearanceTheme } from "@/components/users/appearance-sync";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,11 @@ export function ThemeToggle() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   React.useEffect(() => setMounted(true), []);
 
+  const changeTheme = (preference: AppearanceTheme) => {
+    setTheme(preference);
+    void import("@/server/users/settings-actions").then((actions) => actions.updateUserSettingsAction({ theme: { preference } }));
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -33,13 +39,13 @@ export function ThemeToggle() {
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
+        <DropdownMenuItem onClick={() => changeTheme("light")}>
           <Sun className="size-4" /> Light
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
+        <DropdownMenuItem onClick={() => changeTheme("dark")}>
           <Moon className="size-4" /> Dark
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
+        <DropdownMenuItem onClick={() => changeTheme("system")}>
           <Monitor className="size-4" /> System
         </DropdownMenuItem>
       </DropdownMenuContent>

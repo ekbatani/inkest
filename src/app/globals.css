@@ -51,6 +51,8 @@
 }
 
 :root {
+  --inkest-font-body: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --inkest-font-writing: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.148 0.004 228.8);
   --popover: oklch(1 0 0);
@@ -142,12 +144,24 @@
   --warning-surface: color-mix(in oklch, var(--warning) 17%, var(--background));
 }
 
+html[data-font="serif"] { --inkest-font-writing: var(--font-serif), Georgia, serif; }
+html[data-font="persian"] { --inkest-font-body: var(--font-rtl-fallback), var(--font-geist-sans), Tahoma, sans-serif; --inkest-font-writing: var(--font-rtl-fallback), var(--font-geist-sans), Tahoma, sans-serif; }
+
+html[data-palette="forest"] {
+  --primary: oklch(0.45 0.10 154); --primary-foreground: oklch(0.98 0.01 154); --secondary: oklch(0.95 0.02 154); --accent: oklch(0.94 0.03 154);
+  --background: oklch(0.985 0.01 120); --foreground: oklch(0.22 0.025 154); --card: oklch(1 0.008 120); --card-foreground: oklch(0.22 0.025 154); --popover: oklch(1 0.008 120); --popover-foreground: oklch(0.22 0.025 154); --sidebar: oklch(0.97 0.015 120); --sidebar-foreground: oklch(0.22 0.025 154);
+}
+html.dark[data-palette="forest"] { --background: oklch(0.19 0.02 154); --foreground: oklch(0.96 0.015 120); --card: oklch(0.24 0.025 154); --card-foreground: oklch(0.96 0.015 120); --popover: oklch(0.24 0.025 154); --popover-foreground: oklch(0.96 0.015 120); --primary: oklch(0.70 0.12 154); --primary-foreground: oklch(0.20 0.025 154); --secondary: oklch(0.29 0.03 154); --accent: oklch(0.29 0.03 154); --sidebar: oklch(0.22 0.025 154); --sidebar-foreground: oklch(0.96 0.015 120); }
+html[data-palette="violet"] { --primary: oklch(0.48 0.15 295); --primary-foreground: oklch(0.99 0.01 295); --secondary: oklch(0.96 0.02 295); --accent: oklch(0.95 0.03 295); --background: oklch(0.99 0.008 295); --foreground: oklch(0.23 0.03 295); --card: oklch(1 0.005 295); --card-foreground: oklch(0.23 0.03 295); --popover: oklch(1 0.005 295); --popover-foreground: oklch(0.23 0.03 295); --sidebar: oklch(0.975 0.012 295); --sidebar-foreground: oklch(0.23 0.03 295); }
+html.dark[data-palette="violet"] { --background: oklch(0.20 0.025 295); --foreground: oklch(0.97 0.01 295); --card: oklch(0.25 0.03 295); --card-foreground: oklch(0.97 0.01 295); --popover: oklch(0.25 0.03 295); --popover-foreground: oklch(0.97 0.01 295); --primary: oklch(0.72 0.15 295); --primary-foreground: oklch(0.22 0.03 295); --secondary: oklch(0.30 0.035 295); --accent: oklch(0.30 0.035 295); --sidebar: oklch(0.23 0.03 295); --sidebar-foreground: oklch(0.97 0.01 295); }
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--inkest-font-body);
     font-feature-settings: "ss01" 1, "cv02" 1, "cv03" 1;
   }
   html {
@@ -185,7 +199,7 @@
   width: 100%;
   max-width: 48rem;
   margin-inline: auto;
-  font-family: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--inkest-font-writing);
   font-size: 1.046875rem;
   line-height: 1.72;
   letter-spacing: -0.006em;

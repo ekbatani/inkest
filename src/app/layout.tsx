@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Lora, Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AppearanceSync } from "@/components/users/appearance-sync";
+import { getUserSettings } from "@/server/users/settings-service";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -53,11 +55,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const settings = await getUserSettings();
+  const theme = settings.theme;
+
   return (
     <html
       lang="en"
@@ -77,6 +82,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <AppearanceSync
+            preference={theme?.preference ?? "system"}
+            palette={theme?.palette ?? "paper"}
+            font={theme?.font ?? "sans"}
+          />
           <SessionProvider>
             <TooltipProvider delay={300}>{children}</TooltipProvider>
           </SessionProvider>

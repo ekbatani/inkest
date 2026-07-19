@@ -26,6 +26,7 @@ export async function updateUserSettingsAction(patch: Partial<UserSettings>) {
   const next = await updateUserSettings(patch);
   revalidatePath("/settings");
   revalidatePath(`/notes`);
+  revalidatePath("/", "layout");
   return next;
 }
 

@@ -28,8 +28,9 @@ export const userSettingsSchema = z.object({
   ai: aiProviderSettingsSchema.optional(),
   theme: z
     .object({
-      // "system" | "light" | "dark" hands this to next-themes on mount.
       preference: z.enum(["system", "light", "dark"]).optional(),
+      palette: z.enum(["paper", "forest", "violet"]).optional(),
+      font: z.enum(["sans", "serif", "persian"]).optional(),
     })
     .optional(),
   googleCalendar: z
@@ -74,7 +75,7 @@ const DEFAULTS: UserSettings = {
     spellcheckLanguage: "auto",
   },
   ai: {},
-  theme: { preference: "system" },
+  theme: { preference: "system", palette: "paper", font: "sans" },
   googleCalendar: {},
   superFocus: { trackingMode: "pointer", radius: 1 },
   tts: { rate: 1 },

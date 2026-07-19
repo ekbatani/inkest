@@ -23,6 +23,57 @@ import {
   changePasswordAction,
 } from "@/server/users/settings-actions";
 import { AiBadge } from "@/components/ai/ai-badge";
+import { useTheme } from "next-themes";
+import {
+  applyAppearance,
+  type AppearanceFont,
+  type AppearancePalette,
+  type AppearanceTheme,
+} from "@/components/users/appearance-sync";
+
+export function AppearanceSection({
+  preference = "system",
+  palette = "paper",
+  font = "sans",
+}: {
+  preference?: AppearanceTheme;
+  palette?: AppearancePalette;
+  font?: AppearanceFont;
+}) {
+  const { setTheme } = useTheme();
+  const [selectedTheme, setSelectedTheme] = React.useState(preference);
+  const [selectedPalette, setSelectedPalette] = React.useState(palette);
+  const [selectedFont, setSelectedFont] = React.useState(font);
+  const [saving, setSaving] = React.useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      setTheme(selectedTheme);
+      applyAppearance({ palette: selectedPalette, font: selectedFont });
+      await import("@/server/users/settings-actions").then((actions) =>
+        actions.updateUserSettingsAction({ theme: { preference: selectedTheme, palette: selectedPalette, font: selectedFont } }),
+      );
+      toast.success("Appearance saved.");
+    } catch {
+      toast.error("Failed to save appearance.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="surface-card flex flex-col gap-4 p-5">
+      <div><h2 className="text-sm font-semibold">Appearance</h2><p className="mt-1 text-xs text-muted-foreground">Bundled fonts and semantic color tokens keep the editor and preview spacing stable.</p></div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="flex flex-col gap-1.5"><Label htmlFor="theme-preference" className="text-xs text-muted-foreground">Mode</Label><Select value={selectedTheme} onValueChange={(value) => setSelectedTheme(value as AppearanceTheme)}><SelectTrigger id="theme-preference" className="h-9"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="system">System</SelectItem><SelectItem value="light">Light</SelectItem><SelectItem value="dark">Dark</SelectItem></SelectContent></Select></div>
+        <div className="flex flex-col gap-1.5"><Label htmlFor="theme-palette" className="text-xs text-muted-foreground">Palette</Label><Select value={selectedPalette} onValueChange={(value) => setSelectedPalette(value as AppearancePalette)}><SelectTrigger id="theme-palette" className="h-9"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="paper">Paper</SelectItem><SelectItem value="forest">Forest</SelectItem><SelectItem value="violet">Violet</SelectItem></SelectContent></Select></div>
+        <div className="flex flex-col gap-1.5"><Label htmlFor="theme-font" className="text-xs text-muted-foreground">Writing font</Label><Select value={selectedFont} onValueChange={(value) => setSelectedFont(value as AppearanceFont)}><SelectTrigger id="theme-font" className="h-9"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="sans">Clean sans</SelectItem><SelectItem value="serif">Editorial serif</SelectItem><SelectItem value="persian">Persian-friendly</SelectItem></SelectContent></Select></div>
+      </div>
+      <div><Button size="sm" onClick={save} disabled={saving}>Save appearance</Button></div>
+    </section>
+  );
+}
 
 export function ProfileSection({
   email,

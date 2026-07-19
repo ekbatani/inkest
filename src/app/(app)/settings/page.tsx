@@ -7,6 +7,7 @@ import { getTelegramLinkStatus } from "@/server/notifications/telegram-link";
 import { getAiConfigurationStatus } from "@/server/ai/provider";
 import {
   ProfileSection,
+  AppearanceSection,
   EditorPrefsSection,
   AiProviderSection,
   NotificationsSection,
@@ -36,6 +37,12 @@ export default async function SettingsPage() {
       <ProfileSection email={user?.email ?? ""} name={user?.name} />
 
       <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Writing</h2>
+      <AppearanceSection
+        key={`appearance:${settings.theme?.preference}:${settings.theme?.palette}:${settings.theme?.font}`}
+        preference={settings.theme?.preference}
+        palette={settings.theme?.palette}
+        font={settings.theme?.font}
+      />
       <EditorPrefsSection
         key={`editor:${settings.editor?.autosaveDelayMs}:${settings.editor?.showLineNumbers}:${settings.editor?.spellcheck}:${settings.editor?.spellcheckLanguage}`}
         autosaveDelayMs={settings.editor?.autosaveDelayMs}
