@@ -121,14 +121,13 @@ only through the authenticated attachment route.
 
 ## Docker and self-hosting
 
-Every push to `main` and version tag is built by
-[the Docker publishing workflow](.github/workflows/docker-publish.yml) and
-published to `ghcr.io/ekbatani/inkest`.
+The checked-in Compose path builds the image from a fresh source checkout, so
+it does not depend on an unpublished registry image. Docker Hub publishing is
+deliberately disabled until the release owner supplies the namespace and
+credentials described in [the image publishing plan](docs/docker-publishing.md).
 
 ```bash
-docker login ghcr.io -u <github-user> # only if the package is private
-docker compose pull
-docker compose up -d
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 ```
 
 The image applies pending Drizzle migrations at startup. With the default local
@@ -148,10 +147,15 @@ To start the optional MinIO service declared in the same Compose file, add its
 profile:
 
 ```bash
-docker compose --profile storage up -d
+docker compose --profile storage -f docker-compose.yml -f docker-compose.local.yml up -d --build
 ```
 
-You can build locally instead of pulling the published image:
+After a versioned Docker Hub image has been published and verified, operators
+can deploy it without a source checkout by using the release compose command
+in the image publishing plan. Until then, the source Compose command above is
+the supported path.
+
+You can also build and run the image directly:
 
 ```bash
 docker build -t inkest .

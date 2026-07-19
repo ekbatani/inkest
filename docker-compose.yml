@@ -1,7 +1,11 @@
 services:
   app:
-    image: ghcr.io/ekbatani/inkest:latest
-    pull_policy: always
+    # A fresh source checkout is deployable before a public registry exists.
+    # After the Docker Hub release gate is completed, operators may set
+    # INKEST_IMAGE=docker.io/<namespace>/inkest:<version> to use that image.
+    image: ${INKEST_IMAGE:-inkest:local}
+    build:
+      context: .
     expose:
       - "3000"
     environment:

@@ -1,0 +1,33 @@
+services:
+  app:
+    image: ${INKEST_IMAGE:?Set INKEST_IMAGE to an immutable Docker Hub Inkest tag}
+    pull_policy: always
+    expose:
+      - "3000"
+    environment:
+      DATABASE_URL: file:/app/data/local.db
+      NEXTAUTH_URL: ${NEXTAUTH_URL:?Set NEXTAUTH_URL to Inkest's public URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET to a unique random value}
+      AI_CREDENTIAL_ENCRYPTION_KEYS: ${AI_CREDENTIAL_ENCRYPTION_KEYS:-}
+      ATTACHMENT_STORAGE_DRIVER: ${ATTACHMENT_STORAGE_DRIVER:-local}
+      LOCAL_STORAGE_ROOT: ${LOCAL_STORAGE_ROOT:-/app/storage}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-}
+      MINIO_BUCKET: ${MINIO_BUCKET:-}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-}
+      AI_PROVIDER: ${AI_PROVIDER:-openrouter}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+    volumes:
+      - inkest-data:/app/data
+      - inkest-storage:/app/storage
+    restart: unless-stopped
+
+volumes:
+  inkest-data:
+  inkest-storage:

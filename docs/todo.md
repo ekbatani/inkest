@@ -553,13 +553,29 @@ All of the following must be complete before announcing a public release:
     Turso/MinIO recovery remains provider-snapshot work and is documented as
     such; no production data or credentials were used.
 
-- [todo] **P0-43 — Verify clean Docker deployment and publish an image plan.**
+- [blocked] **P0-43 — Verify clean Docker deployment and publish an image plan.**
   Build and run the documented Compose path from scratch, test migration and
   persistent volumes, then prepare registry namespace, tags, SBOM/provenance
   policy, and image update process for Docker Hub.
   - Acceptance: a clean host can deploy without source edits; image publishing
     remains blocked until registry ownership and release credentials are
     explicitly supplied.
+  - Evidence: 2026-07-19 — made the documented Compose path build from a clean
+    checkout, added a separate immutable-image release Compose file, and added
+    `docs/docker-publishing.md` covering the clean-host drill, Docker Hub
+    namespace/secrets gate, version/commit tags, SBOM/provenance attestations,
+    and safe update/rollback process. The GitHub workflow now builds every
+    candidate but cannot publish until `DOCKERHUB_NAMESPACE` and the documented
+    Docker Hub secrets are supplied. `bun.cmd run typecheck`, `git diff --check`,
+    and YAML parsing of all Compose and workflow files passed. `bun.cmd run
+    build` was blocked only because this runner cannot fetch the configured
+    Google Fonts; it also reported the pre-existing attachment-export NFT trace
+    warning. Live Compose build, migration, restart, and volume checks remain
+    unverified because this runner is denied access to Docker; no registry
+    namespace or credentials were supplied.
+  - Blocker: provide a Docker-capable clean host for the deployment drill and
+    registry ownership plus `DOCKERHUB_NAMESPACE`, `DOCKERHUB_USERNAME`, and
+    `DOCKERHUB_TOKEN` before a public image can be published.
 
 - [todo] **P1-44 — Investigate browser memory growth.** Reproduce the reported
   memory increase across note switching, preview/Mermaid, AI panel, uploads,
