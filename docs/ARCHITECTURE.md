@@ -78,6 +78,12 @@ background work, autonomous side effects, uncontrolled loops, and automatic
 retries, and requires explicit confirmation, hard cost/time/token limits,
 cancellation, and a separate audit record before any implementation.
 
+Semantic search and note-aware chat are also not shipped. The approved
+[decision record](semantic-search-decision.md) keeps them out of the default
+self-hosted product until opt-in demand, privacy, authorization, retrieval
+quality, and operational gates are met. In particular, ordinary note search
+must not start sending note text to an embedding provider implicitly.
+
 The server sends an OpenAI-compatible provider a system prompt containing the
 action goal, JSON response schema, and action rules, plus one user message that
 contains the following JSON context. Empty optional values are omitted. The

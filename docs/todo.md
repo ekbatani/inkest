@@ -475,15 +475,25 @@ All of the following must be complete before announcing a public release:
     thresholds before any executor can ship. Linked the boundary from
     `docs/ARCHITECTURE.md` and `docs/README.md`. `git diff --check` passed.
 
-- [now] **P2-37 — Research semantic search and note-aware chat.** Compare
+- [done] **P2-37 — Research semantic search and note-aware chat.** Compare
   local/self-hosted and hosted architectures, privacy implications, indexing
   cost, and quality on real opt-in notes.
   - Acceptance: a written go/no-go decision and a small technical proposal
     exist; no vector dependency is added merely for experimentation.
+  - Evidence: 2026-07-19 — recorded a no-go for shipping semantic search or
+    note-aware chat now in `docs/semantic-search-decision.md`. The decision
+    compares lexical search, local/self-hosted embeddings, hosted embeddings,
+    and managed vector services; accounts for disclosure, sensitive derived
+    data, re-index cost, service security/recovery, and retrieval quality.
+    It preserves the current explicit-AI contract and gives a local-first,
+    opt-in technical proposal with authorization, deletion, citation, abstain,
+    and beta-quality gates. Linked it from `docs/README.md` and
+    `docs/ARCHITECTURE.md`; no dependency or schema change was made. `git diff
+    --check` passed.
 
 ## Phase 4 — privacy, security, reliability, and operations
 
-- [todo] **P0-40 — Run a release security audit.** Trace authorization on all
+- [now] **P0-40 — Run a release security audit.** Trace authorization on all
   server actions and API routes, especially notes, tasks, exports, versions,
   attachments, AI events, calendar OAuth, and Telegram webhooks.
   - Acceptance: cross-user access attempts are tested; all findings are fixed,
