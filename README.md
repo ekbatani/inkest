@@ -70,7 +70,11 @@ bun run build
 bun run db:generate  # create a migration after changing the schema
 bun run db:migrate   # apply committed migrations
 bun run db:studio
+bun run verify:backup # temporary SQLite backup/restore and portable-export drill
 ```
+
+For operator backup, restore, secret-boundary, and export verification steps,
+see [Backup and restore](docs/backup-restore.md).
 
 ## Configuration
 

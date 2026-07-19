@@ -11,6 +11,7 @@ does not keep implementation diaries, duplicate exports, or agent prompts.
 | [Semantic search decision](semantic-search-decision.md) | Go/no-go decision, privacy comparison, and gated proposal for future semantic search and note-aware chat |
 | [Design system](design-system.md) | Shared visual tokens, components, interaction rules, and intentional exceptions |
 | [Operations](OPERATIONS.md) | Configuration, deployment, verification, and performance work |
+| [Backup and restore](backup-restore.md) | Local recovery procedure, secret boundary, and portable-export verification |
 | [Beta feedback](beta-feedback.md) | Public beta bug reporting, privacy rules, severity, and triage cadence |
 
 The repository [README](../README.md) is the canonical quick-start and complete

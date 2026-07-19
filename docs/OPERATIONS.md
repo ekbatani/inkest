@@ -18,6 +18,11 @@ Production uses the standalone Docker image. Persist `/app/data` and
 this with named volumes. Run migrations as part of deployment rather than
 altering the database manually.
 
+The supported local recovery procedure is in [Backup and restore](backup-restore.md).
+It uses checksum-manifested local SQLite and attachment copies, keeps secrets
+outside the archive, and has a temporary-data drill available through `bun run
+verify:backup`.
+
 ## Configuration and secrets
 
 Required deployment values are the application URL, authentication secret, and

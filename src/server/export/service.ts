@@ -143,11 +143,14 @@ async function getAttachmentsForNotes(userId: string) {
     .where(eq(schema.attachments.userId, userId));
 }
 
-export async function buildExportArchive(): Promise<{
+export async function buildExportArchiveForContext(context: {
+  user: { id: string; email: string; name?: string | null };
+  workspace: { id: string };
+}): Promise<{
   buffer: Buffer;
   fileName: string;
 }> {
-  const { user, workspace } = await getContext();
+  const { user, workspace } = context;
 
   const [notes, tagsByNote, attachments, allTags] = await Promise.all([
     getNotesForExport(user.id, workspace.id),
@@ -249,6 +252,13 @@ export async function buildExportArchive(): Promise<{
 
   const stamp = new Date().toISOString().slice(0, 10);
   return { buffer, fileName: `inkest-export-${stamp}.zip` };
+}
+
+export async function buildExportArchive(): Promise<{
+  buffer: Buffer;
+  fileName: string;
+}> {
+  return buildExportArchiveForContext(await getContext());
 }
 
 export async function buildSingleNoteMarkdown(

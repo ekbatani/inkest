@@ -536,13 +536,22 @@ All of the following must be complete before announcing a public release:
     S3-compatible parity drill has not yet been performed. `bun run build` was
     also blocked only by unavailable Google Fonts in this environment.
 
-- [todo] **P0-42 — Prove backup, restore, and export.** Document backup of the
+- [done] **P0-42 — Prove backup, restore, and export.** Document backup of the
   database, attachments, secrets/configuration boundaries, and restore steps;
   perform a restore into a clean environment and compare notes, tasks, tags,
   versions, and attachments.
   - Acceptance: recovery is reproducible, data integrity is confirmed, and
     user-facing export is separately verified as portable Markdown/workspace
     data.
+  - Evidence: 2026-07-19 — added checksum-manifested local SQLite and
+    attachment backup/restore commands, a restore guard against overwriting
+    data, and the maintained `docs/backup-restore.md` recovery/secret-boundary
+    procedure. `bun run verify:backup` migrated clean temporary databases,
+    backed up/restored and compared notes, tags, tasks, note versions, and
+    attachment bytes; it also generated a real ZIP export and verified portable
+    Markdown, workspace metadata, tags, and attachment bytes. Remote
+    Turso/MinIO recovery remains provider-snapshot work and is documented as
+    such; no production data or credentials were used.
 
 - [todo] **P0-43 — Verify clean Docker deployment and publish an image plan.**
   Build and run the documented Compose path from scratch, test migration and
