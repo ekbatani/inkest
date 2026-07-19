@@ -474,6 +474,43 @@ export function AiProviderSection({
   );
 }
 
+export function AiPrivacySection({ onboardingDismissed = false }: { onboardingDismissed?: boolean }) {
+  const [dismissed, setDismissed] = React.useState(onboardingDismissed);
+  const [saving, setSaving] = React.useState(false);
+
+  const restoreGuide = async () => {
+    setSaving(true);
+    try {
+      await import("@/server/users/settings-actions").then((actions) =>
+        actions.restoreAiOnboardingAction(),
+      );
+      setDismissed(false);
+      toast.success("AI quick guide will appear the next time you open AI assistance.");
+    } catch {
+      toast.error("Failed to restore the AI quick guide.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="surface-card flex flex-col gap-3 p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold">AI privacy and costs</h2>
+          <p className="mt-1 text-xs text-muted-foreground">AI is opt-in. The quick guide explains each action&apos;s sent context, review step, provider costs, and per-request limits.</p>
+        </div>
+        <Link href="/help#ai-privacy" className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground">Read details</Link>
+      </div>
+      {dismissed ? (
+        <div><Button size="sm" variant="outline" onClick={restoreGuide} disabled={saving}>Show quick guide again</Button></div>
+      ) : (
+        <p className="text-xs text-muted-foreground">The quick guide is enabled and appears when you next open AI assistance.</p>
+      )}
+    </section>
+  );
+}
+
 export function AiOrchestrationSection({
   temperature = 0.4,
   maxInputTokens = 8_000,

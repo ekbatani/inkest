@@ -10,6 +10,7 @@ import {
   AppearanceSection,
   EditorPrefsSection,
   AiProviderSection,
+  AiPrivacySection,
   AiOrchestrationSection,
   NotificationsSection,
   DangerZoneSection,
@@ -61,6 +62,7 @@ export default async function SettingsPage() {
         model={settings.ai?.model}
         configurationSource={aiConfiguration.source}
       />
+      <AiPrivacySection onboardingDismissed={settings.ai?.onboardingDismissed} />
       <AiOrchestrationSection
         key={`ai-controls:${settings.ai?.temperature}:${settings.ai?.maxInputTokens}:${settings.ai?.maxOutputTokens}:${settings.ai?.instructions ?? ""}:${settings.ai?.guardrails ?? ""}`}
         temperature={settings.ai?.temperature}

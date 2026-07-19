@@ -67,6 +67,9 @@ AI action definitions live in [specs.ts](../src/server/ai/specs.ts). Every
 action is initiated explicitly from the authenticated editor or dashboard; there
 is no background AI processing and ordinary editing, previewing, searching,
 spellcheck, export, and calendar work do not send note text to a provider.
+The first AI-panel use shows a concise sent-context, review, cost, and limit
+hint. A user can dismiss it, restore it in Settings, or revisit the maintained
+[AI privacy help](/help#ai-privacy) at any time.
 
 The server sends an OpenAI-compatible provider a system prompt containing the
 action goal, JSON response schema, and action rules, plus one user message that

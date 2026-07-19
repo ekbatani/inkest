@@ -81,6 +81,7 @@ type Props = {
   onOpenChange?: (open: boolean) => void;
   onClose?: () => void;
   initialAction?: ActionId;
+  onboardingDismissed?: boolean;
 };
 
 type AiTarget = {
@@ -128,6 +129,7 @@ export function AiPanel({
   onOpenChange,
   onClose,
   initialAction,
+  onboardingDismissed = false,
 }: Props) {
   const [state, setState] = React.useState<AiState>({ status: "idle" });
   const [copied, setCopied] = React.useState(false);
@@ -146,6 +148,22 @@ export function AiPanel({
   const [existingProjectId, setExistingProjectId] = React.useState("");
   const [projectTitle, setProjectTitle] = React.useState("");
   const [parentProjectId, setParentProjectId] = React.useState("");
+  const [showOnboarding, setShowOnboarding] = React.useState(!onboardingDismissed);
+  const [dismissingOnboarding, setDismissingOnboarding] = React.useState(false);
+
+  const dismissOnboarding = async () => {
+    setDismissingOnboarding(true);
+    try {
+      await import("@/server/users/settings-actions").then((actions) =>
+        actions.dismissAiOnboardingAction(),
+      );
+      setShowOnboarding(false);
+    } catch {
+      toast.error("Could not save your AI guidance preference.");
+    } finally {
+      setDismissingOnboarding(false);
+    }
+  };
 
   const getSelection = React.useCallback(
     (): string | null => getSelectedEditorText(editorRef),
@@ -232,10 +250,10 @@ export function AiPanel({
 
   const initialActionRun = React.useRef(false);
   React.useEffect(() => {
-    if (!initialAction || initialActionRun.current) return;
+    if (!initialAction || initialActionRun.current || showOnboarding) return;
     initialActionRun.current = true;
     void runAction(initialAction, {}, getTarget());
-  }, [getTarget, initialAction, runAction]);
+  }, [getTarget, initialAction, runAction, showOnboarding]);
 
   const submitPromptDialog = () => {
     if (!promptDialog) return;
@@ -417,14 +435,31 @@ export function AiPanel({
           </div>
 
           {state.status === "idle" && (
-            <div className="mt-3 grid grid-cols-2 gap-1.5">
-              <Button variant="outline" size="xs" onClick={() => onPickAction("summarize")}><FileText /> Summarize</Button>
-              <Button variant="outline" size="xs" onClick={() => onPickAction("improve-writing")}><Wand2 /> Improve</Button>
-              <Button variant="outline" size="xs" onClick={() => onPickAction("extract-tasks")}><ListChecks /> Tasks</Button>
-              <Button variant="outline" size="xs" onClick={() => onPickAction("create-project-plan")}><FileText /> Plan</Button>
-              <Button variant="outline" size="xs" onClick={() => onPickAction("explain")}><HelpCircle /> Explain</Button>
-              <Button variant="outline" size="xs" onClick={() => onPickAction("translate")}><Languages /> Translate</Button>
-            </div>
+            <>
+              {showOnboarding ? (
+                <div className="mt-3 rounded-xl border border-violet-400/25 bg-background/80 p-3 text-xs">
+                  <p className="font-medium text-foreground">AI is always a deliberate request</p>
+                  <p className="mt-1 text-muted-foreground">This action sends only the listed note or selection context to your configured provider. Nothing is sent while you write, search, preview, spellcheck, or export.</p>
+                  <ul className="mt-2 space-y-1 text-muted-foreground">
+                    <li><span className="font-medium text-foreground">Summarize, improve, tasks, plan:</span> title and full note; tasks and plans stay reviewable before saving.</li>
+                    <li><span className="font-medium text-foreground">Explain, translate:</span> title and selected text only.</li>
+                    <li><span className="font-medium text-foreground">Provider costs:</span> depend on your provider and model; your Settings input/output limits bound each request.</li>
+                  </ul>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Link href="/help#ai-privacy" className="underline underline-offset-4 hover:text-foreground">Full AI and privacy details</Link>
+                    <Button variant="ghost" size="xs" onClick={() => void dismissOnboarding()} disabled={dismissingOnboarding}>Don&apos;t show again</Button>
+                  </div>
+                </div>
+              ) : null}
+              <div className="mt-3 grid grid-cols-2 gap-1.5">
+                <Button variant="outline" size="xs" onClick={() => onPickAction("summarize")}><FileText /> Summarize</Button>
+                <Button variant="outline" size="xs" onClick={() => onPickAction("improve-writing")}><Wand2 /> Improve</Button>
+                <Button variant="outline" size="xs" onClick={() => onPickAction("extract-tasks")}><ListChecks /> Tasks</Button>
+                <Button variant="outline" size="xs" onClick={() => onPickAction("create-project-plan")}><FileText /> Plan</Button>
+                <Button variant="outline" size="xs" onClick={() => onPickAction("explain")}><HelpCircle /> Explain</Button>
+                <Button variant="outline" size="xs" onClick={() => onPickAction("translate")}><Languages /> Translate</Button>
+              </div>
+            </>
           )}
 
           {state.status === "loading" && (

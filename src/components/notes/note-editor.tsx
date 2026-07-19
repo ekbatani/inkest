@@ -124,6 +124,7 @@ export function NoteEditor({
   superFocusPrefs,
   ttsPrefs,
   editorPrefs,
+  aiOnboardingDismissed = false,
   projectTaskCount = 0,
 }: {
   note: Note;
@@ -140,6 +141,7 @@ export function NoteEditor({
     spellcheck: boolean;
     spellcheckLanguage: "auto" | "en" | "fa";
   };
+  aiOnboardingDismissed?: boolean;
   projectTaskCount?: number;
   dailyAgenda?: {
     dateKey: string;
@@ -856,6 +858,7 @@ export function NoteEditor({
                   editorRef={editorRef}
                   variant="sidebar"
                   initialAction={aiInitialAction ?? undefined}
+                  onboardingDismissed={aiOnboardingDismissed}
                   onClose={() => {
                     setAiPanelRequested(false);
                     setAiInitialAction(null);

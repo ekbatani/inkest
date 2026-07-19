@@ -83,6 +83,7 @@ export default async function NoteDetailPage({
         spellcheck: settings.editor?.spellcheck ?? true,
         spellcheckLanguage: settings.editor?.spellcheckLanguage ?? "auto",
       }}
+      aiOnboardingDismissed={settings.ai?.onboardingDismissed ?? false}
       dailyAgenda={
         dailyDate && calendarStatus
           ? {

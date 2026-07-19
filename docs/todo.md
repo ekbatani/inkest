@@ -452,13 +452,14 @@ All of the following must be complete before announcing a public release:
     --check`, and `bun.cmd run build` passed. The build retains the existing
     attachment-export Turbopack NFT trace warning.
 
-- [now] **P1-35 — Add concise AI onboarding and privacy hints.** Explain
+- [done] **P1-35 — Add concise AI onboarding and privacy hints.** Explain
   what each action does, what content is sent, provider costs/limits, and how
   to use custom keys without overwhelming regular writing.
   - Acceptance: first use has contextual help and links to the full privacy/AI
     disclosure; hints can be dismissed and revisited.
+  - Evidence: 2026-07-19 — added a user-scoped first-use AI-panel guide that explains action context, review-before-apply behavior, provider costs, and server-enforced input/output limits before shortcut-triggered AI actions run. Dismissal is persisted in user settings and Settings can restore the guide; the new `/help#ai-privacy` disclosure covers sent data, custom keys, privacy, review controls, costs, and limits. Updated `docs/ARCHITECTURE.md`. `bun.cmd run typecheck`, focused ESLint, `git diff --check`, and `bun.cmd run build` passed; the build retains the pre-existing attachment-export Turbopack NFT trace warning.
 
-- [todo] **P2-36 — Bound agentic workflows before implementation.** Define
+- [now] **P2-36 — Bound agentic workflows before implementation.** Define
   permitted multi-step actions, maximum iterations/cost/time, confirmation
   points, cancellation, audit records, and failure recovery; validate demand
   with beta users first.

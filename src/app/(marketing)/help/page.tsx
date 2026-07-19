@@ -100,6 +100,29 @@ export default function HelpPage() {
         </div>
       </section>
 
+      <section id="ai-privacy" className="mt-14 scroll-mt-20">
+        <h2 className="text-xl font-semibold tracking-tight">AI, privacy, and costs</h2>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <GuideCard title="What is sent">
+            <p>AI runs only after you choose an action. Summaries, writing improvements, task extraction, project plans, and Mermaid generation send the note title and full Markdown, plus any optional selection or instruction. Explain and translate send the title and selected text only.</p>
+            <p>Comment selection sends the title, full Markdown, and selected text; applying comments sends the title, full Markdown, and any guidance. Create-note-from-prompt sends only the dashboard prompt, never an existing note.</p>
+            <p>Writing, previewing, searching, spellcheck, exporting, and Calendar work never send note text to an AI provider.</p>
+          </GuideCard>
+          <GuideCard title="Your control">
+            <p>AI output is a proposal. You review it before inserting, appending, replacing, or saving tasks. Task destinations, dates, and fields remain editable before confirmation.</p>
+            <p>Successful actions retain generated output and action metadata for your history; they do not retain the raw request input. Self-hosters can review the technical AI contract in the repository&apos;s Architecture document.</p>
+          </GuideCard>
+          <GuideCard title="Provider keys and privacy">
+            <p>Your personal provider, model, and key override instance defaults for your account. Personal keys are encrypted at rest, resolved only on the server, and never shown again in Settings or sent to the browser.</p>
+            <p>You choose the provider. Review that provider&apos;s privacy terms before sending sensitive content; Ollama can keep processing on infrastructure you control.</p>
+          </GuideCard>
+          <GuideCard title="Costs and limits">
+            <p>Inkest does not set provider pricing. Hosted providers may bill by input and output tokens; your account or instance owner is responsible for those charges.</p>
+            <p>Settings lets you set temperature plus input and output caps for each request. Oversized input is truncated before sending, and the output cap is passed to compatible providers.</p>
+          </GuideCard>
+        </div>
+      </section>
+
       <section id="telegram" className="mt-14 scroll-mt-20">
         <h2 className="text-xl font-semibold tracking-tight">Connect Telegram</h2>
         <p className="mt-2 text-sm text-muted-foreground">

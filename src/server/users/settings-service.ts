@@ -21,6 +21,7 @@ export const aiProviderSettingsSchema = z
     maxOutputTokens: z.number().int().min(64).max(8_192).optional(),
     instructions: z.string().trim().max(2_000).optional(),
     guardrails: z.string().trim().max(2_000).optional(),
+    onboardingDismissed: z.boolean().optional(),
   })
   .partial();
 
@@ -90,6 +91,7 @@ const DEFAULTS: UserSettings = {
     maxOutputTokens: 1_200,
     instructions: "",
     guardrails: "",
+    onboardingDismissed: false,
   },
   theme: { preference: "system", palette: "paper", font: "sans" },
   googleCalendar: {},

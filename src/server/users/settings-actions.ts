@@ -129,3 +129,15 @@ export async function resetAiOrchestrationSettingsAction() {
   });
   revalidatePath("/settings");
 }
+
+export async function dismissAiOnboardingAction() {
+  await updateUserSettings({ ai: { onboardingDismissed: true } });
+  revalidatePath("/settings");
+  revalidatePath("/notes");
+}
+
+export async function restoreAiOnboardingAction() {
+  await updateUserSettings({ ai: { onboardingDismissed: false } });
+  revalidatePath("/settings");
+  revalidatePath("/notes");
+}
