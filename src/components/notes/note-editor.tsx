@@ -161,7 +161,6 @@ export function NoteEditor({
   });
   const [showSuperFocus, setShowSuperFocus] = React.useState(false);
   const [aiPanelRequested, setAiPanelRequested] = React.useState(false);
-  const [aiPanelOpen, setAiPanelOpen] = React.useState(false);
   const [aiInitialAction, setAiInitialAction] = React.useState<"summarize" | null>(
     null,
   );
@@ -590,8 +589,8 @@ export function NoteEditor({
 
   const requestAiPanel = React.useCallback((initialAction?: "summarize") => {
     setAiInitialAction(initialAction ?? null);
+    setShowPanel(true);
     setAiPanelRequested(true);
-    setAiPanelOpen(true);
   }, []);
 
   React.useEffect(() => {
@@ -657,26 +656,15 @@ export function NoteEditor({
 
           <AttachmentUploadButton editorRef={editorRef} />
           <SpeechToTextButton editorRef={editorRef} />
-          {
-            (aiPanelRequested ? (
-              <AiPanel
-                noteId={note.id}
-                editorRef={editorRef}
-                open={aiPanelOpen}
-                onOpenChange={setAiPanelOpen}
-                initialAction={aiInitialAction ?? undefined}
-              />
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-foreground/80 hover:text-foreground"
-                onClick={() => requestAiPanel()}
-              >
-                <Sparkles className="size-4 text-violet-400" />
-                <span className="hidden sm:inline text-violet-400">AI</span>
-              </Button>
-            ))}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-foreground/80 hover:text-foreground"
+            onClick={() => requestAiPanel()}
+          >
+            <Sparkles className="size-4 text-violet-400" />
+            <span className="hidden sm:inline text-violet-400">AI</span>
+          </Button>
           <>
               <Button
                 variant="ghost"
@@ -862,6 +850,18 @@ export function NoteEditor({
               onRestoreVersion={applyRestoredVersion}
               projectTaskCount={projectTaskCount}
               onAskAi={() => requestAiPanel()}
+              aiPanel={aiPanelRequested ? (
+                <AiPanel
+                  noteId={note.id}
+                  editorRef={editorRef}
+                  variant="sidebar"
+                  initialAction={aiInitialAction ?? undefined}
+                  onClose={() => {
+                    setAiPanelRequested(false);
+                    setAiInitialAction(null);
+                  }}
+                />
+              ) : undefined}
             />
           </div>
         </aside>
@@ -914,6 +914,7 @@ function MetadataPanel({
   onRestoreVersion,
   projectTaskCount,
   onAskAi,
+  aiPanel,
 }: {
   note: Note;
   metadata: {
@@ -949,6 +950,7 @@ function MetadataPanel({
   onRestoreVersion: (snapshot: { title: string; contentMd: string }) => void;
   projectTaskCount: number;
   onAskAi: () => void;
+  aiPanel?: React.ReactNode;
 }) {
   const showProjectLink = metadata.type === "project";
   return (
@@ -987,7 +989,7 @@ function MetadataPanel({
           </div>
         )}
 
-        <div className="rounded-2xl border border-border/70 bg-muted/20 p-3">
+        {aiPanel ?? <div className="rounded-2xl border border-border/70 bg-muted/20 p-3">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1007,7 +1009,7 @@ function MetadataPanel({
               Ask AI
             </Button>
           </div>
-        </div>
+        </div>}
 
         <div className="rounded-2xl border border-border/70 bg-muted/20 p-3">
           <div className="mb-3 flex items-center justify-between gap-3">

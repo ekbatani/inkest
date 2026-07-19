@@ -418,13 +418,23 @@ All of the following must be complete before announcing a public release:
     typecheck`, focused ESLint, and `bun.cmd run build` passed; the build retains
     the pre-existing attachment-export Turbopack NFT trace warning.
 
-- [todo] **P1-33 — Integrate AI into the right-side workflow.** Make the AI
+- [done] **P1-33 — Integrate AI into the right-side workflow.** Make the AI
   panel contextual to the open note/selection and support review before
   replace, append, or create operations; avoid disruptive popups.
   - Acceptance: every AI change shows a clear target and preview/diff, supports
     cancel, preserves the source until approval, and records a traceable event.
+  - Evidence: 2026-07-19 — moved the AI working flow into the lazy-loaded note
+    context panel while keeping the toolbar and command-menu triggers. Results
+    now show their original note or selection source beside the AI proposal,
+    label the target, and require an explicit append, replacement, or task
+    creation action; cancel leaves the note unchanged. Selection and full-note
+    replacement verify that the captured source has not changed before writing.
+    Existing `ai_events` records remain the traceable action/output audit.
+    `bun.cmd run typecheck`, focused ESLint for the AI panel and note editor,
+    and `bun.cmd run build` passed; the build retains the existing attachment
+    export Turbopack NFT trace warning.
 
-- [todo] **P1-34 — Complete AI task extraction and project planning.** Let the
+- [now] **P1-34 — Complete AI task extraction and project planning.** Let the
   user review destination (current project, new project, sub-project, or
   existing project), ownership, status, due dates, and editable planning
   instructions before saving.

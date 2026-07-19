@@ -73,15 +73,24 @@ type ActionId =
 type Props = {
   noteId: string;
   editorRef: React.RefObject<ReactCodeMirrorRef | null>;
+  variant?: "menu" | "sidebar";
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onClose?: () => void;
   initialAction?: ActionId;
+};
+
+type AiTarget = {
+  kind: "selection" | "note";
+  source: string;
+  from?: number;
+  to?: number;
 };
 
 type AiState =
   | { status: "idle" }
   | { status: "loading"; label: string }
-  | { status: "result"; output: string; action: ActionId }
+  | { status: "result"; output: string; action: ActionId; target: AiTarget }
   | { status: "tasks"; tasks: ExtractedTask[] }
   | { status: "error"; message: string; notConfigured?: boolean };
 
@@ -99,8 +108,10 @@ const SELECTION_ONLY_ACTIONS: ActionId[] = [
 export function AiPanel({
   noteId,
   editorRef,
+  variant = "menu",
   open,
   onOpenChange,
+  onClose,
   initialAction,
 }: Props) {
   const [state, setState] = React.useState<AiState>({ status: "idle" });
@@ -114,11 +125,32 @@ export function AiPanel({
   const [promptHint, setPromptHint] = React.useState("");
   const [insertingTasks, setInsertingTasks] = React.useState(false);
 
-  const getSelection = (): string | null => getSelectedEditorText(editorRef);
+  const getSelection = React.useCallback(
+    (): string | null => getSelectedEditorText(editorRef),
+    [editorRef],
+  );
+
+  const getTarget = React.useCallback((): AiTarget => {
+    const view = editorRef.current?.view;
+    const selection = view?.state.selection.main;
+    if (view && selection && selection.from !== selection.to) {
+      return {
+        kind: "selection",
+        source: view.state.sliceDoc(selection.from, selection.to),
+        from: selection.from,
+        to: selection.to,
+      };
+    }
+    return {
+      kind: "note",
+      source: view?.state.doc.toString() ?? "",
+    };
+  }, [editorRef]);
 
   const runAction = React.useCallback(async (
     action: ActionId,
     payload: Record<string, unknown>,
+    target = getTarget(),
   ) => {
     const label = ACTION_LABELS[action] ?? "Running AI...";
     setState({ status: "loading", label });
@@ -148,11 +180,11 @@ export function AiPanel({
         setState({ status: "tasks", tasks: data.tasks });
         return;
       }
-      setState({ status: "result", output: data.output, action });
+      setState({ status: "result", output: data.output, action, target });
     } catch {
       setState({ status: "error", message: "Network error." });
     }
-  }, [noteId]);
+  }, [getTarget, noteId]);
 
   const onPickAction = (action: ActionId) => {
     const sel = getSelection();
@@ -173,15 +205,15 @@ export function AiPanel({
       setPromptDialog({ action, needsLanguage: false, needsHint: true });
       return;
     }
-    void runAction(action, sel ? { selectedText: sel } : {});
+    void runAction(action, sel ? { selectedText: sel } : {}, getTarget());
   };
 
   const initialActionRun = React.useRef(false);
   React.useEffect(() => {
     if (!initialAction || initialActionRun.current) return;
     initialActionRun.current = true;
-    void runAction(initialAction, {});
-  }, [initialAction, runAction]);
+    void runAction(initialAction, {}, getTarget());
+  }, [getTarget, initialAction, runAction]);
 
   const submitPromptDialog = () => {
     if (!promptDialog) return;
@@ -192,10 +224,13 @@ export function AiPanel({
     if (promptDialog.needsHint) payload.promptHint = promptHint;
     setPromptDialog(null);
     setPromptHint("");
-    void runAction(promptDialog.action, payload);
+    void runAction(promptDialog.action, payload, getTarget());
   };
 
-  const close = () => setState({ status: "idle" });
+  const close = () => {
+    setState({ status: "idle" });
+    onClose?.();
+  };
 
   const onCopy = async () => {
     if (state.status !== "result") return;
@@ -212,18 +247,37 @@ export function AiPanel({
     close();
   };
 
+  const onAppend = () => {
+    if (state.status !== "result") return;
+    const view = editorRef.current?.view;
+    if (!view) return;
+    const from = view.state.doc.length;
+    const separator = from > 0 ? "\n\n" : "";
+    view.dispatch({
+      changes: { from, insert: `${separator}${state.output}\n` },
+      selection: { anchor: from + separator.length + state.output.length + 1 },
+    });
+    view.focus();
+    toast.success("AI output appended.");
+    close();
+  };
+
   const onReplace = () => {
     if (state.status !== "result") return;
     const view = editorRef.current?.view;
     if (!view) return;
-    const sel = view.state.selection.main;
-    if (sel.from === sel.to) {
-      toast.error("Select text in the editor to replace.");
+    if (state.target.kind !== "selection" || state.target.from === undefined || state.target.to === undefined) {
+      toast.error("This result was generated for the full note. Use Replace note instead.");
+      return;
+    }
+    const currentSource = view.state.sliceDoc(state.target.from, state.target.to);
+    if (currentSource !== state.target.source) {
+      toast.error("The source changed. Run the AI action again before replacing it.");
       return;
     }
     view.dispatch({
-      changes: { from: sel.from, to: sel.to, insert: state.output },
-      selection: { anchor: sel.from + state.output.length },
+      changes: { from: state.target.from, to: state.target.to, insert: state.output },
+      selection: { anchor: state.target.from + state.output.length },
     });
     toast.success("Selection replaced with AI output.");
     close();
@@ -231,6 +285,15 @@ export function AiPanel({
 
   const onReplaceNote = () => {
     if (state.status !== "result") return;
+    if (state.target.kind !== "note") {
+      toast.error("This result was generated for a selection. Use Replace selection instead.");
+      return;
+    }
+    const currentSource = editorRef.current?.view?.state.doc.toString();
+    if (currentSource !== state.target.source) {
+      toast.error("The note changed. Run the AI action again before replacing it.");
+      return;
+    }
     replaceEntireEditorContent(editorRef, state.output);
     toast.success("Note replaced with AI revision.");
     close();
@@ -265,6 +328,79 @@ export function AiPanel({
 
   return (
     <>
+      {variant === "sidebar" ? (
+        <section aria-label="AI assistance" className="rounded-2xl border border-violet-400/20 bg-violet-500/[0.04] p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Sparkles className="size-3.5 text-violet-400" /> AI assistance
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Choose an action for this open note, or select text first for selection-specific actions.
+              </p>
+            </div>
+            <Button variant="ghost" size="icon-xs" onClick={close} aria-label="Close AI assistance">
+              <X className="size-3.5" />
+            </Button>
+          </div>
+
+          {state.status === "idle" && (
+            <div className="mt-3 grid grid-cols-2 gap-1.5">
+              <Button variant="outline" size="xs" onClick={() => onPickAction("summarize")}><FileText /> Summarize</Button>
+              <Button variant="outline" size="xs" onClick={() => onPickAction("improve-writing")}><Wand2 /> Improve</Button>
+              <Button variant="outline" size="xs" onClick={() => onPickAction("extract-tasks")}><ListChecks /> Tasks</Button>
+              <Button variant="outline" size="xs" onClick={() => onPickAction("create-project-plan")}><FileText /> Plan</Button>
+              <Button variant="outline" size="xs" onClick={() => onPickAction("explain")}><HelpCircle /> Explain</Button>
+              <Button variant="outline" size="xs" onClick={() => onPickAction("translate")}><Languages /> Translate</Button>
+            </div>
+          )}
+
+          {state.status === "loading" && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border bg-background/80 p-3 text-xs text-muted-foreground">
+              <Loader2 className="size-4 animate-spin text-violet-400" /> {state.label}
+            </div>
+          )}
+
+          {state.status === "error" && (
+            <div className="mt-3 rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-xs">
+              <p>{state.message}</p>
+              <div className="mt-3 flex justify-end gap-2">
+                {state.notConfigured && <Button size="xs" nativeButton={false} render={<Link href="/help#ai" />}>Set up</Button>}
+                <Button variant="outline" size="xs" onClick={() => setState({ status: "idle" })}>Back</Button>
+              </div>
+            </div>
+          )}
+
+          {state.status === "result" && (
+            <div className="mt-3 space-y-2">
+              <div className="rounded-xl border bg-background/80 p-2.5 text-xs">
+                <p className="font-medium text-foreground">Review before applying</p>
+                <p className="mt-1 text-muted-foreground">
+                  Target: {state.target.kind === "selection" ? "the selected text" : "the entire open note"}. Your source is unchanged.
+                </p>
+              </div>
+              <div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto rounded-xl border bg-background/80 p-2.5 text-xs">
+                <div><p className="mb-1 font-medium text-muted-foreground">Current source</p><pre className="max-h-24 overflow-auto whitespace-pre-wrap font-sans text-muted-foreground">{state.target.source}</pre></div>
+                <div><p className="mb-1 font-medium text-violet-500">AI proposal</p><MarkdownPreview content={state.output} /></div>
+              </div>
+              <div className="flex flex-wrap justify-end gap-1.5">
+                <Button variant="outline" size="xs" onClick={onCopy}><Copy /> Copy</Button>
+                {state.target.kind === "selection" ? <Button variant="outline" size="xs" onClick={onReplace}><Replace /> Replace</Button> : <Button variant="outline" size="xs" onClick={onReplaceNote}><Replace /> Replace note</Button>}
+                <Button size="xs" onClick={onAppend}><Plus /> Append</Button>
+                <Button variant="ghost" size="xs" onClick={() => setState({ status: "idle" })}>Cancel</Button>
+              </div>
+            </div>
+          )}
+
+          {state.status === "tasks" && (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs text-muted-foreground">Review the extracted tasks before creating them for this note.</p>
+              <ul className="max-h-40 space-y-1 overflow-y-auto rounded-xl border bg-background/80 p-2 text-xs">{state.tasks.map((task, index) => <li key={`${task.title}-${index}`}>{task.title}</li>)}</ul>
+              <div className="flex flex-wrap justify-end gap-1.5"><Button variant="outline" size="xs" onClick={() => setState({ status: "idle" })}>Cancel</Button><Button size="xs" onClick={onInsertTasks} disabled={insertingTasks}>{insertingTasks ? <Loader2 className="animate-spin" /> : <Plus />} Create tasks</Button></div>
+            </div>
+          )}
+        </section>
+      ) : (
       <DropdownMenu open={open} onOpenChange={onOpenChange}>
         <DropdownMenuTrigger
           render={
@@ -320,6 +456,7 @@ export function AiPanel({
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
+      )}
 
       <Dialog
         open={Boolean(promptDialog)}
@@ -395,9 +532,9 @@ export function AiPanel({
 
       <Dialog
         open={
-          state.status === "result" ||
+          variant === "menu" && (state.status === "result" ||
           state.status === "error" ||
-          state.status === "tasks"
+          state.status === "tasks")
         }
         onOpenChange={(open) => !open && close()}
       >
@@ -544,7 +681,7 @@ export function AiPanel({
         </DialogContent>
       </Dialog>
 
-      {state.status === "loading" && (
+      {variant === "menu" && state.status === "loading" && (
         <div className="surface-card fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 shadow-lg">
           <span className="relative">
             <AiIcon />
