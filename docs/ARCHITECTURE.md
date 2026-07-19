@@ -71,6 +71,13 @@ The first AI-panel use shows a concise sent-context, review, cost, and limit
 hint. A user can dismiss it, restore it in Settings, or revisit the maintained
 [AI privacy help](/help#ai-privacy) at any time.
 
+Inkest does not ship agentic execution. The approved boundary for evaluating a
+future, read-only note-to-plan beta is documented in
+[Agentic workflow boundary](agentic-workflow-boundary.md): it prohibits tools,
+background work, autonomous side effects, uncontrolled loops, and automatic
+retries, and requires explicit confirmation, hard cost/time/token limits,
+cancellation, and a separate audit record before any implementation.
+
 The server sends an OpenAI-compatible provider a system prompt containing the
 action goal, JSON response schema, and action rules, plus one user message that
 contains the following JSON context. Empty optional values are omitted. The

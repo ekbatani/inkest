@@ -459,14 +459,23 @@ All of the following must be complete before announcing a public release:
     disclosure; hints can be dismissed and revisited.
   - Evidence: 2026-07-19 — added a user-scoped first-use AI-panel guide that explains action context, review-before-apply behavior, provider costs, and server-enforced input/output limits before shortcut-triggered AI actions run. Dismissal is persisted in user settings and Settings can restore the guide; the new `/help#ai-privacy` disclosure covers sent data, custom keys, privacy, review controls, costs, and limits. Updated `docs/ARCHITECTURE.md`. `bun.cmd run typecheck`, focused ESLint, `git diff --check`, and `bun.cmd run build` passed; the build retains the pre-existing attachment-export Turbopack NFT trace warning.
 
-- [now] **P2-36 — Bound agentic workflows before implementation.** Define
+- [done] **P2-36 — Bound agentic workflows before implementation.** Define
   permitted multi-step actions, maximum iterations/cost/time, confirmation
   points, cancellation, audit records, and failure recovery; validate demand
   with beta users first.
   - Acceptance: an approved design explicitly prevents autonomous external
     side effects and uncontrolled loops; no agentic execution ships before it.
+  - Evidence: 2026-07-19 — approved the read-only selected-note-to-plan beta
+    boundary in `docs/agentic-workflow-boundary.md`. It permits no tools,
+    browsing, background work, recursion, autonomous writes, or external
+    effects; caps a run at three calls, one revision, 90 seconds, 24,000 input
+    tokens, 3,600 output tokens, and US$0.25 with known pricing only. It
+    requires scope-specific confirmation, cancellation, an append-only
+    privacy-safe audit design, no automatic retries, and consented beta demand
+    thresholds before any executor can ship. Linked the boundary from
+    `docs/ARCHITECTURE.md` and `docs/README.md`. `git diff --check` passed.
 
-- [todo] **P2-37 — Research semantic search and note-aware chat.** Compare
+- [now] **P2-37 — Research semantic search and note-aware chat.** Compare
   local/self-hosted and hosted architectures, privacy implications, indexing
   cost, and quality on real opt-in notes.
   - Acceptance: a written go/no-go decision and a small technical proposal
