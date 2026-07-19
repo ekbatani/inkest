@@ -371,11 +371,17 @@ All of the following must be complete before announcing a public release:
 
 ## Phase 3 — AI that is explicit, safe, and useful
 
-- [todo] **P0-30 — Audit the AI data and configuration contract.** Map every
+- [done] **P0-30 — Audit the AI data and configuration contract.** Map every
   action's input, provider selection, prompt, token limit, log, failure mode,
   and persistence behavior; remove undocumented fallbacks.
   - Acceptance: `docs/ARCHITECTURE.md` accurately states what selected note
     data leaves the deployment and which configuration wins in every case.
+  - Evidence: 2026-07-19 — documented every shipped AI action's outbound
+    context, prompt envelope, JSON-mode temperature/token behavior, result
+    persistence, AI-event fields, Telegram delivery, and failure behavior in
+    `docs/ARCHITECTURE.md`. Documented per-field personal/instance/built-in
+    provider precedence and unavailable-provider behavior; aligned `README.md`.
+    `bun.cmd run typecheck` and `git diff --check` passed.
 
 - [todo] **P0-31 — Encrypt stored user provider credentials and secure their
   lifecycle.** Review existing secret storage, add migration/rotation/deletion

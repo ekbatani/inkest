@@ -63,12 +63,71 @@ Notes are stored as Markdown in `notes.content_md`. Markdown drives preview,
 Mermaid fences, checklist tasks, and exports, so transformations must preserve
 the user's source whenever possible.
 
-AI action definitions live in [specs.ts](../src/server/ai/specs.ts). Each action
-declares the permitted note/selection context and a Zod response schema.
+AI action definitions live in [specs.ts](../src/server/ai/specs.ts). Every
+action is initiated explicitly from the authenticated editor or dashboard; there
+is no background AI processing and ordinary editing, previewing, searching,
+spellcheck, export, and calendar work do not send note text to a provider.
+
+The server sends an OpenAI-compatible provider a system prompt containing the
+action goal, JSON response schema, and action rules, plus one user message that
+contains the following JSON context. Empty optional values are omitted. The
+provider receives the complete context listed below, even where the action rule
+instructs it to focus on a selection.
+
+| Action | Context sent to the provider | Result and user-controlled persistence |
+| --- | --- | --- |
+| Summarize; improve writing; extract tasks | Note title, full note Markdown, and optional selected text | Markdown or structured task suggestions. The editor only inserts/replaces Markdown after the user chooses an action; extracted tasks remain suggestions. |
+| Create project plan | Note title, full note Markdown, and optional planning hint | Markdown plan shown for review; the user may insert it. |
+| Generate Mermaid | Note title, full note Markdown, optional selected text, and optional guidance | Mermaid Markdown shown for review; the user may insert it. |
+| Explain; translate | Note title, selected text, and, for translation, target language | Markdown shown for review; the user may replace the selection or insert it. |
+| Comment selection | Note title, full note Markdown, selected text, and optional guidance | An inline `inkest-comment:` annotation shown for review; the user chooses whether to insert it. |
+| Apply comments | Note title, full note Markdown containing inline comment annotations, and optional guidance | Revised complete Markdown shown for review; the user chooses whether to replace the note. |
+| Create note from prompt | Dashboard prompt only; no existing note data | A title and Markdown draft are immediately saved as a new note after a successful request. |
+
+All current actions use JSON-mode requests with temperature `0.4`. The app does
+not currently send an explicit input or output token limit: limits, billing, and
+retention at the provider are governed by the selected model/provider account.
+The separate `runTextAction` helper uses temperature `0.7`, but no shipped
+action currently calls it. New actions must declare an explicit limit before
+using that helper or adding provider parameters.
+
+Successful requests write an `ai_events` row with the acting user, optional
+note id, action id, SHA-256 hash of the action's primary input, provider, model,
+and the generated structured output. The raw input is not retained in this log,
+but generated output is. If the user has AI-result Telegram notifications
+enabled, the output, note title, action, provider, and model are also sent to
+their configured Telegram chat. Failed and invalid-JSON requests return an
+error to the caller and do not create an AI-event row; provider error text is
+returned without logging provider credentials.
+
+### AI configuration precedence
+
+Provider configuration resolves for the authenticated user only. A personal
+provider setting chooses the provider first; otherwise `AI_PROVIDER` chooses
+the instance provider, falling back to `openai` when that environment variable
+is absent or invalid. For the chosen provider, each field resolves separately:
+
+1. Personal API key, base URL, and model, when non-empty.
+2. The selected provider's instance `*_API_KEY`, `*_BASE_URL`, and `*_MODEL`.
+   `openai` and `custom` share `OPENAI_*`; OpenRouter, opencode Zen, and Ollama
+   use their respective prefixes.
+3. The built-in base URL and model in [providers.ts](../src/lib/ai/providers.ts).
+
+A blank personal API key therefore intentionally uses the matching instance key;
+it does not clear it. Ollama is the only current key-optional provider and uses
+an internal placeholder only to satisfy the OpenAI-compatible client. If no key
+is available for a key-required provider, requests return the actionable
+not-configured response (HTTP 503 from the AI route); they never switch to a
+different provider or key. Personal API keys are encrypted in the user settings
+record, decrypted only on the server for provider resolution, and never returned
+by the settings action. Key rotation and lifecycle hardening are tracked by
+P0-31.
+
 Text actions return Markdown; task, project-plan, and Mermaid actions use
 structured output before the application renders or inserts it. Add a new action
-by adding its schema/specification, reusing the shared prompt and parser, then
-exposing it through the existing authenticated AI route and review UI.
+by adding its schema/specification, documenting its outbound context and
+persistence here, reusing the shared prompt and parser, then exposing it through
+the existing authenticated AI route and review UI.
 
 ## Integration rules
 

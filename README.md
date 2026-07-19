@@ -95,7 +95,13 @@ After signing in, **Settings → AI setup** can store a personal provider, model
 base URL, and encrypted API key. Personal settings override the selected
 instance environment values only for that account; a blank personal key uses
 the instance default. The settings page shows which source is active without
-revealing the saved key.
+revealing the saved key. The personal provider selects which instance
+`*_API_KEY`, `*_BASE_URL`, and `*_MODEL` fallback group applies; each non-empty
+personal field then overrides only that field. A blank personal key therefore
+uses the selected provider's instance key. If the selected provider needs a key
+and neither setting provides one, AI actions remain unavailable rather than
+switching providers. See [Architecture](docs/ARCHITECTURE.md#ai-configuration-precedence)
+for the full data and configuration contract.
 | MinIO | `MINIO_ENDPOINT`, `MINIO_BUCKET`, `MINIO_REGION`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` |
 
 `DATABASE_URL` defaults to `file:./data/local.db`; use a Turso URL with
