@@ -54,6 +54,15 @@ different account cannot read it. For attachments and integrations, also test
 failure states (wrong owner, invalid file, missing provider configuration, or
 expired authorization).
 
+## Diagnostics and error monitoring
+
+Unexpected authenticated application errors produce structured, privacy-safe
+stderr events and can optionally notify an operator-owned webhook. Configure
+retention in the log collector and verify both delivery and failed-delivery
+recovery as documented in [Privacy-safe diagnostics](diagnostics.md). Do not
+send application logs to a provider unless its retention, access controls, and
+data-processing terms meet the deployment's privacy requirements.
+
 ## Performance baseline
 
 The last recorded baseline is **2026-07-03**, using a production build, local

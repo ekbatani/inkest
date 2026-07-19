@@ -13,6 +13,7 @@ does not keep implementation diaries, duplicate exports, or agent prompts.
 | [Operations](OPERATIONS.md) | Configuration, deployment, verification, and performance work |
 | [Docker deployment and publishing](docker-publishing.md) | Clean-host Compose deployment, Docker Hub release gate, tags, attestations, and updates |
 | [Backup and restore](backup-restore.md) | Local recovery procedure, secret boundary, and portable-export verification |
+| [Privacy-safe diagnostics](diagnostics.md) | Self-hosted error monitoring, retention, alert webhook, and verification |
 | [Beta feedback](beta-feedback.md) | Public beta bug reporting, privacy rules, severity, and triage cadence |
 
 The repository [README](../README.md) is the canonical quick-start and complete

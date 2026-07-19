@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { reportClientError } from "@/lib/client-diagnostics";
 
 export default function AppError({
   error,
@@ -12,7 +13,7 @@ export default function AppError({
   unstable_retry: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    reportClientError("app", error);
   }, [error]);
 
   return (

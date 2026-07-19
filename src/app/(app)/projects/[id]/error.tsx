@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { AlertTriangle, ArrowLeft, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { reportClientError } from "@/lib/client-diagnostics";
 
 export default function ProjectError({
   error,
@@ -13,7 +14,7 @@ export default function ProjectError({
   unstable_retry: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    reportClientError("project", error);
   }, [error]);
 
   return (

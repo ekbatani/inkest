@@ -9,6 +9,7 @@
     "backup:local": "bun scripts/backup-local.mjs",
     "restore:local": "bun scripts/restore-local.mjs",
     "verify:backup": "bun scripts/backup-restore-drill.mjs && bun scripts/export-portability-drill.mjs",
+    "verify:diagnostics": "bun scripts/verify-diagnostics.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",

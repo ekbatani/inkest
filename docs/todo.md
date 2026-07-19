@@ -593,13 +593,25 @@ All of the following must be complete before announcing a public release:
     disposable authenticated browser profile, attach only the aggregate
     measurements and retained-constructor findings, then reopen this task.
 
-- [now] **P1-45 — Establish error monitoring and privacy-safe diagnostics.**
+- [done] **P1-45 — Establish error monitoring and privacy-safe diagnostics.**
   Select a self-host-compatible monitoring approach, redact note content and
   secrets, define retention, and verify alert paths.
   - Acceptance: a deliberate test error is observable with useful metadata but
     no note content, credentials, attachment paths, or tokens.
+  - Evidence: 2026-07-19 — added authenticated App Router error-boundary
+    diagnostics with structured stderr as the self-hosted baseline and an
+    optional HTTPS operator-webhook alert path. Reports are restricted to a
+    fixed surface, optional sanitized Next.js digest, timestamp, and retention
+    setting; they exclude note content, titles, user IDs, URLs, attachment
+    paths, messages, stacks, cookies, and credentials. Added documented
+    30-day-default retention and deployment/failed-delivery verification
+    procedure in `docs/diagnostics.md`. `bun.cmd run verify:diagnostics`
+    passed a synthetic error through both payload redaction and a mocked alert
+    receiver; `bun.cmd run typecheck`, focused ESLint, `bun.cmd run build`, and
+    `git diff --check` passed. The build retains only the pre-existing
+    attachment-export Turbopack NFT trace warning.
 
-- [discovery] **P1-46 — Make an end-to-end encryption decision.** Threat-model
+- [now] **P1-46 — Make an end-to-end encryption decision.** Threat-model
   an optional vault: key ownership/recovery, metadata exposure, browser crypto,
   search, attachments, sharing, backups, multi-device sync, and incompatibility
   with server-side AI. Compare against the current encryption-at-rest approach.
