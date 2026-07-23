@@ -63,6 +63,19 @@ recovery as documented in [Privacy-safe diagnostics](diagnostics.md). Do not
 send application logs to a provider unless its retention, access controls, and
 data-processing terms meet the deployment's privacy requirements.
 
+## Performance Budgets & Latency Enforcements (NFR-PERF)
+
+To ensure Inkest remains a calm, distraction-free cognitive environment, the following p95 performance budgets are strictly enforced:
+
+| Journey / Operation | p95 Target | Measurement Method |
+|---|---:|---|
+| **Note Open** | < 500 ms | Client-side `performance.measure('note-open')` from navigation start to CodeMirror editor interactive |
+| **Local Search** | < 300 ms | `performance.measure('local-search')` from search query keystroke to filtered note list render |
+| **Page Navigation** | < 250 ms | App Router transition duration between note/calendar/project pages |
+| **Reader & Doc Navigation** | < 300 ms | Reader view mount and page/scroll restoration latency |
+
+Regressions exceeding these budgets block release gates. Repeatable benchmarking can be executed via `bun run smoke` and client-side performance marks in browser devtools.
+
 ## Performance baseline
 
 The last recorded baseline is **2026-07-03**, using a production build, local

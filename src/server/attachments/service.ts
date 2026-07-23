@@ -38,6 +38,8 @@ const FALLBACK_MIME_TYPES: Record<string, string> = {
   ".gif": "image/gif",
   ".svg": "image/svg+xml",
   ".pdf": "application/pdf",
+  ".txt": "text/plain",
+  ".md": "text/markdown",
   ".epub": "application/epub+zip",
   ".doc": "application/msword",
   ".docx":

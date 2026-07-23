@@ -40,6 +40,7 @@ export function MermaidRenderer({ code }: Props) {
     const id = `mermaid-${++idCounter}`;
 
     (async () => {
+      setZoom(1);
       setLoading(true);
       setError(null);
       try {
@@ -73,9 +74,7 @@ export function MermaidRenderer({ code }: Props) {
     };
   }, [code]);
 
-  React.useEffect(() => {
-    setZoom(1);
-  }, [code]);
+
 
   const zoomPercent = Math.round(zoom * 100);
   const canZoomOut = zoom > MIN_ZOOM;

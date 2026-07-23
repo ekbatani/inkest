@@ -17,30 +17,17 @@ export function SidebarToggleWrapper({
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = React.useState(false);
-  const [sidebarWidth, setSidebarWidth] = React.useState(SIDEBAR_DEFAULT_WIDTH);
+  const [sidebarWidth, setSidebarWidth] = React.useState(() => {
+    if (typeof window === "undefined") return SIDEBAR_DEFAULT_WIDTH;
+    const savedWidth = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+    if (!savedWidth) return SIDEBAR_DEFAULT_WIDTH;
+    const parsedWidth = Number.parseInt(savedWidth, 10);
+    if (Number.isNaN(parsedWidth)) return SIDEBAR_DEFAULT_WIDTH;
+    return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, parsedWidth));
+  });
   const dragStateRef = React.useRef<{
     cleanup: () => void;
   } | null>(null);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const savedWidth = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    if (!savedWidth) {
-      return;
-    }
-
-    const parsedWidth = Number.parseInt(savedWidth, 10);
-    if (Number.isNaN(parsedWidth)) {
-      return;
-    }
-
-    setSidebarWidth(
-      Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, parsedWidth)),
-    );
-  }, []);
 
   React.useEffect(() => {
     const handler = () => setCollapsed((v) => !v);

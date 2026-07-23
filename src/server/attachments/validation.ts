@@ -51,6 +51,9 @@ export function hasExpectedFileSignature(mimeType: string, data: Buffer): boolea
       return /^\s*(?:<\?xml[^>]*>\s*)?<svg(?:\s|>)/i.test(data.subarray(0, 4096).toString("utf8"));
     case "application/pdf":
       return data.subarray(0, 5).toString("ascii") === "%PDF-";
+    case "text/plain":
+    case "text/markdown":
+      return !data.subarray(0, 512).includes(0); // Ensure non-binary UTF-8 text
     case "application/epub+zip":
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
       return data.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
