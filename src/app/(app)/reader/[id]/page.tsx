@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getDocumentById, getDocumentContent } from "@/server/documents/service";
+import { listAnnotationsForDocument } from "@/server/documents/annotations-service";
 import { DocumentReaderView } from "@/components/reader/document-reader-view";
 
 export async function generateMetadata({
@@ -25,8 +26,18 @@ export default async function DocumentPage({
   const doc = await getDocumentById(id);
   if (!doc) notFound();
 
-  const contentResult = await getDocumentContent(doc.id);
+  const [contentResult, initialAnnotations] = await Promise.all([
+    getDocumentContent(doc.id),
+    listAnnotationsForDocument(doc.id),
+  ]);
+
   const content = "content" in contentResult ? contentResult.content : "";
 
-  return <DocumentReaderView doc={doc} content={content} />;
+  return (
+    <DocumentReaderView
+      doc={doc}
+      content={content}
+      initialAnnotations={initialAnnotations}
+    />
+  );
 }

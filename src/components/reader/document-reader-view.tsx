@@ -6,17 +6,33 @@ import {
   ArrowLeft,
   Columns,
   Rows,
+  Highlighter,
+  MessageSquare,
+  FilePlus,
+  Trash2,
+  Bookmark,
+  Check,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { Document as DocType } from "@/server/db/schema";
+import type { Document as DocType, Annotation } from "@/server/db/schema";
+import {
+  createAnnotationAction,
+  listAnnotationsAction,
+  deleteAnnotationAction,
+  extractAnnotationAction,
+} from "@/server/documents/annotations-actions";
+import { toast } from "sonner";
 
 export function DocumentReaderView({
   doc,
   content,
+  initialAnnotations = [],
 }: {
   doc: DocType;
   content: string | Buffer;
+  initialAnnotations?: Annotation[];
 }) {
   // Persisted typography and view mode settings
   const [fontFamily, setFontFamily] = React.useState<"sans" | "serif" | "mono">(() => {
@@ -38,6 +54,14 @@ export function DocumentReaderView({
   });
 
   const [progressPercent, setProgressPercent] = React.useState<number>(0);
+  const [annotations, setAnnotations] = React.useState<Annotation[]>(initialAnnotations);
+  const [showAnnotationsDrawer, setShowAnnotationsDrawer] = React.useState(false);
+
+  // Text selection floating popup state
+  const [selectedText, setSelectedText] = React.useState<string>("");
+  const [popupPos, setPopupPos] = React.useState<{ top: number; left: number } | null>(null);
+  const [commentInput, setCommentInput] = React.useState<string>("");
+  const [showCommentField, setShowCommentField] = React.useState(false);
 
   const textContent = React.useMemo(() => {
     if (typeof content === "string") return content;
@@ -71,8 +95,79 @@ export function DocumentReaderView({
     localStorage.setItem(storageKey, String(scrollPos));
   };
 
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      setSelectedText("");
+      setPopupPos(null);
+      setShowCommentField(false);
+      return;
+    }
+
+    const text = selection.toString().trim();
+    if (text.length > 2) {
+      setSelectedText(text);
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      setPopupPos({
+        top: Math.max(10, rect.top - 50),
+        left: rect.left + rect.width / 2,
+      });
+    }
+  };
+
+  const handleAddHighlight = async (color = "yellow") => {
+    if (!selectedText) return;
+    try {
+      const newAnn = await createAnnotationAction({
+        documentId: doc.id,
+        highlightText: selectedText,
+        comment: commentInput.trim() || undefined,
+        color,
+      });
+      if (newAnn) {
+        setAnnotations((prev) => [newAnn, ...prev]);
+        toast.success("Highlight saved.");
+      }
+    } catch {
+      toast.error("Failed to save highlight.");
+    } finally {
+      setSelectedText("");
+      setPopupPos(null);
+      setCommentInput("");
+      setShowCommentField(false);
+    }
+  };
+
+  const handleExtractToNote = async (ann: Annotation) => {
+    try {
+      const result = await extractAnnotationAction({
+        annotationId: ann.id,
+        documentTitle: doc.title,
+      });
+      if (result) {
+        toast.success(`Extracted to note: "${result.note.title}"`);
+        setAnnotations((prev) =>
+          prev.map((a) => (a.id === ann.id ? { ...a, noteId: result.note.id } : a)),
+        );
+      }
+    } catch {
+      toast.error("Failed to extract note.");
+    }
+  };
+
+  const handleDeleteAnnotation = async (annId: string) => {
+    try {
+      await deleteAnnotationAction(annId, doc.id);
+      setAnnotations((prev) => prev.filter((a) => a.id !== annId));
+      toast.success("Annotation removed.");
+    } catch {
+      toast.error("Failed to delete annotation.");
+    }
+  };
+
   return (
-    <div className="flex h-full w-full flex-col bg-background">
+    <div className="flex h-full w-full flex-col bg-background relative">
       {/* Reader Topbar */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b px-4 sm:px-6">
         <div className="flex items-center gap-3">
@@ -94,6 +189,16 @@ export function DocumentReaderView({
           <Badge variant="outline" className="font-mono text-[11px] gap-1">
             <span>{progressPercent}% read</span>
           </Badge>
+
+          <Button
+            variant={showAnnotationsDrawer ? "default" : "outline"}
+            size="xs"
+            onClick={() => setShowAnnotationsDrawer(!showAnnotationsDrawer)}
+            className="gap-1.5"
+          >
+            <Bookmark className="size-3.5" />
+            Annotations ({annotations.length})
+          </Button>
 
           {/* Typography Controls */}
           <div className="flex items-center rounded-lg border p-1 bg-muted/40 gap-1 text-xs">
@@ -161,35 +266,162 @@ export function DocumentReaderView({
         />
       </div>
 
-      {/* Reader Content Body */}
-      <main
-        ref={containerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-6 sm:p-12"
-      >
-        <div
-          className={`mx-auto max-w-3xl rounded-xl border bg-card p-8 sm:p-12 shadow-sm ${
-            fontFamily === "serif"
-              ? "font-serif"
-              : fontFamily === "mono"
-                ? "font-mono"
-                : "font-sans"
-          }`}
-          style={{ fontSize: `${fontSize}px`, lineHeight: 1.7 }}
+      {/* Main Container with Optional Annotations Sidebar */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Reader Content Body */}
+        <main
+          ref={containerRef}
+          onScroll={handleScroll}
+          onMouseUp={handleTextSelection}
+          className="flex-1 overflow-y-auto p-6 sm:p-12"
         >
-          {doc.fileType === "pdf" ? (
-            <iframe
-              src={`/api/attachments/${doc.attachmentId}`}
-              className="h-[75vh] w-full rounded-lg border-0"
-              title={doc.title}
+          <div
+            className={`mx-auto max-w-3xl rounded-xl border bg-card p-8 sm:p-12 shadow-sm ${
+              fontFamily === "serif"
+                ? "font-serif"
+                : fontFamily === "mono"
+                  ? "font-mono"
+                  : "font-sans"
+            }`}
+            style={{ fontSize: `${fontSize}px`, lineHeight: 1.7 }}
+          >
+            {doc.fileType === "pdf" ? (
+              <iframe
+                src={`/api/attachments/${doc.attachmentId}`}
+                className="h-[75vh] w-full rounded-lg border-0"
+                title={doc.title}
+              />
+            ) : (
+              <article className="prose dark:prose-invert max-w-none whitespace-pre-wrap selection:bg-amber-200 dark:selection:bg-amber-800">
+                {textContent}
+              </article>
+            )}
+          </div>
+        </main>
+
+        {/* Annotations Margin Drawer */}
+        {showAnnotationsDrawer && (
+          <aside className="w-80 border-l bg-card p-4 overflow-y-auto space-y-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Document Annotations ({annotations.length})
+            </h3>
+
+            {annotations.length === 0 ? (
+              <div className="py-8 text-center text-xs text-muted-foreground border border-dashed rounded-lg p-4">
+                Highlight text inside the document to create persistent annotations and extract notes.
+              </div>
+            ) : (
+              annotations.map((ann) => (
+                <div
+                  key={ann.id}
+                  className="rounded-lg border bg-background p-3 space-y-2 text-xs shadow-2xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-[10px] uppercase text-amber-600 dark:text-amber-400">
+                      {ann.color} Highlight
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => void handleDeleteAnnotation(ann.id)}
+                    >
+                      <Trash2 className="size-3 text-destructive" />
+                    </Button>
+                  </div>
+
+                  {ann.highlightText && (
+                    <blockquote className="border-l-2 border-amber-400 pl-2 italic text-muted-foreground">
+                      "{ann.highlightText}"
+                    </blockquote>
+                  )}
+
+                  {ann.comment && (
+                    <p className="font-medium text-foreground">{ann.comment}</p>
+                  )}
+
+                  <div className="pt-2 flex justify-end">
+                    {ann.noteId ? (
+                      <Link
+                        href={`/notes/${ann.noteId}`}
+                        className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Check className="size-3" /> View Extract Note
+                      </Link>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => void handleExtractToNote(ann)}
+                        className="gap-1 text-[11px]"
+                      >
+                        <FilePlus className="size-3" /> Extract to Note
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </aside>
+        )}
+      </div>
+
+      {/* Text Selection Floating Popup Toolbar */}
+      {popupPos && selectedText && (
+        <div
+          className="fixed z-50 -translate-x-1/2 rounded-xl border bg-popover p-2 shadow-xl flex flex-col gap-2 animate-in fade-in zoom-in-95"
+          style={{ top: `${popupPos.top}px`, left: `${popupPos.left}px` }}
+        >
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => void handleAddHighlight("yellow")}
+              className="size-6 rounded-full bg-amber-400 hover:scale-110 transition-transform"
+              title="Yellow Highlight"
             />
-          ) : (
-            <article className="prose dark:prose-invert max-w-none whitespace-pre-wrap">
-              {textContent}
-            </article>
+            <button
+              onClick={() => void handleAddHighlight("green")}
+              className="size-6 rounded-full bg-emerald-400 hover:scale-110 transition-transform"
+              title="Green Highlight"
+            />
+            <button
+              onClick={() => void handleAddHighlight("blue")}
+              className="size-6 rounded-full bg-sky-400 hover:scale-110 transition-transform"
+              title="Blue Highlight"
+            />
+            <button
+              onClick={() => void handleAddHighlight("pink")}
+              className="size-6 rounded-full bg-pink-400 hover:scale-110 transition-transform"
+              title="Pink Highlight"
+            />
+
+            <div className="h-4 w-px bg-border mx-1" />
+
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => setShowCommentField(!showCommentField)}
+              className="gap-1 text-xs"
+            >
+              <MessageSquare className="size-3.5" /> Note
+            </Button>
+          </div>
+
+          {showCommentField && (
+            <div className="flex items-center gap-2 pt-1 border-t">
+              <input
+                type="text"
+                value={commentInput}
+                onChange={(e) => setCommentInput(e.target.value)}
+                placeholder="Add margin note…"
+                className="h-7 w-48 rounded border bg-background px-2 text-xs outline-none"
+                autoFocus
+              />
+              <Button size="xs" onClick={() => void handleAddHighlight("yellow")}>
+                Save
+              </Button>
+            </div>
           )}
         </div>
-      </main>
+      )}
     </div>
   );
 }
