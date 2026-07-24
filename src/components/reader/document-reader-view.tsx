@@ -6,20 +6,17 @@ import {
   ArrowLeft,
   Columns,
   Rows,
-  Highlighter,
   MessageSquare,
   FilePlus,
   Trash2,
   Bookmark,
   Check,
-  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Document as DocType, Annotation } from "@/server/db/schema";
 import {
   createAnnotationAction,
-  listAnnotationsAction,
   deleteAnnotationAction,
   extractAnnotationAction,
 } from "@/server/documents/annotations-actions";
@@ -331,7 +328,7 @@ export function DocumentReaderView({
 
                   {ann.highlightText && (
                     <blockquote className="border-l-2 border-amber-400 pl-2 italic text-muted-foreground">
-                      "{ann.highlightText}"
+                      &ldquo;{ann.highlightText}&rdquo;
                     </blockquote>
                   )}
 

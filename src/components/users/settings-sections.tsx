@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { Sparkles } from "lucide-react";
 import {
   AI_PROVIDERS,
   getAiProviderDefinition,
@@ -128,16 +129,33 @@ export function ProfileSection({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-muted-foreground">Name</Label>
-          <Input
-            value={profileName}
-            onChange={(e) => setProfileName(e.target.value)}
-            placeholder="Your name"
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              value={profileName}
+              onChange={(e) => setProfileName(e.target.value)}
+              placeholder="Your name"
+            />
+            <Button size="sm" onClick={saveProfile} disabled={savingProfile}>
+              Save
+            </Button>
+          </div>
         </div>
       </div>
-      <div>
-        <Button size="sm" onClick={saveProfile} disabled={savingProfile}>
-          Save profile
+      <div className="flex items-center justify-between gap-3 border-t pt-4">
+        <div>
+          <h3 className="text-xs font-semibold">Profile Setup Wizard</h3>
+          <p className="text-[11px] text-muted-foreground">
+            Revisit the full profile setup wizard to update your workspace identity, avatar, and themes.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          nativeButton={false}
+          render={<Link href="/onboarding" />}
+          className="gap-1.5 shrink-0"
+        >
+          <Sparkles className="size-3.5 text-primary" /> Setup Wizard
         </Button>
       </div>
 
