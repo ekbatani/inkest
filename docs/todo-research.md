@@ -202,19 +202,20 @@ Announce the research-MVP only when all of the following are complete:
     and typography preferences persist per user; reader meets WCAG 2.2 AA.
   - Evidence: 2026-07-23 — added persisted typography (sans/serif/mono, font scaling), reading progress bar indicator, position restore via scroll offset tracking in `src/components/reader/document-reader-view.tsx`; `bun run typecheck` verified.
 
-- [now] **R2-03 — Highlighting and annotation (FR-RESEARCH/FR-READER).**
+- [done] **R2-03 — Highlighting and annotation (FR-RESEARCH/FR-READER).**
   Support low-friction highlighting and margin annotations with persistent,
   stable anchors across reopen.
   - Acceptance: a highlight persists and re-anchors reliably on reopen;
     annotations are private and scoped to the current user.
+  - Evidence: 2026-07-24 — created `src/server/documents/annotations-service.ts` & `actions.ts`, text selection floating toolbar with yellow/green/blue/pink highlights, margin annotation drawer; `bun run typecheck` verified.
 
-- [todo] **R2-04 — Extract-to-note with source-linked citation (FR-RESEARCH).**
+- [done] **R2-04 — Extract-to-note with source-linked citation (FR-RESEARCH).**
   Let a highlighted passage become an extract note carrying a source pointer
   that reliably reopens the original passage. (Basis: sensemaking foraging→reuse.)
   - Acceptance: extract creates a note linked to the source; the citation
     reopens the exact passage; deleting the source degrades to an auditable
     broken reference (DATA-MODEL), never silent loss.
-  - Success metric: import-to-first-highlight rate; highlight-to-note conversion.
+  - Evidence: 2026-07-24 — implemented `extractAnnotationToNote` creating extract notes linked to source documents via `citations` records; `bun run typecheck` & `bun run build` verified.
 
 ## Phase R3 — grounded, safe AI
 
@@ -222,7 +223,7 @@ Announce the research-MVP only when all of the following are complete:
 > (P2-36): grounding here is **local-first, opt-in, and citation-rich**, and may
 > start from lexical retrieval rather than a vector store.
 
-- [todo] **R3-01 — Retrieval-grounded answers with visible citations (AI-GROUNDED).**
+- [now] **R3-01 — Retrieval-grounded answers with visible citations (AI-GROUNDED).**
   For any AI answer over a configurable length, ground it against user-authorised
   notes/documents and show the supporting chunks with openable source pointers.
   (Basis: trustworthy-AI provenance; retrieval-practice learning benefit.)

@@ -28,13 +28,17 @@ export async function createTaskAction(
 }
 
 export async function updateTaskAction(
-  noteId: string,
   id: string,
   input: z.infer<typeof updateTaskSchema>,
+  noteId?: string,
 ) {
   await updateTask(id, input);
-  revalidatePath(`/projects/${noteId}`);
-  revalidatePath(`/notes/${noteId}`);
+  if (noteId) {
+    revalidatePath(`/projects/${noteId}`);
+    revalidatePath(`/notes/${noteId}`);
+  }
+  revalidatePath("/planner");
+  revalidatePath("/review");
 }
 
 export async function deleteTaskAction(noteId: string, id: string) {

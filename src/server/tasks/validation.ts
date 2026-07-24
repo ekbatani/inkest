@@ -11,6 +11,10 @@ export const createTaskSchema = z.object({
   status: taskStatusEnum.default("todo"),
   priority: taskPriorityEnum.default("none"),
   dueDate: z.coerce.date().nullable().optional(),
+  startDate: z.coerce.date().nullable().optional(),
+  nextAction: z.string().max(500).nullable().optional(),
+  ifThenCue: z.string().max(500).nullable().optional(),
+  whenWhereHow: z.string().max(500).nullable().optional(),
   source: taskSourceEnum.default("manual"),
   sourceLine: z.number().int().nullable().optional(),
 });
@@ -21,6 +25,10 @@ export const updateTaskSchema = z.object({
   status: taskStatusEnum.optional(),
   priority: taskPriorityEnum.optional(),
   dueDate: z.coerce.date().nullable().optional(),
+  startDate: z.coerce.date().nullable().optional(),
+  nextAction: z.string().max(500).nullable().optional(),
+  ifThenCue: z.string().max(500).nullable().optional(),
+  whenWhereHow: z.string().max(500).nullable().optional(),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;

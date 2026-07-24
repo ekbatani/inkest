@@ -48,6 +48,7 @@ import {
   replaceEntireEditorContent,
 } from "@/components/editor/markdown-editor-utils";
 import { AiBadge, AiIcon } from "@/components/ai/ai-badge";
+import { AiCitationList, type CitationItem } from "@/components/ai/ai-citation-list";
 import {
   getAiPlanningContextAction,
   saveAiTaskPlanAction,
@@ -94,7 +95,15 @@ type AiTarget = {
 type AiState =
   | { status: "idle" }
   | { status: "loading"; label: string }
-  | { status: "result"; output: string; action: ActionId; target: AiTarget }
+  | {
+      status: "result";
+      output: string;
+      action: ActionId;
+      target: AiTarget;
+      citations?: CitationItem[];
+      transformType?: string;
+      uncertaintyNote?: string;
+    }
   | { status: "tasks"; tasks: ExtractedTask[] }
   | { status: "error"; message: string; notConfigured?: boolean };
 
@@ -220,7 +229,15 @@ export function AiPanel({
         setState({ status: "tasks", tasks: data.tasks });
         return;
       }
-      setState({ status: "result", output: data.output, action, target });
+      setState({
+        status: "result",
+        output: data.output,
+        action,
+        target,
+        citations: data.citations,
+        transformType: data.transformType,
+        uncertaintyNote: data.uncertaintyNote,
+      });
     } catch {
       setState({ status: "error", message: "Network error." });
     }
@@ -486,6 +503,11 @@ export function AiPanel({
                   Target: {state.target.kind === "selection" ? "the selected text" : "the entire open note"}. Your source is unchanged.
                 </p>
               </div>
+              <AiCitationList
+                citations={state.citations}
+                transformType={state.transformType}
+                uncertaintyNote={state.uncertaintyNote}
+              />
               <div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto rounded-xl border bg-background/80 p-2.5 text-xs">
                 <div><p className="mb-1 font-medium text-muted-foreground">Current source</p><pre className="max-h-24 overflow-auto whitespace-pre-wrap font-sans text-muted-foreground">{state.target.source}</pre></div>
                 <div><p className="mb-1 font-medium text-violet-500">AI proposal</p><MarkdownPreview content={state.output} /></div>
@@ -698,6 +720,11 @@ export function AiPanel({
                   Review before inserting into your note.
                 </DialogDescription>
               </DialogHeader>
+              <AiCitationList
+                citations={state.citations}
+                transformType={state.transformType}
+                uncertaintyNote={state.uncertaintyNote}
+              />
               <ScrollArea className="max-h-[50vh] rounded-lg border p-4">
                 <MarkdownPreview content={state.output} />
               </ScrollArea>

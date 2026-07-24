@@ -134,6 +134,10 @@ export const tasks = sqliteTable("tasks", {
     .notNull()
     .default("none"),
   dueDate: integer("due_date", { mode: "timestamp" }),
+  startDate: integer("start_date", { mode: "timestamp" }),
+  nextAction: text("next_action"),
+  ifThenCue: text("if_then_cue"),
+  whenWhereHow: text("when_where_how"),
   source: text("source", { enum: ["manual", "markdown", "ai"] })
     .notNull()
     .default("manual"),

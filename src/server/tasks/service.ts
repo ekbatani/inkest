@@ -57,6 +57,10 @@ export async function createTask(
     status: parsed.status,
     priority: parsed.priority,
     dueDate: parsed.dueDate ?? null,
+    startDate: parsed.startDate ?? null,
+    nextAction: parsed.nextAction ?? null,
+    ifThenCue: parsed.ifThenCue ?? null,
+    whenWhereHow: parsed.whenWhereHow ?? null,
     source: parsed.source,
     sourceLine: parsed.sourceLine ?? null,
   });
@@ -84,9 +88,12 @@ export async function updateTask(
   if (parsed.priority !== undefined) updates.priority = parsed.priority;
   if (parsed.dueDate !== undefined) {
     updates.dueDate = parsed.dueDate ?? null;
-    // Rescheduling should re-arm the Telegram due-date reminder.
     updates.dueReminderSentAt = null;
   }
+  if (parsed.startDate !== undefined) updates.startDate = parsed.startDate ?? null;
+  if (parsed.nextAction !== undefined) updates.nextAction = parsed.nextAction ?? null;
+  if (parsed.ifThenCue !== undefined) updates.ifThenCue = parsed.ifThenCue ?? null;
+  if (parsed.whenWhereHow !== undefined) updates.whenWhereHow = parsed.whenWhereHow ?? null;
 
   await db
     .update(schema.tasks)
