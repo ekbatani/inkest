@@ -1103,42 +1103,36 @@ html.dark[data-palette="violet"] { --background: oklch(0.20 0.025 295); --foregr
 .kanban-column span { display: flex; align-items: flex-start; gap: .35rem; margin-bottom: .4rem; padding: .6rem; border: 1px solid var(--marketing-line); border-radius: .4rem; background: var(--marketing-paper); font-size: .52rem; line-height: 1.35; box-shadow: 0 3px 8px color-mix(in oklch,var(--marketing-ink) 4%,transparent); }
 .kanban-column span svg { width: .65rem; height: .65rem; flex: none; color: var(--marketing-accent); }
 
-.feature-card--reader { background: color-mix(in oklch,var(--marketing-paper-deep) 80%,oklch(.75 .13 75) 20%); }
-.reader-demo-container { position: absolute; right: 1.5rem; bottom: 1.5rem; left: 1.5rem; }
-.reader-demo-card { padding: 0.9rem; border: 1px solid color-mix(in oklch,var(--marketing-accent) 30%,var(--marketing-line)); border-radius: 0.75rem; background: color-mix(in oklch,var(--marketing-paper) 92%,transparent); box-shadow: 0 14px 35px color-mix(in oklch,var(--marketing-ink) 12%,transparent); }
-
-/* Workflow Timeline — mathematically aligned center line */
+/* Workflow */
 .workflow-section { display: grid; max-width: 90rem; margin-inline: auto; padding: 3rem 1.25rem clamp(8rem,14vw,13rem); grid-template-columns: .85fr 1.15fr; gap: clamp(3rem,8vw,8rem); }
 .workflow-sticky { position: sticky; top: 8rem; align-self: start; }
 .marketing-text-link { display: inline-flex; align-items: center; gap: .6rem; margin-top: 2rem; border-bottom: 1px solid currentColor; padding-bottom: .25rem; font-size: .8rem; font-weight: 650; }
 .marketing-text-link svg { width: .8rem; }
 .workflow-timeline { position: relative; }
-/* Line passes precisely through the center of 2.75rem (44px) icons. Col 1 (3.5rem) + Gap (1.25rem) + Icon half (1.375rem) = 6.125rem */
-.workflow-timeline::before { content: ""; position: absolute; top: 1.375rem; bottom: 1.375rem; left: 6.125rem; width: 1px; background: color-mix(in oklch,var(--marketing-ink) 20%,transparent); }
-.dark .workflow-timeline::before { background: color-mix(in oklch,var(--marketing-paper) 22%,transparent); }
-.workflow-moment { display: grid; grid-template-columns: 3.5rem 2.75rem 1fr; align-items: start; gap: 1.25rem; min-height: 13rem; }
-.workflow-time { padding-top: .7rem; text-align: right; padding-right: .25rem; font-family: var(--font-mono); font-size: .65rem; font-weight: 600; color: var(--marketing-muted); }
-.workflow-icon { position: relative; z-index: 2; display: grid; width: 2.75rem; height: 2.75rem; place-items: center; border: 1px solid color-mix(in oklch,var(--marketing-ink) 18%,transparent); border-radius: 50%; background: var(--marketing-paper); color: var(--marketing-accent); box-shadow: 0 4px 14px color-mix(in oklch,var(--marketing-ink) 8%,transparent); transition: background .3s, color .3s, transform .3s, border-color .3s; }
-.dark .workflow-icon { border-color: color-mix(in oklch,var(--marketing-paper) 25%,transparent); }
-.workflow-moment:hover .workflow-icon { background: var(--marketing-accent); color: white; border-color: var(--marketing-accent); transform: scale(1.1); box-shadow: 0 8px 24px color-mix(in oklch,var(--marketing-accent) 25%,transparent); }
-.workflow-icon svg { width: 1.1rem; height: 1.1rem; }
-.workflow-moment h3 { margin-top: .5rem; font-size: clamp(1.4rem,2.5vw,2.2rem); line-height: 1.1; letter-spacing: -.04em; }
-.workflow-content>p:last-child { max-width: 30rem; margin-top: .65rem; font-size: .88rem; line-height: 1.65; color: var(--marketing-muted); }
+.workflow-timeline::before { content: ""; position: absolute; top: 1rem; bottom: 1rem; left: 4.4rem; width: 1px; background: var(--marketing-line); }
+.workflow-moment { display: grid; grid-template-columns: 3.1rem 2.6rem 1fr; align-items: start; gap: 1.2rem; min-height: 13rem; }
+.workflow-time { padding-top: .8rem; font-family: var(--font-mono); font-size: .62rem; color: var(--marketing-muted); }
+.workflow-icon { position: relative; z-index: 2; display: grid; width: 2.6rem; height: 2.6rem; place-items: center; border: 1px solid var(--marketing-line); border-radius: 50%; background: var(--marketing-paper); color: var(--marketing-accent); transition: background .3s, color .3s, transform .3s; }
+.workflow-moment:hover .workflow-icon { background: var(--marketing-accent); color: white; transform: scale(1.08); }
+.workflow-icon svg { width: 1rem; }
+.workflow-moment h3 { margin-top: .65rem; font-size: clamp(1.4rem,2.5vw,2.2rem); line-height: 1.1; letter-spacing: -.04em; }
+.workflow-moment div:last-child>p:last-child { max-width: 30rem; margin-top: .65rem; font-size: .85rem; line-height: 1.65; color: var(--marketing-muted); }
 
-/* Ownership Section — Ambient glow & modern cards */
-.ownership-section { position: relative; overflow: hidden; display: grid; padding: clamp(5rem,10vw,9rem) max(1.25rem,calc((100vw - 90rem)/2 + 1.25rem)); grid-template-columns: 1fr 1fr; gap: clamp(3rem,8vw,8rem); background: radial-gradient(circle at 85% 15%, color-mix(in oklch,var(--marketing-accent) 20%,transparent), transparent 55%), radial-gradient(circle at 15% 85%, color-mix(in oklch,var(--marketing-accent-bright) 12%,transparent), transparent 45%), var(--marketing-ink); color: var(--marketing-paper); }
-.ownership-section .marketing-eyebrow, .ownership-section .ownership-copy>p { color: color-mix(in oklch,var(--marketing-paper) 68%,transparent); }
+/* Ownership */
+.ownership-section { display: grid; padding: clamp(5rem,10vw,9rem) max(1.25rem,calc((100vw - 90rem)/2 + 1.25rem)); grid-template-columns: 1fr 1fr; gap: clamp(3rem,8vw,8rem); background: var(--marketing-ink); color: var(--marketing-paper); }
+.ownership-section .marketing-eyebrow, .ownership-section .ownership-copy>p { color: color-mix(in oklch,var(--marketing-paper) 62%,transparent); }
 .ownership-points { display: grid; gap: 1.4rem; margin-top: 2.5rem; }
 .ownership-points li { display: flex; align-items: flex-start; gap: .9rem; }
-.ownership-points li>svg { width: 1.1rem; height: 1.1rem; margin-top: .18rem; shrink: 0; color: var(--marketing-accent-bright); }
-.ownership-points span { display: grid; gap: .2rem; font-size: .75rem; color: color-mix(in oklch,var(--marketing-paper) 60%,transparent); }
-.ownership-points strong { font-size: .85rem; color: var(--marketing-paper); }
+.ownership-points li>svg { width: 1rem; margin-top: .18rem; color: var(--marketing-accent-bright); }
+.ownership-points span { display: grid; gap: .2rem; font-size: .75rem; color: color-mix(in oklch,var(--marketing-paper) 55%,transparent); }
+.ownership-points strong { font-size: .82rem; color: var(--marketing-paper); }
 .ownership-visual { align-self: center; }
-.ownership-choice { display: flex; align-items: center; gap: 1rem; padding: 1.25rem; border: 1px solid color-mix(in oklch,var(--marketing-paper) 16%,transparent); border-radius: .85rem; background: color-mix(in oklch,var(--marketing-paper) 6%,transparent); backdrop-filter: blur(12px); transition: border-color .3s, transform .3s; }
-.ownership-choice--primary { border-color: color-mix(in oklch,var(--marketing-accent-bright) 45%,transparent); background: color-mix(in oklch,var(--marketing-paper) 9%,transparent); box-shadow: 0 12px 35px color-mix(in oklch,var(--marketing-accent) 15%,transparent); }
-.ownership-choice--cloud { opacity: .7; }
-.ownership-connector { display: grid; height: 2.7rem; place-items: center; }
-.ownership-connector span { display: grid; width: 1.8rem; height: 1.8rem; place-items: center; border: 1px solid color-mix(in oklch,var(--marketing-paper) 20%,transparent); border-radius: 50%; font-family: var(--font-mono); font-size: .5rem; color: color-mix(in oklch,var(--marketing-paper) 60%,transparent); }
+.ownership-choice { display: flex; align-items: center; gap: 1rem; padding: 1.2rem; border: 1px solid color-mix(in oklch,var(--marketing-paper) 18%,transparent); border-radius: .8rem; background: color-mix(in oklch,var(--marketing-paper) 5%,transparent); }
+.ownership-choice>svg:first-child { width: 1.4rem; color: var(--marketing-accent-bright); }.ownership-choice>svg:last-child { width: 1rem; margin-left: auto; }
+.ownership-choice div { display: grid; gap: .15rem; }.ownership-choice small { font-family: var(--font-mono); font-size: .45rem; letter-spacing: .1em; opacity: .5; }.ownership-choice strong { font-size: .85rem; }.ownership-choice span { font-size: .6rem; opacity: .55; }
+.ownership-choice--cloud { opacity: .6; }
+.ownership-connector { display: grid; height: 2.7rem; place-items: center; }.ownership-connector span { display: grid; width: 1.7rem; height: 1.7rem; place-items: center; border: 1px solid color-mix(in oklch,var(--marketing-paper) 18%,transparent); border-radius: 50%; font-family: var(--font-mono); font-size: .48rem; }
+.ownership-visual>div:last-child { margin-top: 1.4rem; }
 
 /* Pricing and final CTA */
 .pricing-section { max-width: 90rem; margin-inline: auto; padding: clamp(7rem,12vw,11rem) 1.25rem; }
@@ -1191,9 +1185,8 @@ html.dark[data-palette="violet"] { --background: oklch(0.20 0.025 295); --foregr
   .kanban-demo { grid-template-columns:repeat(3,minmax(8rem,1fr)); overflow-x:auto; padding-bottom:.5rem; }
   .workflow-section { grid-template-columns:1fr; }
   .workflow-sticky { position:static; }
-  .workflow-moment { grid-template-columns: 3rem 2.5rem 1fr; gap:.8rem; min-height:11rem; }
-  .workflow-time { padding-top: .6rem; }
-  .workflow-timeline::before { left: 5.05rem; }
+  .workflow-moment { grid-template-columns:2.8rem 2.6rem 1fr; gap:.7rem; min-height:11rem; }
+  .workflow-timeline::before { left:3.85rem; }
   .ownership-section { grid-template-columns:1fr; }
   .pricing-grid { grid-template-columns:1fr; }
   .final-cta { min-height:40rem; }

@@ -10,30 +10,28 @@ import { TestimonialsSection } from "@/components/marketing/testimonials-section
 import { SelfHostSection } from "@/components/marketing/self-host-section";
 import { PricingSection } from "@/components/marketing/pricing-section";
 import { CtaSection } from "@/components/marketing/cta-section";
-import { MarketingFooter } from "@/components/marketing/marketing-footer";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export const metadata: Metadata = {
-  title: "Inkest — Markdown notes, PDF reader, grounded AI & project planning",
+  title: "Inkest — Markdown notes, AI writing & project planning",
   description:
-    "Build your private cognitive brain with Markdown notes, PDF document reader, grounded AI citations, daily journaling, and Kanban project boards. Self-host Inkest free or choose managed cloud.",
+    "Build your private digital brain with Markdown notes, daily journaling, AI writing tools, projects and tasks. Self-host Inkest free or choose managed cloud.",
   keywords: [
     "Markdown notes app",
-    "Grounded AI citations",
-    "PDF document reader",
+    "AI writing workspace",
     "self-hosted knowledge base",
     "personal digital brain",
-    "private research workspace",
+    "private journal app",
     "open source notes",
     "project management notes",
     "second brain app",
   ],
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Inkest — Your private cognitive workspace in Markdown",
+    title: "Inkest — Your private space to think in Markdown",
     description:
-      "Notes, PDF research reader, grounded AI citations, and project boards in one calm, open-source workspace.",
+      "Notes, daily journaling, AI writing and project planning in one calm, open-source workspace.",
     url: "/",
     type: "website",
   },
@@ -49,7 +47,7 @@ const JSON_LD = {
       operatingSystem: "Web, Docker",
       url: APP_URL,
       description:
-        "An open-source cognitive workspace for Markdown notes, PDF document research, grounded AI citations, projects, and daily journaling.",
+        "An open-source Markdown workspace for notes, daily journaling, projects, tasks and AI-assisted writing.",
       offers: [
         {
           "@type": "Offer",
@@ -66,12 +64,11 @@ const JSON_LD = {
       ],
       featureList: [
         "Markdown-native notes and wiki links",
-        "Deep PDF Document Reader with margin highlights",
-        "Grounded AI retrieval with source citations and diff review",
-        "Projects and Kanban task management",
-        "Daily notes and structured journaling templates",
-        "Private self-hosting with 1-line Docker",
-        "Zero-Knowledge encrypted vault storage",
+        "AI-assisted writing and task extraction",
+        "Projects and task management",
+        "Daily notes and journaling",
+        "Private self-hosting with Docker",
+        "Managed cloud option",
       ],
     },
     {
@@ -83,7 +80,7 @@ const JSON_LD = {
   ],
 };
 
-const TRUST_POINTS = ["Markdown native", "Grounded AI citations", "100% User-owned data"];
+const TRUST_POINTS = ["Markdown native", "Open source", "Your data, always"];
 
 export default async function LandingPage() {
   const user = await getCurrentUser();
@@ -101,17 +98,18 @@ export default async function LandingPage() {
           <div className="hero-copy max-w-2xl">
             <a className="marketing-kicker" href="#open-source">
               <span className="marketing-kicker-dot" />
-              Open Source · Grounded AI · Deep Reader · Local-First
+              Open source, private by design
               <ArrowUpRight className="size-3.5" aria-hidden="true" />
             </a>
             <h1 className="marketing-display mt-7 text-[clamp(3.15rem,7vw,6.8rem)] leading-[0.92] tracking-[-0.065em]">
               Make space
               <span className="block font-serif italic text-[var(--marketing-accent)]">
-                for deep thought.
+                for thought.
               </span>
             </h1>
             <p className="mt-7 max-w-xl text-lg leading-8 text-[var(--marketing-muted)] sm:text-xl">
-              A private, evidence-based cognitive workspace for your Markdown notes, PDF research documents, daily journals, and projects—with grounded AI that cites every source.
+              A private, Markdown-native home for your notes, diary, projects, and ideas—with
+              thoughtful AI when you want a hand.
             </p>
 
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -121,7 +119,7 @@ export default async function LandingPage() {
               </Link>
               <a className="marketing-button marketing-button--ghost" href="#product">
                 <Play className="size-3.5 fill-current" aria-hidden="true" />
-                Explore features
+                See how it works
               </a>
             </div>
 
@@ -142,7 +140,7 @@ export default async function LandingPage() {
 
         <div className="marketing-marquee" aria-hidden="true">
           <div className="marketing-marquee-track">
-            {["WRITE", "WIKI-LINK", "READ PDF", "GROUNDED AI", "REFLECT", "PLAN", "WRITE", "WIKI-LINK", "READ PDF", "GROUNDED AI", "REFLECT", "PLAN"].map((word, index) => (
+            {["WRITE", "CONNECT", "PLAN", "REFLECT", "CREATE", "WRITE", "CONNECT", "PLAN", "REFLECT", "CREATE"].map((word, index) => (
               <span key={`${word}-${index}`}>{word}<i>✦</i></span>
             ))}
           </div>
@@ -150,9 +148,9 @@ export default async function LandingPage() {
       </SpotlightHero>
 
       <section className="marketing-intro" aria-labelledby="intro-title">
-        <p className="marketing-eyebrow">One workspace · complete research control</p>
+        <p className="marketing-eyebrow">One workspace · every kind of thought</p>
         <h2 id="intro-title" className="marketing-section-title max-w-5xl">
-          Your notes &amp; documents should compound your thinking—not scatter it across ten tools.
+          Your notes should grow with your thinking—not get in its way.
         </h2>
       </section>
 
@@ -161,7 +159,6 @@ export default async function LandingPage() {
       <SelfHostSection />
       <PricingSection />
       <CtaSection />
-      <MarketingFooter />
 
       <a
         href="https://github.com/ekbatani/inkest"
