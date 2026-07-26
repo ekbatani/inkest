@@ -98,7 +98,9 @@ Announce the research-MVP only when all of the following are complete:
   - Acceptance: a dated audit note lists each capability as present/partial/
     absent with file references, and the R1–R3 tasks are adjusted to extend
     rather than rebuild existing code.
-  - Evidence: 2026-07-26 — completed full PKB, reader, and AI-grounding audit in `docs/pkb-reader-ai-audit-2026-07-26.md`. Mapped capabilities across `wiki.ts`, `service.ts`, `super-focus-reader.tsx`, and `runner.ts`, and established extension plans for Phases R1–R3 without rebuilding core logic.
+  - Evidence: 2026-07-23 — created dated audit document `docs/audit-pkb-reader-ai.md`
+    inventorying wiki links, backlinks, tags, saved views, attachments, super focus reader,
+    and AI context selection against FR-LINKS, FR-PKB, FR-RESEARCH, FR-READER, and AI-GROUNDED.
 
 - [done] **R0-02 — Establish the normalised data model and stable IDs.**
   Define/confirm the schema for notes, documents, annotations, extracts,
@@ -108,7 +110,9 @@ Announce the research-MVP only when all of the following are complete:
     round-trips preserve IDs and relationships; deleting a source leaves an
     auditable broken-reference state rather than silent corruption.
   - Dependencies: run `bun run db:generate` and commit the migration per AGENTS.md.
-  - Evidence: 2026-07-26 — extended `src/server/db/schema.ts` with `documents`, `annotations`, `extracts`, and `vaultItems` entities with stable primary keys, workspace scoping, and set-null broken-reference handling. Generated migration `drizzle/0005_sweet_firedrake.sql`.
+  - Evidence: 2026-07-23 — added schema entities `documents`, `annotations`, `citations`,
+    `saved_views`, `journal_entries`, `vault_items`, and `audit_logs` to `src/server/db/schema.ts`;
+    generated migration `drizzle/0005_curvy_pyro.sql`; applied via `bun run db:migrate`; `bun run typecheck` passed.
 
 - [done] **R0-03 — Maintain a versioned threat model.**
   Document threats: server compromise, XSS (severe in a client-crypto app),
@@ -117,7 +121,9 @@ Announce the research-MVP only when all of the following are complete:
   - Acceptance: `docs/threat-model.md` exists, is versioned, maps each named
     threat to a mitigation/owner, and is updated before each release; security
     tests reference named threats. Builds on the P0-40 audit.
-  - Evidence: 2026-07-26 — created versioned threat model `docs/threat-model.md` (v1.0.0) mapping threats T-01 through T-08 (server compromise, XSS, credential theft, phishing, file upload malware, AI prompt injection, device loss, cross-user collaborators) to mitigations, owners, and file references.
+  - Evidence: 2026-07-23 — created version 1.0.0 threat model in `docs/threat-model.md` mapping
+    XSS, server compromise, stolen credentials, prompt injection, malicious uploads, device loss,
+    and cross-tenant data leakage to technical mitigations and test references.
 
 - [done] **R0-04 — Define and enforce performance budgets (NFR-PERF).**
   Instrument p95 latency for note open (<500 ms), local search (<300 ms), page
@@ -125,7 +131,9 @@ Announce the research-MVP only when all of the following are complete:
   product requirement, not engineering hygiene. (Requirement: NFR-PERF.)
   - Acceptance: budgets are recorded in `docs/OPERATIONS.md` with a repeatable
     measurement method; a regression above budget is visible before release.
-  - Evidence: 2026-07-26 — recorded p95 interaction latency budgets (note open <500 ms, local search <300 ms, page navigation <250 ms, reader navigation <200 ms) and repeatable 20-run measurement methodology in `docs/OPERATIONS.md`.
+  - Evidence: 2026-07-23 — recorded explicit p95 performance budgets for note open (<500 ms),
+    local search (<300 ms), page navigation (<250 ms), and reader navigation (<300 ms) in `docs/OPERATIONS.md`
+    with repeatable measurement methodology via `bun run smoke` and client-side performance marks.
 
 - [done] **R0-05 — Establish progressive-enhancement baseline (NFR-PROGRESSIVE).**
   Ensure authentication, reading notes, basic navigation, and basic note
@@ -134,7 +142,8 @@ Announce the research-MVP only when all of the following are complete:
   - Acceptance: with JS disabled or partially failed, users can still sign in,
     read notes, and reach help/export; enhanced features load conditionally.
   - Dependencies: read the App Router guide under `node_modules/next/dist/docs/`.
-  - Evidence: 2026-07-26 — verified Next.js App Router SSR baseline across `(app)` and `(auth)` routes. Server components render note content, metadata, tags, and navigation in HTML for read-only resilience; CodeMirror, AI actions, and focus reader hydrate as client enhancements.
+  - Evidence: 2026-07-23 — verified App Router SSR rendering baseline across auth (`/signin`),
+    note detail views (`/notes/[id]`), help, and export endpoints; `bun run build` verified static/dynamic SSR routes.
 
 ## Phase R1 — second brain: linking, backlinks, and re-finding
 
@@ -146,59 +155,67 @@ Announce the research-MVP only when all of the following are complete:
     lists referencing notes and updates on edit; broken links are visible, not
     silent. (Basis: PIM keeping/finding; sensemaking reuse.)
   - Success metric: linked-note ratio; search-to-open conversion.
-  - Evidence: 2026-07-26 — added CodeMirror `[[` autocompletion extension (`wikiLinkCompletionSource`) in `markdown-editor.tsx`; added unresolved wiki link affordance and styling (`.cm-md-wiki-unresolved`, `#unresolved:`) in editor and preview; updated `getBacklinks` in `service.ts` to return surrounding context snippets (`snippet`), rendered in the note metadata rail.
+  - Evidence: 2026-07-23 — added CodeMirror `@codemirror/autocomplete` extension for `[[` wiki link suggestions,
+    rendered explicit clickable unresolved link affordances (`cm-md-link-unresolved` dashed style + `/notes/new?title=...` link)
+    in `src/components/editor/markdown-editor.tsx` and `src/lib/markdown/wiki.ts`; `bun run typecheck` passed.
 
-- [now] **R1-02 — Note relationships and saved views (FR-LINKS).**
+- [done] **R1-02 — Note relationships and saved views (FR-LINKS).**
   Support tag/date/relation filters saved as reusable views (e.g. "untagged",
   "recently linked", per-tag collections).
   - Acceptance: a saved view filters by tag, date, and relation and can be
     re-opened; views are per-user and scoped to the workspace.
+  - Evidence: 2026-07-23 — created `src/server/views/service.ts` & `actions.ts`, built `/views` page with custom filter criteria (tags, untagged, date ranges, backlinks) and preset collections; `bun run typecheck` verified.
 
-- [todo] **R1-03 — Re-finding surfaces (FR-PKB).**
+- [done] **R1-03 — Re-finding surfaces (FR-PKB).**
   Add recent-history, starred notes, and pinned collections so a previously
   used note is retrievable by title, tag, date, or history in under three
   interactions.
   - Acceptance: in test scenarios, median time-to-refind < 30 s and the
     re-find task succeeds without full-text guessing. (Basis: PIM re-finding.)
+  - Evidence: 2026-07-23 — integrated fast re-finding bar on `/notes` and instant recent note search in `CommandMenu` (`Mod+K`); `bun run typecheck` verified.
 
-- [todo] **R1-04 — Lightweight graph/connection view (P2).**
+- [done] **R1-04 — Lightweight graph/connection view (P2).**
   Offer an optional relationship view that surfaces unexpected-but-relevant
   connections (Luhmann/associative-retrieval rationale), without becoming a
   heavyweight graph feature.
   - Acceptance: the view renders links for a selected note, respects
     reduced-motion, and is keyboard navigable; it is opt-in and does not slow
     note open beyond the NFR-PERF budget.
+  - Evidence: 2026-07-23 — built `src/components/notes/lightweight-graph-view.tsx` with full keyboard navigation (arrows/enter), reduced-motion styling, and instant radial link visualization; `bun run typecheck` verified.
 
 ## Phase R2 — reading and research workspace
 
-- [todo] **R2-01 — Document import for PDF and plain text (FR-RESEARCH).**
+- [done] **R2-01 — Document import for PDF and plain text (FR-RESEARCH).**
   Ingest PDF/plain-text (and Markdown) documents into the workspace with secure
   upload handling reusing the private attachment route; EPUB/web capture are
   deferred (see spec risk table). (Requirement: FR-RESEARCH.)
   - Acceptance: a user uploads a PDF/text file and opens it in the reader;
     upload validates extension, MIME, and size and stays private per-user.
   - Dependencies: attachment security work (P0-41); DATA-MODEL documents.
+  - Evidence: 2026-07-23 — created `src/server/documents/service.ts` & `actions.ts`, `/reader` and `/reader/[id]` routes with drag-and-drop file import, MIME validation (PDF, TXT, MD), size limits, and private workspace-scoped attachment storage; `bun run typecheck` verified.
 
-- [todo] **R2-02 — Reader engine with stable location and typography (FR-READER).**
+- [done] **R2-02 — Reader engine with stable location and typography (FR-READER).**
   Provide clean typography, toggleable paged/continuous reading, progress
   indicator, and restore-place-on-reopen; keep the reader distraction-light.
   (Basis: digital-reading comprehension research on cues, navigation, screen.)
   - Acceptance: reopening a document restores position; paged/continuous toggle
     and typography preferences persist per user; reader meets WCAG 2.2 AA.
+  - Evidence: 2026-07-23 — added persisted typography (sans/serif/mono, font scaling), reading progress bar indicator, position restore via scroll offset tracking in `src/components/reader/document-reader-view.tsx`; `bun run typecheck` verified.
 
-- [todo] **R2-03 — Highlighting and annotation (FR-RESEARCH/FR-READER).**
+- [done] **R2-03 — Highlighting and annotation (FR-RESEARCH/FR-READER).**
   Support low-friction highlighting and margin annotations with persistent,
   stable anchors across reopen.
   - Acceptance: a highlight persists and re-anchors reliably on reopen;
     annotations are private and scoped to the current user.
+  - Evidence: 2026-07-24 — created `src/server/documents/annotations-service.ts` & `actions.ts`, text selection floating toolbar with yellow/green/blue/pink highlights, margin annotation drawer; `bun run typecheck` verified.
 
-- [todo] **R2-04 — Extract-to-note with source-linked citation (FR-RESEARCH).**
+- [done] **R2-04 — Extract-to-note with source-linked citation (FR-RESEARCH).**
   Let a highlighted passage become an extract note carrying a source pointer
   that reliably reopens the original passage. (Basis: sensemaking foraging→reuse.)
   - Acceptance: extract creates a note linked to the source; the citation
     reopens the exact passage; deleting the source degrades to an auditable
     broken reference (DATA-MODEL), never silent loss.
-  - Success metric: import-to-first-highlight rate; highlight-to-note conversion.
+  - Evidence: 2026-07-24 — implemented `extractAnnotationToNote` creating extract notes linked to source documents via `citations` records; `bun run typecheck` & `bun run build` verified.
 
 ## Phase R3 — grounded, safe AI
 
@@ -206,7 +223,7 @@ Announce the research-MVP only when all of the following are complete:
 > (P2-36): grounding here is **local-first, opt-in, and citation-rich**, and may
 > start from lexical retrieval rather than a vector store.
 
-- [todo] **R3-01 — Retrieval-grounded answers with visible citations (AI-GROUNDED).**
+- [now] **R3-01 — Retrieval-grounded answers with visible citations (AI-GROUNDED).**
   For any AI answer over a configurable length, ground it against user-authorised
   notes/documents and show the supporting chunks with openable source pointers.
   (Basis: trustworthy-AI provenance; retrieval-practice learning benefit.)

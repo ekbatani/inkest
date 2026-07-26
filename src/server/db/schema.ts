@@ -134,6 +134,10 @@ export const tasks = sqliteTable("tasks", {
     .notNull()
     .default("none"),
   dueDate: integer("due_date", { mode: "timestamp" }),
+  startDate: integer("start_date", { mode: "timestamp" }),
+  nextAction: text("next_action"),
+  ifThenCue: text("if_then_cue"),
+  whenWhereHow: text("when_where_how"),
   source: text("source", { enum: ["manual", "markdown", "ai"] })
     .notNull()
     .default("manual"),
@@ -283,7 +287,7 @@ export const googleCalendarEvents = sqliteTable("google_calendar_events", {
     .default(sql`(unixepoch())`),
 });
 
-// ── documents ────────────────────────────────────────────────────────────
+// ── documents ─────────────────────────────────────────────────────────────
 export const documents = sqliteTable("documents", {
   id: idCol(),
   userId: text("user_id")
@@ -292,10 +296,16 @@ export const documents = sqliteTable("documents", {
   workspaceId: text("workspace_id")
     .notNull()
     .references(() => workspaces.id, { onDelete: "cascade" }),
+  attachmentId: text("attachment_id").references(() => attachments.id, {
+    onDelete: "set null",
+  }),
   title: text("title").notNull(),
+  fileType: text("file_type", { enum: ["pdf", "text", "markdown"] })
+    .notNull()
+    .default("pdf"),
   mimeType: text("mime_type").notNull(),
   sizeBytes: integer("size_bytes").notNull(),
-  storagePath: text("storage_path").notNull(),
+  pageCount: integer("page_count"),
   checksum: text("checksum"),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at")
@@ -303,49 +313,106 @@ export const documents = sqliteTable("documents", {
     .default(sql`(unixepoch())`),
 });
 
-// ── annotations ──────────────────────────────────────────────────────────
+// ── annotations ───────────────────────────────────────────────────────────
 export const annotations = sqliteTable("annotations", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  targetType: text("target_type", { enum: ["note", "document"] }).notNull(),
-  targetId: text("target_id").notNull(),
-  quote: text("quote").notNull(),
+  documentId: text("document_id")
+    .notNull()
+    .references(() => documents.id, { onDelete: "cascade" }),
+  noteId: text("note_id").references(() => notes.id, {
+    onDelete: "set null",
+  }),
+  pageNumber: integer("page_number"),
+  positionSelector: text("position_selector"), // JSON selector string
+  highlightText: text("highlight_text"),
   comment: text("comment"),
-  startOffset: integer("start_offset"),
-  endOffset: integer("end_offset"),
-  color: text("color"),
+  color: text("color").default("yellow"),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at")
     .notNull()
     .default(sql`(unixepoch())`),
 });
 
-// ── extracts ─────────────────────────────────────────────────────────────
-export const extracts = sqliteTable("extracts", {
+// ── citations ─────────────────────────────────────────────────────────────
+export const citations = sqliteTable("citations", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  sourceNoteId: text("source_note_id").references(() => notes.id, {
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  sourceType: text("source_type", { enum: ["document", "note"] }).notNull(),
+  sourceId: text("source_id").notNull(),
+  targetNoteId: text("target_note_id").references(() => notes.id, {
     onDelete: "set null",
   }),
-  sourceDocumentId: text("source_document_id").references(() => documents.id, {
+  targetAiEventId: text("target_ai_event_id").references(() => aiEvents.id, {
     onDelete: "set null",
   }),
-  sourceAnnotationId: text("source_annotation_id").references(
-    () => annotations.id,
-    { onDelete: "set null" },
-  ),
-  extractNoteId: text("extract_note_id").references(() => notes.id, {
-    onDelete: "cascade",
-  }),
-  citationText: text("citation_text").notNull(),
+  locationPointer: text("location_pointer"), // JSON page/line/range pointer
+  quotedText: text("quoted_text"),
+  isBroken: integer("is_broken", { mode: "boolean" })
+    .notNull()
+    .default(false),
   createdAt: timestamp("created_at").notNull(),
 });
 
-// ── vault_items ──────────────────────────────────────────────────────────
+// ── saved_views ───────────────────────────────────────────────────────────
+export const savedViews = sqliteTable("saved_views", {
+  id: idCol(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  icon: text("icon"),
+  queryJson: text("query_json").notNull(), // JSON string filter specification
+  sortOrder: integer("sort_order"),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// ── journal_entries ───────────────────────────────────────────────────────
+export const journalEntries = sqliteTable("journal_entries", {
+  id: idCol(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  noteId: text("note_id")
+    .notNull()
+    .references(() => notes.id, { onDelete: "cascade" }),
+  templateMode: text("template_mode", {
+    enum: [
+      "daily_reflection",
+      "gratitude",
+      "decision",
+      "emotion",
+      "freeform",
+    ],
+  })
+    .notNull()
+    .default("freeform"),
+  optOutAi: integer("opt_out_ai", { mode: "boolean" })
+    .notNull()
+    .default(true),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// ── vault_items ───────────────────────────────────────────────────────────
 export const vaultItems = sqliteTable("vault_items", {
   id: idCol(),
   userId: text("user_id")
@@ -356,16 +423,34 @@ export const vaultItems = sqliteTable("vault_items", {
     .references(() => workspaces.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   category: text("category", {
-    enum: ["login", "secure_note", "api_key", "token"],
+    enum: ["password", "key", "token", "secret_note"],
   })
     .notNull()
-    .default("secure_note"),
+    .default("secret_note"),
   ciphertext: text("ciphertext").notNull(),
-  metadata: text("metadata"),
+  iv: text("iv").notNull(),
+  authTag: text("auth_tag"),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at")
     .notNull()
     .default(sql`(unixepoch())`),
+});
+
+// ── audit_logs ────────────────────────────────────────────────────────────
+export const auditLogs = sqliteTable("audit_logs", {
+  id: idCol(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  entityType: text("entity_type"),
+  entityId: text("entity_id"),
+  metadataJson: text("metadata_json"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").notNull(),
 });
 
 // ── Type exports ─────────────────────────────────────────────────────────
@@ -383,7 +468,11 @@ export type NoteVersion = typeof noteVersions.$inferSelect;
 export type GoogleCalendarConnection =
   typeof googleCalendarConnections.$inferSelect;
 export type GoogleCalendarEvent = typeof googleCalendarEvents.$inferSelect;
+export type DocumentEntity = typeof documents.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type Annotation = typeof annotations.$inferSelect;
-export type Extract = typeof extracts.$inferSelect;
+export type Citation = typeof citations.$inferSelect;
+export type SavedView = typeof savedViews.$inferSelect;
+export type JournalEntry = typeof journalEntries.$inferSelect;
 export type VaultItem = typeof vaultItems.$inferSelect;
+export type AuditLog = typeof auditLogs.$inferSelect;

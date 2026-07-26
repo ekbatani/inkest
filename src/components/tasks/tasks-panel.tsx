@@ -77,7 +77,7 @@ export function TasksPanel({
       p.map((t) => (t.id === id ? { ...t, ...next } as Task : t)),
     );
     try {
-      await updateTaskAction(noteIdForAction, id, next);
+      await updateTaskAction(id, next, noteIdForAction);
     } catch {
       toast.error("Failed to save task.");
     }

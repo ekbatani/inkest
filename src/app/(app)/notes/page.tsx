@@ -159,10 +159,36 @@ export default async function NotesPage({
         </p>
       )}
 
+      {!search && !activeTagObjects.length && (
+        <div className="flex items-center gap-2 border-b pb-2 text-xs font-medium text-muted-foreground">
+          <span className="text-foreground font-semibold flex items-center gap-1">
+            <NotebookPen className="size-3.5" /> Fast Re-finding:
+          </span>
+          <Link
+            href="/notes"
+            className="rounded px-2 py-1 bg-accent text-accent-foreground font-medium"
+          >
+            Recently Updated
+          </Link>
+          <Link
+            href="/views"
+            className="rounded px-2 py-1 hover:bg-muted text-muted-foreground transition-colors"
+          >
+            Saved Views & Filters
+          </Link>
+          <Link
+            href="/notes?q="
+            className="rounded px-2 py-1 hover:bg-muted text-muted-foreground transition-colors"
+          >
+            Press ⌘K for Command Bar
+          </Link>
+        </div>
+      )}
+
       {!search && !activeTagObjects.length && pinned.length > 0 && (
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            <Pin className="size-3.5" /> Pinned
+            <Pin className="size-3.5" /> Pinned Notes ({pinned.length})
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {pinned.map((note) => (

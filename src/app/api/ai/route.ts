@@ -142,7 +142,13 @@ export async function POST(request: NextRequest) {
       model: r.model,
       provider: r.provider,
     });
-    return NextResponse.json({ kind: "text", output: r.output });
+    return NextResponse.json({
+      kind: "text",
+      output: r.output,
+      citations: r.citations,
+      transformType: r.transformType,
+      uncertaintyNote: r.uncertaintyNote,
+    });
   }
 
   if (action === "improve-writing") {
@@ -164,7 +170,13 @@ export async function POST(request: NextRequest) {
       model: r.model,
       provider: r.provider,
     });
-    return NextResponse.json({ kind: "text", output: r.output });
+    return NextResponse.json({
+      kind: "text",
+      output: r.output,
+      citations: r.citations,
+      transformType: r.transformType,
+      uncertaintyNote: r.uncertaintyNote,
+    });
   }
 
   if (action === "create-project-plan") {
@@ -186,7 +198,13 @@ export async function POST(request: NextRequest) {
       model: r.model,
       provider: r.provider,
     });
-    return NextResponse.json({ kind: "text", output: r.output });
+    return NextResponse.json({
+      kind: "text",
+      output: r.output,
+      citations: r.citations,
+      transformType: r.transformType,
+      uncertaintyNote: r.uncertaintyNote,
+    });
   }
 
   if (action === "generate-mermaid") {
@@ -209,7 +227,13 @@ export async function POST(request: NextRequest) {
       model: r.model,
       provider: r.provider,
     });
-    return NextResponse.json({ kind: "text", output: r.output });
+    return NextResponse.json({
+      kind: "text",
+      output: r.output,
+      citations: r.citations,
+      transformType: r.transformType,
+      uncertaintyNote: r.uncertaintyNote,
+    });
   }
 
   if (action === "explain") {
@@ -230,7 +254,13 @@ export async function POST(request: NextRequest) {
       model: r.model,
       provider: r.provider,
     });
-    return NextResponse.json({ kind: "text", output: r.output });
+    return NextResponse.json({
+      kind: "text",
+      output: r.output,
+      citations: r.citations,
+      transformType: r.transformType,
+      uncertaintyNote: r.uncertaintyNote,
+    });
   }
 
   if (action === "translate") {
@@ -252,7 +282,13 @@ export async function POST(request: NextRequest) {
       model: r.model,
       provider: r.provider,
     });
-    return NextResponse.json({ kind: "text", output: r.output });
+    return NextResponse.json({
+      kind: "text",
+      output: r.output,
+      citations: r.citations,
+      transformType: r.transformType,
+      uncertaintyNote: r.uncertaintyNote,
+    });
   }
 
   if (action === "comment-selection") {
@@ -275,7 +311,13 @@ export async function POST(request: NextRequest) {
       model: r.model,
       provider: r.provider,
     });
-    return NextResponse.json({ kind: "text", output: r.output });
+    return NextResponse.json({
+      kind: "text",
+      output: r.output,
+      citations: r.citations,
+      transformType: r.transformType,
+      uncertaintyNote: r.uncertaintyNote,
+    });
   }
 
   if (action === "apply-comments") {
@@ -297,7 +339,13 @@ export async function POST(request: NextRequest) {
       model: r.model,
       provider: r.provider,
     });
-    return NextResponse.json({ kind: "text", output: r.output });
+    return NextResponse.json({
+      kind: "text",
+      output: r.output,
+      citations: r.citations,
+      transformType: r.transformType,
+      uncertaintyNote: r.uncertaintyNote,
+    });
   }
 
   if (action === "extract-tasks") {

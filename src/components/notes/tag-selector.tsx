@@ -251,7 +251,7 @@ export function TagSelector({
               className="mt-1 gap-2 text-xs"
             >
               <Plus className="size-3" />
-              Create "{query.trim()}"
+              Create &quot;{query.trim()}&quot;
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>

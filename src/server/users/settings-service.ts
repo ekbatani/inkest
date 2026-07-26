@@ -47,6 +47,8 @@ export const aiProviderSettingsSchema = z
   .partial();
 
 export const userSettingsSchema = z.object({
+  profileCompleted: z.boolean().optional(),
+  bio: z.string().max(200).optional(),
   editor: z
     .object({
       autosaveDelayMs: z.number().int().min(0).max(60_000).optional(),
