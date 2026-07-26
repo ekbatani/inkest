@@ -283,6 +283,91 @@ export const googleCalendarEvents = sqliteTable("google_calendar_events", {
     .default(sql`(unixepoch())`),
 });
 
+// ── documents ────────────────────────────────────────────────────────────
+export const documents = sqliteTable("documents", {
+  id: idCol(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  storagePath: text("storage_path").notNull(),
+  checksum: text("checksum"),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// ── annotations ──────────────────────────────────────────────────────────
+export const annotations = sqliteTable("annotations", {
+  id: idCol(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  targetType: text("target_type", { enum: ["note", "document"] }).notNull(),
+  targetId: text("target_id").notNull(),
+  quote: text("quote").notNull(),
+  comment: text("comment"),
+  startOffset: integer("start_offset"),
+  endOffset: integer("end_offset"),
+  color: text("color"),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// ── extracts ─────────────────────────────────────────────────────────────
+export const extracts = sqliteTable("extracts", {
+  id: idCol(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  sourceNoteId: text("source_note_id").references(() => notes.id, {
+    onDelete: "set null",
+  }),
+  sourceDocumentId: text("source_document_id").references(() => documents.id, {
+    onDelete: "set null",
+  }),
+  sourceAnnotationId: text("source_annotation_id").references(
+    () => annotations.id,
+    { onDelete: "set null" },
+  ),
+  extractNoteId: text("extract_note_id").references(() => notes.id, {
+    onDelete: "cascade",
+  }),
+  citationText: text("citation_text").notNull(),
+  createdAt: timestamp("created_at").notNull(),
+});
+
+// ── vault_items ──────────────────────────────────────────────────────────
+export const vaultItems = sqliteTable("vault_items", {
+  id: idCol(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  category: text("category", {
+    enum: ["login", "secure_note", "api_key", "token"],
+  })
+    .notNull()
+    .default("secure_note"),
+  ciphertext: text("ciphertext").notNull(),
+  metadata: text("metadata"),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 // ── Type exports ─────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -298,3 +383,7 @@ export type NoteVersion = typeof noteVersions.$inferSelect;
 export type GoogleCalendarConnection =
   typeof googleCalendarConnections.$inferSelect;
 export type GoogleCalendarEvent = typeof googleCalendarEvents.$inferSelect;
+export type Document = typeof documents.$inferSelect;
+export type Annotation = typeof annotations.$inferSelect;
+export type Extract = typeof extracts.$inferSelect;
+export type VaultItem = typeof vaultItems.$inferSelect;

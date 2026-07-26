@@ -24,6 +24,11 @@ import { tags } from "@lezer/highlight";
 import { cn } from "@/lib/utils";
 import { containsArabicScript } from "@/lib/text/rtl";
 import {
+  autocompletion,
+  type CompletionContext,
+  type CompletionResult,
+} from "@codemirror/autocomplete";
+import {
   getHeadingAnchorId,
   resolveNoteHref,
   type WikiLinkTarget,
@@ -123,6 +128,32 @@ function looksLikeMarkdown(text: string) {
   return false;
 }
 
+function wikiLinkCompletionSource(linkableNotes: WikiLinkTarget[]) {
+  return (context: CompletionContext): CompletionResult | null => {
+    const word = context.matchBefore(/\[\[([^\]\n]*)$/);
+    if (!word) return null;
+
+    const query = word.text.slice(2).trim().toLowerCase();
+    const matches = linkableNotes.filter(
+      (n) =>
+        !query ||
+        n.title.toLowerCase().includes(query) ||
+        n.slug.toLowerCase().includes(query),
+    );
+
+    return {
+      from: word.from + 2,
+      options: matches.slice(0, 30).map((n) => ({
+        label: n.title,
+        detail: `[[${n.title}]]`,
+        apply: `${n.title}]]`,
+        type: "text",
+      })),
+      validFor: /^[^\]\n]*$/,
+    };
+  };
+}
+
 export function MarkdownEditor({
   value,
   onChange,
@@ -167,6 +198,9 @@ export function MarkdownEditor({
       markdownFormattingKeymap,
       syntaxHighlighting(fencedCodeHighlightStyle),
       EditorView.lineWrapping,
+      autocompletion({
+        override: [wikiLinkCompletionSource(linkableNotes)],
+      }),
       // CodeMirror owns the editable DOM, so native browser spellcheck must
       // be enabled on its content element rather than on the React wrapper.
       // This stays entirely in the browser: no note text is sent anywhere.
@@ -321,6 +355,13 @@ export function MarkdownEditor({
             textDecoration: "underline",
             textDecorationColor:
               "color-mix(in oklab, var(--primary) 65%, transparent)",
+            textUnderlineOffset: "0.16em",
+          },
+          ".cm-md-wiki-unresolved": {
+            color: "color-mix(in oklab, var(--muted-foreground) 85%, transparent)",
+            textDecoration: "underline dashed",
+            textDecorationColor:
+              "color-mix(in oklab, var(--muted-foreground) 50%, transparent)",
             textUnderlineOffset: "0.16em",
           },
         }),
@@ -661,22 +702,36 @@ function buildStyledMarkdownDecorations(linkableNotes: WikiLinkTarget[]) {
             sectionIndex === -1 ? inner : inner.slice(0, sectionIndex).trim();
           const href = resolveNoteHref(inner, linkableNotes);
 
-          if (!href || href === inner || href === noteName) continue;
-
           const leadingTrim = match[1].length - match[1].trimStart().length;
           const contentFrom = openFrom + 2 + leadingTrim;
           const contentTo = contentFrom + inner.length;
           const closeTo = openFrom + match[0].length;
 
-          addLinkDecoration(
-            ranges,
-            view,
-            openFrom,
-            contentFrom,
-            contentTo,
-            closeTo,
-            href,
-          );
+          const isUnresolved = !href || href === inner || href === noteName;
+
+          if (isUnresolved) {
+            ranges.push(
+              Decoration.mark({
+                class: "cm-md-link cm-md-wiki-unresolved",
+                attributes: {
+                  "data-inknest-unresolved-link": noteName,
+                  title: `Unresolved link: [[${noteName}]]`,
+                },
+              }).range(contentFrom, contentTo),
+            );
+            hideIfIdle(ranges, view, openFrom, contentFrom);
+            hideIfIdle(ranges, view, contentTo, closeTo);
+          } else {
+            addLinkDecoration(
+              ranges,
+              view,
+              openFrom,
+              contentFrom,
+              contentTo,
+              closeTo,
+              href,
+            );
+          }
         }
 
         if (line.to + 1 > to) break;

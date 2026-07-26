@@ -205,6 +205,18 @@ export function MarkdownPreview({
           );
         }
 
+        if (href?.startsWith("#unresolved:")) {
+          const titleName = decodeURIComponent(href.slice("#unresolved:".length));
+          return (
+            <span
+              className="text-muted-foreground underline decoration-dashed underline-offset-4 decoration-muted-foreground/50 font-normal cursor-help"
+              title={`Unresolved link: [[${titleName}]]`}
+            >
+              {children}
+            </span>
+          );
+        }
+
         const resolvedHref =
           href && linkableNotes && linkableNotes.length > 0
             ? resolveNoteHref(href, linkableNotes) ?? href

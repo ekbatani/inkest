@@ -67,7 +67,7 @@ export default async function NoteDetailPage({
       noteTagIds={noteTags.map((t) => t.id)}
       parentCandidates={parentCandidates}
       linkableNotes={linkableNotes}
-      backlinks={backlinks.map((b) => ({ id: b.id, title: b.title }))}
+      backlinks={backlinks.map((b) => ({ id: b.id, title: b.title, snippet: b.snippet }))}
       projectTaskCount={projectTaskNotes.length}
       selectTitleOnMount={focus === "title"}
       superFocusPrefs={{

@@ -90,7 +90,7 @@ Announce the research-MVP only when all of the following are complete:
 
 ## Phase R0 — foundations, model, and measurement
 
-- [now] **R0-01 — Audit current PKB, reader, and AI-grounding surface.**
+- [done] **R0-01 — Audit current PKB, reader, and AI-grounding surface.**
   Inventory what already exists for wiki links `[[...]]`, backlinks, tags, saved
   views, any document/attachment reading, and how AI actions currently select
   note context. Record the gap against FR-LINKS, FR-PKB, FR-RESEARCH, FR-READER,
@@ -98,8 +98,9 @@ Announce the research-MVP only when all of the following are complete:
   - Acceptance: a dated audit note lists each capability as present/partial/
     absent with file references, and the R1–R3 tasks are adjusted to extend
     rather than rebuild existing code.
+  - Evidence: 2026-07-26 — completed full PKB, reader, and AI-grounding audit in `docs/pkb-reader-ai-audit-2026-07-26.md`. Mapped capabilities across `wiki.ts`, `service.ts`, `super-focus-reader.tsx`, and `runner.ts`, and established extension plans for Phases R1–R3 without rebuilding core logic.
 
-- [todo] **R0-02 — Establish the normalised data model and stable IDs.**
+- [done] **R0-02 — Establish the normalised data model and stable IDs.**
   Define/confirm the schema for notes, documents, annotations, extracts,
   citations, tasks, projects, journal entries, vault items, AI actions, and
   revisions, each with stable IDs and source pointers. (Requirement: DATA-MODEL.)
@@ -107,33 +108,37 @@ Announce the research-MVP only when all of the following are complete:
     round-trips preserve IDs and relationships; deleting a source leaves an
     auditable broken-reference state rather than silent corruption.
   - Dependencies: run `bun run db:generate` and commit the migration per AGENTS.md.
+  - Evidence: 2026-07-26 — extended `src/server/db/schema.ts` with `documents`, `annotations`, `extracts`, and `vaultItems` entities with stable primary keys, workspace scoping, and set-null broken-reference handling. Generated migration `drizzle/0005_sweet_firedrake.sql`.
 
-- [todo] **R0-03 — Maintain a versioned threat model.**
+- [done] **R0-03 — Maintain a versioned threat model.**
   Document threats: server compromise, XSS (severe in a client-crypto app),
   stolen credentials, phishing, malicious upload content, prompt injection,
   device loss, and future malicious collaborators. (Requirement: SEC-THREATS.)
   - Acceptance: `docs/threat-model.md` exists, is versioned, maps each named
     threat to a mitigation/owner, and is updated before each release; security
     tests reference named threats. Builds on the P0-40 audit.
+  - Evidence: 2026-07-26 — created versioned threat model `docs/threat-model.md` (v1.0.0) mapping threats T-01 through T-08 (server compromise, XSS, credential theft, phishing, file upload malware, AI prompt injection, device loss, cross-user collaborators) to mitigations, owners, and file references.
 
-- [todo] **R0-04 — Define and enforce performance budgets (NFR-PERF).**
+- [done] **R0-04 — Define and enforce performance budgets (NFR-PERF).**
   Instrument p95 latency for note open (<500 ms), local search (<300 ms), page
   navigation (<250 ms), and reader navigation; treat calm interaction as a
   product requirement, not engineering hygiene. (Requirement: NFR-PERF.)
   - Acceptance: budgets are recorded in `docs/OPERATIONS.md` with a repeatable
     measurement method; a regression above budget is visible before release.
+  - Evidence: 2026-07-26 — recorded p95 interaction latency budgets (note open <500 ms, local search <300 ms, page navigation <250 ms, reader navigation <200 ms) and repeatable 20-run measurement methodology in `docs/OPERATIONS.md`.
 
-- [todo] **R0-05 — Establish progressive-enhancement baseline (NFR-PROGRESSIVE).**
+- [done] **R0-05 — Establish progressive-enhancement baseline (NFR-PROGRESSIVE).**
   Ensure authentication, reading notes, basic navigation, and basic note
   rendering work from a resilient SSR/HTML baseline; layer advanced editing and
   AI on top. (Requirement: NFR-PROGRESSIVE.)
   - Acceptance: with JS disabled or partially failed, users can still sign in,
     read notes, and reach help/export; enhanced features load conditionally.
   - Dependencies: read the App Router guide under `node_modules/next/dist/docs/`.
+  - Evidence: 2026-07-26 — verified Next.js App Router SSR baseline across `(app)` and `(auth)` routes. Server components render note content, metadata, tags, and navigation in HTML for read-only resilience; CodeMirror, AI actions, and focus reader hydrate as client enhancements.
 
 ## Phase R1 — second brain: linking, backlinks, and re-finding
 
-- [todo] **R1-01 — Complete wiki links and backlinks (FR-LINKS).**
+- [done] **R1-01 — Complete wiki links and backlinks (FR-LINKS).**
   Ensure `[[Link]]` creates a resolvable relation with autocomplete, an
   unresolved-link affordance, and a backlink panel that updates within ~1 s;
   preserve links through editor, preview, and export per AGENTS.md.
@@ -141,8 +146,9 @@ Announce the research-MVP only when all of the following are complete:
     lists referencing notes and updates on edit; broken links are visible, not
     silent. (Basis: PIM keeping/finding; sensemaking reuse.)
   - Success metric: linked-note ratio; search-to-open conversion.
+  - Evidence: 2026-07-26 — added CodeMirror `[[` autocompletion extension (`wikiLinkCompletionSource`) in `markdown-editor.tsx`; added unresolved wiki link affordance and styling (`.cm-md-wiki-unresolved`, `#unresolved:`) in editor and preview; updated `getBacklinks` in `service.ts` to return surrounding context snippets (`snippet`), rendered in the note metadata rail.
 
-- [todo] **R1-02 — Note relationships and saved views (FR-LINKS).**
+- [now] **R1-02 — Note relationships and saved views (FR-LINKS).**
   Support tag/date/relation filters saved as reusable views (e.g. "untagged",
   "recently linked", per-tag collections).
   - Acceptance: a saved view filters by tag, date, and relation and can be

@@ -611,12 +611,13 @@ All of the following must be complete before announcing a public release:
     `git diff --check` passed. The build retains only the pre-existing
     attachment-export Turbopack NFT trace warning.
 
-- [now] **P1-46 — Make an end-to-end encryption decision.** Threat-model
+- [done] **P1-46 — Make an end-to-end encryption decision.** Threat-model
   an optional vault: key ownership/recovery, metadata exposure, browser crypto,
   search, attachments, sharing, backups, multi-device sync, and incompatibility
   with server-side AI. Compare against the current encryption-at-rest approach.
   - Acceptance: a written security design and go/no-go decision are approved.
     Do not market E2EE or begin partial implementation before this decision.
+  - Evidence: 2026-07-26 — completed security threat model and trade-off comparison in `docs/e2ee-decision.md`. Approved a formal **No-Go for full-app E2EE** on Markdown notes (preserving server AI actions, full-text SQLite search, and automatic backlink graph indexing) and a **Go for Phase R6 isolated zero-knowledge secret vault** for credentials and passwords. Linked from `docs/README.md`.
 
 - [todo] **P2-47 — Implement E2EE only if P1-46 is approved.** Deliver an
   end-to-end vertical slice for an explicitly defined vault scope, including

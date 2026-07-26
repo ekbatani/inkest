@@ -463,11 +463,13 @@ export type NoteListItem = Note;
 
 // ── Backlinks ─────────────────────────────────────────────────────────────
 
+export type BacklinkItem = Note & { snippet?: string };
+
 /**
  * Find notes whose content references this note via `[[slug]]` or
  * `[[title]]`. Matches are case-insensitive and stripped of section anchors.
  */
-export async function getBacklinks(noteId: string): Promise<Note[]> {
+export async function getBacklinks(noteId: string): Promise<BacklinkItem[]> {
   const target = await getNoteById(noteId);
   if (!target) return [];
 
@@ -487,20 +489,44 @@ export async function getBacklinks(noteId: string): Promise<Note[]> {
   const slugNeedle = normalizeSearch(target.slug);
   const titleNeedle = normalizeSearch(target.title);
 
-  return candidates.filter((n) => {
-    if (!n.contentMd.includes("[[")) return false;
-    // Pull every `[[...]]` token, normalise, and compare against our note.
-    const tokens = extractWikiTokens(n.contentMd);
-    for (const t of tokens) {
-      const name = t.split("#")[0]?.trim() ?? "";
-      if (!name) continue;
-      const norm = normalizeSearch(name);
-      if (norm === slugNeedle || norm === titleNeedle) {
-        return true;
+  const results: BacklinkItem[] = [];
+
+  for (const n of candidates) {
+    if (!n.contentMd.includes("[[")) continue;
+    const lines = n.contentMd.split("\n");
+    let matchSnippet: string | null = null;
+
+    let inFence = false;
+    for (const line of lines) {
+      if (/^\s*```/.test(line)) {
+        inFence = !inFence;
+        continue;
       }
+      if (inFence) continue;
+
+      WIKI_TOKEN_RE.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = WIKI_TOKEN_RE.exec(line)) !== null) {
+        const name = match[1].split("#")[0]?.trim() ?? "";
+        if (!name) continue;
+        const norm = normalizeSearch(name);
+        if (norm === slugNeedle || norm === titleNeedle) {
+          matchSnippet = line.trim();
+          break;
+        }
+      }
+      if (matchSnippet) break;
     }
-    return false;
-  });
+
+    if (matchSnippet) {
+      results.push({
+        ...n,
+        snippet: matchSnippet.length > 120 ? `${matchSnippet.slice(0, 117)}...` : matchSnippet,
+      });
+    }
+  }
+
+  return results;
 }
 
 const WIKI_TOKEN_RE = /\[\[([^\]\n]+?)\]\]/g;

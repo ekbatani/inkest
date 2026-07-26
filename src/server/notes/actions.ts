@@ -20,6 +20,12 @@ export async function createNoteAction() {
   redirect(`/notes/${note.id}`);
 }
 
+export async function createNoteWithTitleAction(title: string) {
+  const note = await createNote({ title: title.trim() || "Untitled" });
+  revalidatePath("/notes");
+  return note;
+}
+
 export async function createProjectAction() {
   const note = await createNote({
     title: "New project",

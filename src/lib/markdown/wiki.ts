@@ -125,8 +125,8 @@ export function transformWikiLinks(
       const target = resolve(name, normalized);
       const label = section ? `${name}#${section}` : name;
       if (!target) {
-        // Render as muted text so the user sees the unresolved intention.
-        return `*${label}*`;
+        // Render with unresolved anchor so preview displays broken link affordance.
+        return `[${label}](#unresolved:${encodeURIComponent(name)})`;
       }
       return `[${label}](/notes/${target.id}${section ? `#${getHeadingAnchorId(section)}` : ""})`;
     });

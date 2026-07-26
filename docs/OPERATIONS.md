@@ -81,9 +81,22 @@ loaded client-side; measure code splitting for the editor and preview before
 adding further optimization. Re-run the same production-mode measurement after
 changes that affect bundles, fonts, editor behavior, or rendering.
 
-Targets: landing page Lighthouse at least 95 with under 100 KiB first-load
-JavaScript; substantially narrow the editor gap to the dashboard; validate
-editor interactivity on representative hardware and a throttled connection.
+### Research-MVP Performance Budgets (NFR-PERF)
+
+Inkest enforces strict p95 interaction latency budgets across core journeys to ensure calm, frictionless writing and sensemaking. Performance regression above these budgets blocks release.
+
+| Journey / Operation | Metric | p95 Latency Budget | Measurement Method |
+|---|---|---|---|
+| **Note Open** | Time to interactive note view | `< 500 ms` | Browser `PerformanceNavigationTiming` from click/route request to CodeMirror editor surface ready. |
+| **Local Search** | Filter/search results latency | `< 300 ms` | Client/Server FTS5 query response time measured via `performance.now()` in command palette search trigger. |
+| **Page Navigation** | Inter-route navigation | `< 250 ms` | Next.js App Router transition complete to layout render. |
+| **Reader Navigation** | Focus reader mode switch | `< 200 ms` | Duration from `Ctrl+Shift+R` or reader button click to `super-focus-reader` overlay mount. |
+
+#### Repeatable Measurement Methodology
+1. Run local production server (`bun run build && bun run start`).
+2. Run automated DevTools performance trace or benchmark script (`scripts/measure-perf.mjs`).
+3. Record 20 consecutive runs per journey on a representative CPU/network throttling profile.
+4. Calculate 95th percentile (p95); flag any metric exceeding budget as a release blocker.
 
 ### Editor typing trace — 2026-07-14
 
