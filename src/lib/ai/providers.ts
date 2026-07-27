@@ -2,6 +2,7 @@ export const AI_PROVIDER_IDS = [
   "openai",
   "openrouter",
   "opencode",
+  "nvidia",
   "ollama",
   "custom",
 ] as const;
@@ -39,6 +40,13 @@ export const AI_PROVIDERS: readonly AiProviderDefinition[] = [
     defaultBaseURL: "https://opencode.ai/zen/v1",
     defaultModel: "deepseek-v4-flash-free",
     apiKeyPlaceholder: "opencode Zen API key",
+  },
+  {
+    id: "nvidia",
+    label: "NVIDIA Build",
+    defaultBaseURL: "https://integrate.api.nvidia.com/v1",
+    defaultModel: "meta/llama-3.3-70b-instruct",
+    apiKeyPlaceholder: "nvapi-...",
   },
   {
     id: "ollama",

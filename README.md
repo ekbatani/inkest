@@ -87,10 +87,11 @@ them.
 | --- | --- |
 | App and database | `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `NEXT_PUBLIC_APP_URL`, `DATABASE_URL`, `DATABASE_AUTH_TOKEN` |
 | User credential encryption | `AI_CREDENTIAL_ENCRYPTION_KEYS` (required before users save provider keys or connect Google Calendar) |
-| AI provider | `AI_PROVIDER` (`openai`, `openrouter`, `opencode`, `ollama`, or `custom`) plus the selected provider's `*_API_KEY`, `*_BASE_URL`, and `*_MODEL` values. Use `AI_ALLOWED_BASE_URLS` to approve custom personal-provider origins. |
+| AI provider | `AI_PROVIDER` (`openai`, `openrouter`, `opencode`, `nvidia`, `ollama`, or `custom`) plus the selected provider's `*_API_KEY`, `*_BASE_URL`, and `*_MODEL` values. Use `AI_ALLOWED_BASE_URLS` to approve custom personal-provider origins. |
 | OpenAI or custom AI | `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL` |
 | OpenRouter AI | `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL` |
 | opencode Zen AI | `OPENCODE_API_KEY`, `OPENCODE_BASE_URL`, `OPENCODE_MODEL` |
+| NVIDIA Build AI | `NVIDIA_API_KEY`, `NVIDIA_BASE_URL`, `NVIDIA_MODEL` |
 | Ollama AI | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` (no API key required) |
 | Google Calendar | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` (the callback URL is derived as `${NEXTAUTH_URL}/api/calendar/google/callback`) |
 | Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET` |

@@ -129,8 +129,8 @@ is absent or invalid. For the chosen provider, each field resolves separately:
 
 1. Personal API key, base URL, and model, when non-empty.
 2. The selected provider's instance `*_API_KEY`, `*_BASE_URL`, and `*_MODEL`.
-   `openai` and `custom` share `OPENAI_*`; OpenRouter, opencode Zen, and Ollama
-   use their respective prefixes.
+   `openai` and `custom` share `OPENAI_*`; OpenRouter, opencode Zen, NVIDIA Build,
+   and Ollama use their respective prefixes.
 3. The built-in base URL and model in [providers.ts](../src/lib/ai/providers.ts).
 
 A blank personal API key therefore intentionally uses the matching instance key;

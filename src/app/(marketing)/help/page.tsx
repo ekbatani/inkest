@@ -81,6 +81,17 @@ export default function HelpPage() {
             </p>
           </GuideCard>
 
+          <GuideCard title="NVIDIA Build">
+            <p>
+              Create an API key at{" "}
+              <a href="https://build.nvidia.com" rel="noopener noreferrer">
+                build.nvidia.com
+              </a>
+              . NVIDIA Build provides hosted NIM endpoints (such as Llama 3.3 70B) behind
+              an OpenAI-compatible API interface.
+            </p>
+          </GuideCard>
+
           <GuideCard title="Ollama (free, local, self-hosted)">
             <p>
               Install{" "}

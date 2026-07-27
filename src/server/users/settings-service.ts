@@ -13,6 +13,7 @@ const BUILT_IN_PERSONAL_AI_ORIGINS = new Set([
   "https://api.openai.com",
   "https://openrouter.ai",
   "https://opencode.ai",
+  "https://integrate.api.nvidia.com",
 ]);
 
 function isAllowedPersonalAiBaseUrl(value: string): boolean {

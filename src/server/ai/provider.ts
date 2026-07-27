@@ -23,6 +23,7 @@ export type AiConfigurationStatus = {
 const PROVIDER_ENV_PREFIX: Partial<Record<AiProviderId, string>> = {
   openrouter: "OPENROUTER",
   opencode: "OPENCODE",
+  nvidia: "NVIDIA",
   ollama: "OLLAMA",
 };
 

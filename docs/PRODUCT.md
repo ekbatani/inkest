@@ -49,7 +49,7 @@ It is designed to be self-hosted, portable, and pleasant to use every day.
   project plan, generate Mermaid, explain a selection, and translate a
   selection.
 - Configurable OpenAI-compatible providers, including OpenAI, OpenRouter,
-  opencode, Ollama, and a custom endpoint.
+  opencode, NVIDIA Build, Ollama, and a custom endpoint.
 - In-product setup help and optional Telegram linking/notifications.
 
 ## Audience and commercial direction
