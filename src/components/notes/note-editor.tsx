@@ -775,9 +775,14 @@ export function NoteEditor({
       </div>
 
       <div className="relative flex min-h-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 flex-col transition-[margin-right] duration-200 motion-reduce:transition-none",
+            showPanel && "sm:mr-[320px]",
+          )}
+        >
           <div className="px-6 pt-6 sm:px-10 sm:pt-8">
-            <div className="mx-auto w-full max-w-3xl">
+            <div className="w-full">
               <Label
                 htmlFor="note-title"
                 className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/75"
@@ -872,7 +877,7 @@ export function NoteEditor({
       <div
         ref={previewCopyRef}
         aria-hidden="true"
-        className="pointer-events-none absolute -left-[9999px] top-0 w-[48rem] opacity-0"
+        className="pointer-events-none absolute -left-[9999px] top-0 w-full opacity-0"
       >
         {copyMenuTouched && (
           <MarkdownPreview content={content} direction={metadata.direction} />

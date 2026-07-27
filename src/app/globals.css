@@ -197,7 +197,7 @@ html.dark[data-palette="violet"] { --background: oklch(0.20 0.025 295); --foregr
 /* Obsidian-inspired writing rhythm, tuned to Inkest's quieter interface. */
 .inkest-prose {
   width: 100%;
-  max-width: 48rem;
+  max-width: 100%;
   margin-inline: auto;
   font-family: var(--inkest-font-writing);
   font-size: 1.046875rem;

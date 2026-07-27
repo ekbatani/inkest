@@ -242,7 +242,7 @@ export function MarkdownEditor({
             paddingInline: "0.25rem",
             paddingBottom: "2.5rem",
             width: "100%",
-            maxWidth: "48rem",
+            maxWidth: "100%",
             marginInline: "auto",
             caretColor: "var(--primary)",
           },
