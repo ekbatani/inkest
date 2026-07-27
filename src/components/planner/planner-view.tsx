@@ -13,6 +13,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { PlannerData, TaskWithNoteTitle } from "@/server/tasks/planner-service";
 import { updateTaskAction } from "@/server/tasks/actions";
@@ -58,54 +67,73 @@ export function PlannerView({ initialData }: Props) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="app-page gap-6 sm:gap-8">
       {/* Header Banner */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-500/10 via-purple-500/5 to-transparent p-6">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
-            <Target className="size-6 text-violet-500" />
-            Planner & Next Actions
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Decompose goals into implementation intentions (&quot;If [cue], then [action]&quot;) and maintain focus.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/review">
-            <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white">
-              <Sparkles className="size-4" /> Start Weekly Review
+      <div className="surface-card p-6 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Target className="size-4 text-primary" />
+              <span className="section-label">Task & Goal Strategy</span>
+            </div>
+            <h1 className="text-2xl font-semibold tracking-[-0.035em] sm:text-3xl text-foreground">
+              Planner & Next Actions
+            </h1>
+            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Decompose goals into concrete implementation intentions (&quot;If [cue], then [action]&quot;) to maintain focus and drive execution.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <Button
+              className="rounded-xl shadow-sm gap-2"
+              nativeButton={false}
+              render={<Link href="/review" />}
+            >
+              <Sparkles className="size-4" />
+              Start Weekly Review
             </Button>
-          </Link>
+          </div>
         </div>
       </div>
 
       {/* Metrics Row */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Overdue</p>
-          <p className="mt-2 text-2xl font-bold text-destructive">{data.overdue.length}</p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="surface-card p-4">
+          <p className="section-label">Overdue</p>
+          <p className="mt-2 font-mono text-2xl font-semibold tracking-tight text-destructive">
+            {data.overdue.length}
+          </p>
         </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Due Today</p>
-          <p className="mt-2 text-2xl font-bold text-amber-500">{data.today.length}</p>
+        <div className="surface-card p-4">
+          <p className="section-label">Due Today</p>
+          <p className="mt-2 font-mono text-2xl font-semibold tracking-tight text-foreground">
+            {data.today.length}
+          </p>
         </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Upcoming (7 days)</p>
-          <p className="mt-2 text-2xl font-bold text-violet-500">{data.upcoming.length}</p>
+        <div className="surface-card p-4">
+          <p className="section-label">Upcoming (7d)</p>
+          <p className="mt-2 font-mono text-2xl font-semibold tracking-tight text-foreground">
+            {data.upcoming.length}
+          </p>
         </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground uppercase">Completed This Week</p>
-          <p className="mt-2 text-2xl font-bold text-emerald-500">{data.completedThisWeekCount}</p>
+        <div className="surface-card p-4">
+          <p className="section-label">Completed Week</p>
+          <p className="mt-2 font-mono text-2xl font-semibold tracking-tight text-primary">
+            {data.completedThisWeekCount}
+          </p>
         </div>
       </div>
 
       {/* Overdue Section */}
       {data.overdue.length > 0 && (
         <section className="space-y-3">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-destructive">
-            <AlertCircle className="size-5" /> Overdue Items ({data.overdue.length})
-          </h2>
-          <div className="divide-y rounded-xl border border-destructive/20 bg-card">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="size-4 text-destructive" />
+            <h2 className="section-label text-destructive">
+              Overdue Items ({data.overdue.length})
+            </h2>
+          </div>
+          <div className="surface-card overflow-hidden divide-y divide-border/70 border-destructive/30">
             {data.overdue.map((task) => (
               <TaskRow
                 key={task.id}
@@ -126,16 +154,17 @@ export function PlannerView({ initialData }: Props) {
       <div className="grid gap-6 md:grid-cols-2">
         {/* Today Column */}
         <section className="space-y-3">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Clock className="size-5 text-amber-500" /> Today&apos;s Focus ({data.today.length})
-          </h2>
-          <div className="divide-y rounded-xl border bg-card min-h-[200px]">
-            {data.today.length === 0 ? (
-              <div className="p-8 text-center text-sm text-muted-foreground">
-                No tasks scheduled for today. Great job!
-              </div>
-            ) : (
-              data.today.map((task) => (
+          <div className="flex items-center gap-2">
+            <Clock className="size-4 text-muted-foreground" />
+            <h2 className="section-label">Today&apos;s Focus ({data.today.length})</h2>
+          </div>
+          {data.today.length === 0 ? (
+            <div className="surface-card-dashed p-8 text-center text-sm text-muted-foreground">
+              No tasks scheduled for today. Great job!
+            </div>
+          ) : (
+            <div className="surface-card overflow-hidden divide-y divide-border/70 min-h-[160px]">
+              {data.today.map((task) => (
                 <TaskRow
                   key={task.id}
                   task={task}
@@ -146,23 +175,24 @@ export function PlannerView({ initialData }: Props) {
                     setIfThenInput(t.ifThenCue || "");
                   }}
                 />
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Unplanned / Goal Decomposition Column */}
         <section className="space-y-3">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-            <ListTodo className="size-5 text-violet-500" /> Goal Intentions ({data.unplanned.length})
-          </h2>
-          <div className="divide-y rounded-xl border bg-card min-h-[200px]">
-            {data.unplanned.length === 0 ? (
-              <div className="p-8 text-center text-sm text-muted-foreground">
-                All active goals have implementation intentions assigned!
-              </div>
-            ) : (
-              data.unplanned.slice(0, 5).map((task) => (
+          <div className="flex items-center gap-2">
+            <ListTodo className="size-4 text-muted-foreground" />
+            <h2 className="section-label">Goal Intentions ({data.unplanned.length})</h2>
+          </div>
+          {data.unplanned.length === 0 ? (
+            <div className="surface-card-dashed p-8 text-center text-sm text-muted-foreground">
+              All active goals have implementation intentions assigned!
+            </div>
+          ) : (
+            <div className="surface-card overflow-hidden divide-y divide-border/70 min-h-[160px]">
+              {data.unplanned.slice(0, 5).map((task) => (
                 <TaskRow
                   key={task.id}
                   task={task}
@@ -173,49 +203,65 @@ export function PlannerView({ initialData }: Props) {
                     setIfThenInput(t.ifThenCue || "");
                   }}
                 />
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
 
-      {/* Edit Cue Dialog Inline */}
-      {editingTaskId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md space-y-4 rounded-2xl border bg-card p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-foreground">Implementation Intention</h3>
-            <p className="text-xs text-muted-foreground">
+      {/* Edit Cue Dialog */}
+      <Dialog
+        open={Boolean(editingTaskId)}
+        onOpenChange={(open) => {
+          if (!open) setEditingTaskId(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Target className="size-5 text-primary" />
+              Implementation Intention
+            </DialogTitle>
+            <DialogDescription>
               Define the exact next action and trigger condition (&quot;If [trigger], then I will [action]&quot;).
-            </p>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs">Concrete Next Action</Label>
-                <Input
-                  value={nextActionInput}
-                  onChange={(e) => setNextActionInput(e.target.value)}
-                  placeholder="e.g., Draft first 200 words of intro"
-                />
-              </div>
-              <div>
-                <Label className="text-xs">If-Then Trigger Cue</Label>
-                <Input
-                  value={ifThenInput}
-                  onChange={(e) => setIfThenInput(e.target.value)}
-                  placeholder="e.g., When I open my computer at 9am"
-                />
-              </div>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Concrete Next Action</Label>
+              <Input
+                value={nextActionInput}
+                onChange={(e) => setNextActionInput(e.target.value)}
+                placeholder="e.g., Draft first 200 words of intro"
+                className="rounded-xl"
+              />
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setEditingTaskId(null)}>
-                Cancel
-              </Button>
-              <Button size="sm" onClick={() => handleSaveGoalCue(editingTaskId)}>
-                Save Cue
-              </Button>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">If-Then Trigger Cue</Label>
+              <Input
+                value={ifThenInput}
+                onChange={(e) => setIfThenInput(e.target.value)}
+                placeholder="e.g., When I open my computer at 9am"
+                className="rounded-xl"
+              />
             </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setEditingTaskId(null)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => editingTaskId && handleSaveGoalCue(editingTaskId)}
+              className="rounded-xl shadow-sm"
+            >
+              Save Cue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -230,35 +276,44 @@ function TaskRow({
   onEditCue: (task: TaskWithNoteTitle) => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 p-4 transition-colors hover:bg-muted/40">
+    <div className="flex items-start justify-between gap-3 p-4 transition-colors hover:bg-muted/30">
       <div className="flex items-start gap-3">
         <button
           onClick={() => onComplete(task.id)}
           className="mt-0.5 rounded-full p-1 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors"
           title="Mark complete"
         >
-          <CheckCircle2 className="size-5" />
+          <CheckCircle2 className="size-4" />
         </button>
         <div className="space-y-1">
           <p className="text-sm font-medium text-foreground">{task.title}</p>
           <p className="text-xs text-muted-foreground">
-            From: <Link href={`/notes/${task.noteId}`} className="hover:underline font-medium">{task.noteTitle}</Link>
+            From:{" "}
+            <Link
+              href={`/notes/${task.noteId}`}
+              className="hover:underline font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {task.noteTitle}
+            </Link>
           </p>
           {task.nextAction ? (
-            <div className="mt-1 text-xs text-violet-600 dark:text-violet-300 font-medium">
-              Next: {task.nextAction}
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <Badge variant="secondary" className="text-[11px] font-medium">
+                Next: {task.nextAction}
+              </Badge>
             </div>
           ) : null}
           {task.ifThenCue ? (
-            <div className="text-[11px] italic text-muted-foreground">
+            <p className="text-[11px] italic text-muted-foreground mt-0.5">
               Trigger: {task.ifThenCue}
-            </div>
+            </p>
           ) : null}
         </div>
       </div>
-      <Button variant="ghost" size="xs" onClick={() => onEditCue(task)}>
+      <Button variant="ghost" size="sm" onClick={() => onEditCue(task)} className="text-xs">
         Set Cue
       </Button>
     </div>
   );
 }
+

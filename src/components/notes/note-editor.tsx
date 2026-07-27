@@ -1126,7 +1126,7 @@ function MetadataPanel({
                   </Link>
                   {b.snippet && (
                     <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground/80 italic font-mono bg-muted/30 p-1.5 rounded-lg border border-border/40">
-                      "{b.snippet}"
+                      &quot;{b.snippet}&quot;
                     </p>
                   )}
                 </li>

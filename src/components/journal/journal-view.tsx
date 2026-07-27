@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { BookOpen, Plus, Filter, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { JournalTemplateModal } from "./journal-template-modal";
 import { JOURNAL_TEMPLATES, type JournalTemplateType } from "@/lib/journal-templates";
 
@@ -33,31 +34,40 @@ export function JournalView({ initialEntries }: Props) {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="app-page gap-6 sm:gap-8">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-emerald-500/20 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-6">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
-            <BookOpen className="size-6 text-emerald-500" />
-            Structured Journaling
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Guided templates for reflections, decision logs, and research synthesis.
-          </p>
+      <div className="surface-card p-6 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <BookOpen className="size-4 text-primary" />
+              <span className="section-label">Structured Reflection</span>
+            </div>
+            <h1 className="text-2xl font-semibold tracking-[-0.035em] sm:text-3xl text-foreground">
+              Journal & Reflections
+            </h1>
+            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Guided templates for daily reflections, decision logs, and research synthesis.
+            </p>
+          </div>
+          <Button
+            onClick={() => setModalOpen(true)}
+            className="rounded-xl shadow-sm gap-2 shrink-0"
+          >
+            <Plus className="size-4" /> New Journal Entry
+          </Button>
         </div>
-        <Button onClick={() => setModalOpen(true)} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-          <Plus className="size-4" /> New Journal Entry
-        </Button>
       </div>
 
       {/* Filter bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-        <span className="flex items-center gap-1 font-medium text-muted-foreground pr-2">
-          <Filter className="size-3.5" /> Filter:
+        <span className="flex items-center gap-1 section-label pr-2 shrink-0">
+          <Filter className="size-3" /> Filter:
         </span>
         <Button
           variant={filterType === "all" ? "secondary" : "ghost"}
-          size="xs"
+          size="sm"
+          className="rounded-lg text-xs"
           onClick={() => setFilterType("all")}
         >
           All ({initialEntries.length})
@@ -68,7 +78,8 @@ export function JournalView({ initialEntries }: Props) {
             <Button
               key={tmpl.type}
               variant={filterType === tmpl.type ? "secondary" : "ghost"}
-              size="xs"
+              size="sm"
+              className="rounded-lg text-xs"
               onClick={() => setFilterType(tmpl.type)}
             >
               {tmpl.title} ({count})
@@ -80,11 +91,11 @@ export function JournalView({ initialEntries }: Props) {
       {/* Timeline Entries */}
       <div className="space-y-3">
         {filtered.length === 0 ? (
-          <div className="rounded-2xl border bg-card p-12 text-center space-y-3">
+          <div className="surface-card-dashed p-12 text-center space-y-3">
             <BookOpen className="mx-auto size-10 text-muted-foreground/60" />
             <p className="text-sm font-medium text-foreground">No journal entries found</p>
             <p className="text-xs text-muted-foreground">Create your first entry using guided reflection templates.</p>
-            <Button size="sm" onClick={() => setModalOpen(true)} className="gap-1.5">
+            <Button size="sm" onClick={() => setModalOpen(true)} className="gap-1.5 rounded-xl shadow-sm">
               <Plus className="size-4" /> New Entry
             </Button>
           </div>
@@ -95,13 +106,13 @@ export function JournalView({ initialEntries }: Props) {
               <Link
                 key={item.entry.id}
                 href={`/notes/${item.entry.noteId}`}
-                className="group flex flex-col gap-2 rounded-xl border bg-card p-4 transition-all hover:border-emerald-500/50 hover:shadow-sm"
+                className="surface-card-interactive group block p-5 space-y-2"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 capitalize">
+                    <Badge variant="secondary" className="text-[11px] font-medium capitalize">
                       {tmpl?.title || item.entry.templateMode}
-                    </span>
+                    </Badge>
                     <span className="text-xs text-muted-foreground">
                       {new Date(item.entry.createdAt).toLocaleDateString(undefined, {
                         weekday: "short",
@@ -113,11 +124,11 @@ export function JournalView({ initialEntries }: Props) {
                   </div>
                   <ArrowUpRight className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <h3 className="font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                <h3 className="font-medium text-foreground group-hover:text-primary transition-colors">
                   {item.noteTitle}
                 </h3>
-                <p className="line-clamp-2 text-xs text-muted-foreground">
-                  {item.contentMd.slice(0, 180)}...
+                <p className="line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                  {item.contentMd.replace(/[#*_`>~\-[\]()!]/g, "").slice(0, 180)}...
                 </p>
               </Link>
             );
@@ -129,3 +140,4 @@ export function JournalView({ initialEntries }: Props) {
     </div>
   );
 }
+

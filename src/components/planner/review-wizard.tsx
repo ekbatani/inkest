@@ -36,17 +36,17 @@ export function ReviewWizard({ data }: Props) {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="app-page max-w-3xl gap-6">
       {/* Step Indicator */}
-      <div className="flex items-center justify-between border-b pb-4">
+      <div className="surface-card p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="size-5 text-violet-500" />
-          <h1 className="text-xl font-bold text-foreground">Weekly Review Ritual</h1>
+          <Sparkles className="size-5 text-primary" />
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">Weekly Review Ritual</h1>
         </div>
         <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          <span className={step === "overdue" ? "text-violet-500 font-bold" : ""}>1. Overdue</span> &rarr;
-          <span className={step === "unplanned" ? "text-violet-500 font-bold" : ""}>2. Unplanned</span> &rarr;
-          <span className={step === "wins" ? "text-violet-500 font-bold" : ""}>3. Wins</span>
+          <span className={step === "overdue" ? "text-primary font-bold" : ""}>1. Overdue</span> &rarr;
+          <span className={step === "unplanned" ? "text-primary font-bold" : ""}>2. Unplanned</span> &rarr;
+          <span className={step === "wins" ? "text-primary font-bold" : ""}>3. Wins</span>
         </div>
       </div>
 
@@ -61,13 +61,13 @@ export function ReviewWizard({ data }: Props) {
           </div>
 
           {overdueList.length === 0 ? (
-            <div className="rounded-xl border bg-card p-8 text-center">
-              <CheckCircle2 className="mx-auto size-8 text-emerald-500" />
-              <p className="mt-2 text-sm font-medium text-foreground">No overdue tasks!</p>
+            <div className="surface-card-dashed p-8 text-center space-y-2">
+              <CheckCircle2 className="mx-auto size-8 text-primary" />
+              <p className="text-sm font-medium text-foreground">No overdue tasks!</p>
               <p className="text-xs text-muted-foreground">You are all caught up.</p>
             </div>
           ) : (
-            <div className="divide-y rounded-xl border bg-card">
+            <div className="surface-card overflow-hidden divide-y divide-border/70">
               {overdueList.map((t) => (
                 <div key={t.id} className="flex items-center justify-between p-4 text-xs">
                   <div>
@@ -75,13 +75,13 @@ export function ReviewWizard({ data }: Props) {
                     <p className="text-muted-foreground">From: {t.noteTitle}</p>
                   </div>
                   <div className="flex gap-1.5">
-                    <Button variant="outline" size="xs" onClick={() => handleResolveOverdue(t.id, "done")}>
+                    <Button variant="outline" size="sm" onClick={() => handleResolveOverdue(t.id, "done")}>
                       Done
                     </Button>
-                    <Button variant="outline" size="xs" onClick={() => handleResolveOverdue(t.id, "today")}>
+                    <Button variant="outline" size="sm" onClick={() => handleResolveOverdue(t.id, "today")}>
                       Today
                     </Button>
-                    <Button variant="outline" size="xs" onClick={() => handleResolveOverdue(t.id, "next_week")}>
+                    <Button variant="outline" size="sm" onClick={() => handleResolveOverdue(t.id, "next_week")}>
                       Next Week
                     </Button>
                   </div>
@@ -91,7 +91,7 @@ export function ReviewWizard({ data }: Props) {
           )}
 
           <div className="flex justify-end">
-            <Button size="sm" onClick={() => setStep("unplanned")} className="gap-1.5">
+            <Button size="sm" onClick={() => setStep("unplanned")} className="gap-1.5 rounded-xl shadow-sm">
               Next: Unplanned Goals <ArrowRight className="size-4" />
             </Button>
           </div>
@@ -108,17 +108,17 @@ export function ReviewWizard({ data }: Props) {
             </p>
           </div>
 
-          <div className="rounded-xl border bg-card p-6 text-sm">
+          <div className="surface-card p-6 text-sm">
             <p className="text-muted-foreground">
               Found <strong className="text-foreground">{unplannedList.length}</strong> active tasks/goals missing explicit deadlines or next actions.
             </p>
           </div>
 
           <div className="flex justify-between">
-            <Button variant="outline" size="sm" onClick={() => setStep("overdue")} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => setStep("overdue")} className="gap-1.5 rounded-xl">
               <ArrowLeft className="size-4" /> Back
             </Button>
-            <Button size="sm" onClick={() => setStep("wins")} className="gap-1.5">
+            <Button size="sm" onClick={() => setStep("wins")} className="gap-1.5 rounded-xl shadow-sm">
               Next: Weekly Wins <ArrowRight className="size-4" />
             </Button>
           </div>
@@ -135,17 +135,17 @@ export function ReviewWizard({ data }: Props) {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-8 text-center space-y-2">
-            <Trophy className="mx-auto size-12 text-emerald-500" />
+          <div className="surface-card p-8 text-center space-y-2">
+            <Trophy className="mx-auto size-12 text-primary" />
             <h3 className="text-2xl font-bold text-foreground">{data.completedThisWeekCount} Tasks Completed</h3>
             <p className="text-xs text-muted-foreground">Great progress this week!</p>
           </div>
 
           <div className="flex justify-between">
-            <Button variant="outline" size="sm" onClick={() => setStep("unplanned")} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => setStep("unplanned")} className="gap-1.5 rounded-xl">
               <ArrowLeft className="size-4" /> Back
             </Button>
-            <Button size="sm" onClick={() => setStep("complete")} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Button size="sm" onClick={() => setStep("complete")} className="gap-1.5 rounded-xl shadow-sm">
               Complete Review <Check className="size-4" />
             </Button>
           </div>
@@ -154,15 +154,16 @@ export function ReviewWizard({ data }: Props) {
 
       {/* Complete State */}
       {step === "complete" && (
-        <div className="rounded-2xl border bg-card p-8 text-center space-y-4">
-          <CheckCircle2 className="mx-auto size-12 text-emerald-500" />
+        <div className="surface-card p-8 text-center space-y-4">
+          <CheckCircle2 className="mx-auto size-12 text-primary" />
           <h2 className="text-xl font-bold text-foreground">Weekly Review Complete!</h2>
           <p className="text-xs text-muted-foreground">Your workspace is organized and ready for the week ahead.</p>
           <Link href="/planner">
-            <Button size="sm">Return to Planner</Button>
+            <Button size="sm" className="rounded-xl shadow-sm">Return to Planner</Button>
           </Link>
         </div>
       )}
     </div>
   );
 }
+

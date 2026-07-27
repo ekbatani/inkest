@@ -20,11 +20,11 @@ interface Props {
 }
 
 const ICONS: Record<string, React.ReactNode> = {
-  Sun: <Sun className="size-5 text-amber-500" />,
-  Calendar: <Calendar className="size-5 text-blue-500" />,
-  GitFork: <GitFork className="size-5 text-purple-500" />,
-  BookOpen: <BookOpen className="size-5 text-emerald-500" />,
-  Users: <Users className="size-5 text-rose-500" />,
+  Sun: <Sun className="size-5 text-primary" />,
+  Calendar: <Calendar className="size-5 text-primary" />,
+  GitFork: <GitFork className="size-5 text-primary" />,
+  BookOpen: <BookOpen className="size-5 text-primary" />,
+  Users: <Users className="size-5 text-primary" />,
 };
 
 export function JournalTemplateModal({ open, onOpenChange }: Props) {
@@ -50,7 +50,7 @@ export function JournalTemplateModal({ open, onOpenChange }: Props) {
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="size-5 text-violet-500" /> Choose Journal Template
+            <Sparkles className="size-5 text-primary" /> Choose Journal Template
           </DialogTitle>
           <DialogDescription>
             Select a structured template for guided reflections, decision logs, or research synthesis.
@@ -63,15 +63,15 @@ export function JournalTemplateModal({ open, onOpenChange }: Props) {
               key={template.type}
               onClick={() => handleSelectTemplate(template.type)}
               disabled={Boolean(loadingType)}
-              className="flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all hover:border-violet-500 hover:bg-violet-500/5 hover:shadow-sm disabled:opacity-50"
+              className="surface-card-interactive flex flex-col items-start gap-2 p-4 text-left disabled:opacity-50"
             >
               <div className="flex w-full items-center justify-between">
                 {ICONS[template.icon]}
-                {loadingType === template.type && <Loader2 className="size-4 animate-spin text-violet-500" />}
+                {loadingType === template.type && <Loader2 className="size-4 animate-spin text-primary" />}
               </div>
               <div>
                 <p className="font-semibold text-foreground text-sm">{template.title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{template.description}</p>
+                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{template.description}</p>
               </div>
             </button>
           ))}
@@ -80,3 +80,4 @@ export function JournalTemplateModal({ open, onOpenChange }: Props) {
     </Dialog>
   );
 }
+

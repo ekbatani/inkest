@@ -5,6 +5,15 @@ import { Lock, Unlock, Plus, Eye, EyeOff, Copy, Trash2, ShieldCheck } from "luci
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { encryptVaultSecret, decryptVaultSecret } from "@/lib/vault-crypto";
 import { createVaultItemAction, deleteVaultItemAction } from "@/server/vault/actions";
@@ -127,27 +136,27 @@ export function VaultView({ initialItems }: Props) {
 
   if (!isUnlocked) {
     return (
-      <div className="mx-auto max-w-md space-y-6 pt-12">
-        <div className="rounded-2xl border border-violet-500/20 bg-card p-8 text-center space-y-4 shadow-lg">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-500">
+      <div className="app-page items-center justify-center min-h-[70vh]">
+        <div className="surface-card w-full max-w-md p-8 text-center space-y-6">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Lock className="size-7" />
           </div>
-          <div className="space-y-1">
-            <h1 className="text-xl font-bold text-foreground">Zero-Knowledge Encrypted Vault</h1>
-            <p className="text-xs text-muted-foreground">
+          <div className="space-y-1.5">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Zero-Knowledge Encrypted Vault</h1>
+            <p className="text-xs text-muted-foreground leading-relaxed">
               Enter your vault key to decrypt secrets in your browser. Inkest servers never see unencrypted secrets.
             </p>
           </div>
 
-          <form onSubmit={handleUnlockVault} className="space-y-3">
+          <form onSubmit={handleUnlockVault} className="space-y-4 pt-2">
             <Input
               type="password"
               placeholder="Vault Master Password"
               value={masterPassword}
               onChange={(e) => setMasterPassword(e.target.value)}
-              className="text-center"
+              className="text-center rounded-xl"
             />
-            <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2">
+            <Button type="submit" className="w-full rounded-xl shadow-sm gap-2">
               <Unlock className="size-4" /> Unlock Vault
             </Button>
           </form>
@@ -157,125 +166,139 @@ export function VaultView({ initialItems }: Props) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="app-page gap-6 sm:gap-8">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-violet-500/20 bg-gradient-to-r from-violet-500/10 via-purple-500/5 to-transparent p-6">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
-            <ShieldCheck className="size-6 text-violet-500" />
-            Encrypted Vault ({items.length})
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Client-side AES-GCM 256-bit zero-knowledge storage.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setNewModalOpen(true)} className="gap-2 bg-violet-600 hover:bg-violet-700 text-white">
-            <Plus className="size-4" /> New Secret
-          </Button>
-          <Button variant="outline" onClick={() => setIsUnlocked(false)}>
-            Lock Vault
-          </Button>
+      <div className="surface-card p-6 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <ShieldCheck className="size-4 text-primary" />
+              <span className="section-label">Zero-Knowledge Security</span>
+            </div>
+            <h1 className="text-2xl font-semibold tracking-[-0.035em] sm:text-3xl text-foreground">
+              Encrypted Vault ({items.length})
+            </h1>
+            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Client-side AES-GCM 256-bit zero-knowledge storage for secrets, API keys, and sensitive notes.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button onClick={() => setNewModalOpen(true)} className="rounded-xl shadow-sm gap-2">
+              <Plus className="size-4" /> New Secret
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setIsUnlocked(false)} className="rounded-xl">
+              Lock Vault
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Secret list */}
-      <div className="divide-y rounded-xl border bg-card">
-        {items.length === 0 ? (
-          <div className="p-12 text-center text-sm text-muted-foreground">
-            No secrets stored in vault yet.
-          </div>
-        ) : (
-          items.map((item) => {
+      {items.length === 0 ? (
+        <div className="surface-card-dashed p-12 text-center text-sm text-muted-foreground">
+          No secrets stored in vault yet.
+        </div>
+      ) : (
+        <div className="surface-card overflow-hidden divide-y divide-border/70">
+          {items.map((item) => {
             const isRevealed = Boolean(revealed[item.id]);
             const plain = revealed[item.id];
 
             return (
-              <div key={item.id} className="flex items-center justify-between p-4 text-xs">
-                <div className="space-y-1">
+              <div key={item.id} className="flex items-center justify-between p-4 transition-colors hover:bg-muted/30 text-xs">
+                <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-foreground text-sm">{item.title}</span>
-                    <span className="rounded bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-300 capitalize">
+                    <span className="font-medium text-foreground text-sm">{item.title}</span>
+                    <Badge variant="secondary" className="text-[10px] font-medium capitalize">
                       {item.category.replace("_", " ")}
-                    </span>
+                    </Badge>
                   </div>
                   {isRevealed ? (
-                    <div className="flex items-center gap-2 font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded w-fit">
+                    <div className="flex items-center gap-2 font-mono text-xs text-primary bg-primary/10 px-2.5 py-1 rounded-lg w-fit">
                       <span>{plain}</span>
-                      <button onClick={() => handleCopySecret(plain!)} className="hover:opacity-80" title="Copy">
+                      <button onClick={() => handleCopySecret(plain!)} className="hover:opacity-80 transition-opacity" title="Copy">
                         <Copy className="size-3.5" />
                       </button>
                     </div>
                   ) : (
-                    <p className="font-mono text-muted-foreground">••••••••••••••••</p>
+                    <p className="font-mono text-muted-foreground tracking-wider">••••••••••••••••</p>
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <Button variant="ghost" size="xs" onClick={() => handleToggleReveal(item)}>
-                    {isRevealed ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => handleToggleReveal(item)}>
+                    {isRevealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </Button>
-                  <Button variant="ghost" size="xs" onClick={() => handleDelete(item.id)} className="text-destructive">
-                    <Trash2 className="size-3.5" />
+                  <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="text-destructive hover:text-destructive">
+                    <Trash2 className="size-4" />
                   </Button>
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
-
-      {/* New secret dialog inline */}
-      {newModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md space-y-4 rounded-2xl border bg-card p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-foreground">Add New Vault Secret</h3>
-            <form onSubmit={handleCreateSecret} className="space-y-3">
-              <div>
-                <Label className="text-xs">Title / Identifier</Label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. OpenAI API Key"
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs">Category</Label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value as VaultCategory)}
-                  className="w-full h-9 rounded-md border bg-background px-3 text-xs"
-                >
-                  <option value="secret_note">Secret Note</option>
-                  <option value="password">Password</option>
-                  <option value="key">API Key</option>
-                  <option value="token">Token</option>
-                </select>
-              </div>
-
-              <div>
-                <Label className="text-xs">Secret Content</Label>
-                <textarea
-                  value={secretText}
-                  onChange={(e) => setSecretText(e.target.value)}
-                  placeholder="Sensitive payload to encrypt..."
-                  className="w-full h-24 rounded-md border bg-background p-2 text-xs font-mono"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" size="sm" type="button" onClick={() => setNewModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button size="sm" type="submit" disabled={isSaving} className="bg-violet-600 text-white">
-                  Encrypt & Save
-                </Button>
-              </div>
-            </form>
-          </div>
+          })}
         </div>
       )}
+
+      {/* New secret Dialog */}
+      <Dialog open={newModalOpen} onOpenChange={setNewModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="size-5 text-primary" />
+              Add New Vault Secret
+            </DialogTitle>
+            <DialogDescription>
+              Secrets are encrypted locally in your browser before being stored.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateSecret} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Title / Identifier</Label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. OpenAI API Key"
+                className="rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Category</Label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as VaultCategory)}
+                className="w-full h-9 rounded-xl border border-input bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="secret_note">Secret Note</option>
+                <option value="password">Password</option>
+                <option value="key">API Key</option>
+                <option value="token">Token</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Secret Content</Label>
+              <textarea
+                value={secretText}
+                onChange={(e) => setSecretText(e.target.value)}
+                placeholder="Sensitive payload to encrypt..."
+                className="w-full h-24 rounded-xl border border-input bg-background p-3 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button variant="outline" size="sm" type="button" onClick={() => setNewModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" type="submit" disabled={isSaving} className="rounded-xl shadow-sm">
+                Encrypt & Save
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
