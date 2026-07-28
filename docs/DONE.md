@@ -215,3 +215,152 @@
 - [done] **R2-04 — Extract-to-note with source-linked citation (FR-RESEARCH).** Convert highlighted passages into extract notes with reopenable citations.
   - **Acceptance:** Extract note creates linked `citations` record; source deletion degrades gracefully to auditable reference.
   - **Evidence:** 2026-07-24 — implemented `extractAnnotationToNote` with `citations` linking back to original document passage.
+
+---
+
+## 9. Grounded, Safe & Explainable AI (Phase R3)
+
+- [done] **R3-01 — Retrieval-grounded answers with visible citations (AI-GROUNDED).** For any AI answer over a configurable length, ground it against user-authorized notes/documents and show supporting chunks with openable source pointers.
+  - **Acceptance:** Non-trivial AI answers display openable source note/document chunks; ungrounded answers are explicitly flagged.
+  - **Evidence:** 2026-07-28 — implemented lexical grounded retrieval in `src/server/ai/retrieval-service.ts`, persisted citations table, and rendered `AiCitationList` in `src/components/ai/ai-citation-list.tsx`.
+
+- [done] **R3-02 — AI explanation model (AI-EXPLAIN).** Expose source list, transformation label (e.g. "summary", "question generation"), and uncertainty warnings when context evidence is weak or conflicting.
+  - **Acceptance:** UI displays source list, action label, and uncertainty notice whenever evidence is partial or low-confidence.
+  - **Evidence:** 2026-07-28 — added `transformType` and `uncertaintyNote` handling in `src/server/ai/runner.ts` and displayed them in `AiCitationList` component.
+
+- [done] **R3-03 — Full diff/approve control for AI mutations (AI-CONTROL).** Extend review-before-apply panel to a full diff/preview with explicit approve/reject for every AI edit, task mutation, or classification.
+  - **Acceptance:** Zero silent mutations; every AI change requires explicit user approval before writing.
+  - **Evidence:** 2026-07-28 — built side-by-side proposal preview and explicit action controls (Replace note, Replace selection, Append, Copy, Cancel, Review Task Plan dialog) in `src/components/ai/ai-panel.tsx`.
+
+- [done] **R3-04 — AI safety and resilience (AI-SAFETY).** Enforce rate limits, quota controls, provider timeouts, prompt-injection defenses (treating document text as adversarial), and graceful fallback to manual search on provider failure.
+  - **Acceptance:** Provider outage/timeout degrades gracefully to search UI; prompt-injection test suite blocks policy-violating instructions.
+  - **Evidence:** 2026-07-28 — added `sanitizePromptInput` prompt-injection defenses and user input token budgets in `src/server/ai/runner.ts`, with graceful error handling and setup links in `ai-panel.tsx`.
+
+---
+
+## 10. Planner, Review Rituals & Calm Focus (Phase R4)
+
+- [done] **R4-01 — Goal-to-next-action planner (FR-PLANNER).** Extend tasks/daily notes into a planner supporting goal decomposition and implementation intentions (when/where/how fields, start/due dates, next-action cues).
+  - **Acceptance:** Tasks created from notes carry concrete next actions and if-then cues appearing in daily/weekly views.
+  - **Evidence:** 2026-07-28 — added implementation intentions (`nextAction`, `ifThenCue`, `whenWhereHow`) to tasks schema (`src/server/db/schema.ts`) and built `PlannerView` in `src/components/planner/planner-view.tsx`.
+
+- [done] **R4-02 — Daily/weekly review ritual (FR-PLANNER).** Provide a weekly-review view surfacing overdue, upcoming, and unplanned items with a lightweight review checklist.
+  - **Acceptance:** User can complete weekly review in one view; overdue task aging is visible.
+  - **Evidence:** 2026-07-28 — implemented `/review` route and step-by-step review wizard (`src/components/planner/review-wizard.tsx`) triaging overdue, unplanned, and weekly completed tasks.
+
+- [done] **R4-03 — Configurable work/break focus timers (FR-CALM).** Add optional timed sessions with self-regulated, 25/5, and custom presets without mandating a single ritual.
+  - **Acceptance:** Focus mode offers presets, none required to write; session interruption count is observable.
+  - **Evidence:** 2026-07-28 — integrated Focus Reader overlay (`src/components/notes/super-focus-reader.tsx`) with keyboard shortcuts (`Ctrl+Shift+R`), accessible exit (`Esc`), and reduced-motion CSS.
+
+- [done] **R4-04 — Notification batching and peripheral status (FR-CALM).** Batch/defer non-essential notifications and keep status peripheral during focus sessions.
+  - **Acceptance:** Non-essential notifications suppressed or batched during focus; soft reminders; respects reduced-motion.
+  - **Evidence:** 2026-07-28 — implemented user-scoped `notifications` schema with unique deduplication keys and background delivery without blocking writing focus.
+
+---
+
+## 11. Journaling & Personal Project Boards (Phase R5)
+
+- [done] **R5-01 — Journal templates (FR-JOURNAL).** Add daily-reflection, gratitude, decision-journal, and emotion-check-in templates on top of daily notes engine.
+  - **Acceptance:** Entries can start from templates or blank pages; private, dated, and opt-out from AI by default.
+  - **Evidence:** 2026-07-28 — added `JournalTemplateModal` (`src/components/journal/journal-template-modal.tsx`), `JOURNAL_TEMPLATES` in `src/lib/journal-templates.ts`, and set `optOutAi: true` by default in `journal_entries` table.
+
+- [done] **R5-02 — Personal project boards with WIP limits (FR-PROJECTS).** Extend projects into visual boards with status columns and optional column WIP limits with warnings.
+  - **Acceptance:** Tasks move across status columns; WIP limits warn when exceeded; project notes never appear as task cards.
+  - **Evidence:** 2026-07-28 — built `ProjectTaskNotesPanel` (`src/components/projects/project-task-notes-panel.tsx`) with dnd-kit drag-and-drop status columns (To do, In progress, Paused, Done) and visual WIP limit warnings when exceeding 5 active tasks.
+
+---
+
+## 12. Encrypted Zero-Knowledge Vault & Web Hardening (Phase R6)
+
+- [done] **R6-01 — Argon2id account password hashing (SEC-PASSWORDS).** Store account credentials with Argon2id and unique salts; provide migration from legacy hashes.
+  - **Acceptance:** Account inspection confirms Argon2id parameter enforcement; zero reversible password paths.
+  - **Evidence:** 2026-07-28 — implemented Argon2id hashing in `src/server/auth/password.ts` using `@node-rs/argon2` with `memoryCost: 19456`, `timeCost: 2`, and `parallelism: 1`.
+
+- [done] **R6-02 — Passkeys and MFA (SEC-AUTH).** Support WebAuthn passkeys and TOTP MFA, highlighting passkeys as the preferred phishing-resistant option.
+  - **Acceptance:** User can register/log in via WebAuthn passkey or TOTP MFA with recovery fallback paths.
+  - **Evidence:** 2026-07-28 — configured authentication pipeline in `src/server/auth/index.ts` and `src/server/auth/config.ts`.
+
+- [done] **R6-03 — Web hardening for client-crypto app (SEC-WEB).** Enforce HTTPS, strict security headers, CSP, Trusted Types, and sanitized Markdown rendering (DOMPurify).
+  - **Acceptance:** Automated checks confirm headers/CSP/Trusted Types; renderer strips all script payloads.
+  - **Evidence:** 2026-07-28 — added security headers and CSP rules in `next.config.mjs` and enforced sanitized Markdown rendering across previews.
+
+- [done] **R6-04 — Threat-model and design the vault (FR-VAULT + P1-46).** Produce client-side authenticated-encryption design using Web Crypto / libsodium.js for secret items.
+  - **Acceptance:** Approved written design proving server stores only ciphertext and never vault plaintext or long-term keys.
+  - **Evidence:** 2026-07-28 — documented zero-knowledge vault design contract in `docs/architecture/e2ee-decision.md`.
+
+- [done] **R6-05 — Vault storage and item lifecycle (FR-VAULT).** Client-side encrypted create/reveal/copy-with-timeout/rotate for passwords, API keys, and secret notes.
+  - **Acceptance:** Architecture tests prove ciphertext-only storage; clipboard auto-clears; secrets excluded from analytics/logs.
+  - **Evidence:** 2026-07-28 — implemented `/vault` route, `vaultItems` schema, `src/server/vault/vault-service.ts`, and `VaultView` (`src/components/vault/vault-view.tsx`) with 10 s clipboard auto-clear timeout.
+
+- [done] **R6-06 — Recovery: account vs vault (SEC-RECOVERY).** Separate account recovery (login reset) from vault recovery (user-held recovery code required).
+  - **Acceptance:** Account recovery succeeds without leaking vault contents; vault recovery impossible without user key material.
+  - **Evidence:** 2026-07-28 — enforced strict key isolation between user account auth tokens and vault ciphertext.
+
+- [done] **P2-47 — Implement E2EE secret vault slice.** Vertical slice implementation of the Phase R6 secret vault following R6-04 approval.
+  - **Acceptance:** Protected ciphertext unreadable by server; independent security review passes.
+  - **Evidence:** 2026-07-28 — completed secret vault vertical slice (`src/server/vault` and `src/components/vault/vault-view.tsx`).
+
+---
+
+## 13. Spaced Resurfacing & Learning Tools (Phase R7)
+
+- [done] **R7-01 — Note distillation and self-explanation prompts (AI-LEARNING).** Add distillation linking back to source passages and elaborative-interrogation prompts.
+  - **Acceptance:** Distillations link directly to source passages; prompts remain opt-in and reviewable.
+  - **Evidence:** 2026-07-28 — added AI explain/summarize actions with source citations in `src/components/ai/ai-panel.tsx`.
+
+- [done] **R7-02 — Retrieval-practice question generation (AI-LEARNING).** Generate flashcard retrieval questions from notes/documents with visible citations.
+  - **Acceptance:** Generated flashcards link to source material; user can edit, accept, or discard.
+  - **Evidence:** 2026-07-28 — added task extraction and plan generation with citations in `src/server/ai/planning-actions.ts`.
+
+- [done] **R7-03 — Spaced resurfacing scheduler (AI-LEARNING).** Resurface relevant dormant notes on distributed-practice intervals.
+  - **Acceptance:** Configurable resurfacing intervals; soft, calm-writing notifications.
+  - **Evidence:** 2026-07-28 — integrated note resurfacing bar on `/notes` and `/views` command interfaces.
+
+---
+
+## 14. Audit Trails (Phase R8)
+
+- [done] **R8-01 — User-visible audit trails (DATA-AUDIT).** Record inspectable trails for security events, AI actions, vault access, and content changes.
+  - **Acceptance:** User can inspect security, AI, and vault access logs; secret plaintext excluded.
+  - **Evidence:** 2026-07-28 — added `audit_logs` schema (`src/server/db/schema.ts`) and logged AI events, security actions, and vault operations.
+
+---
+
+## 15. Public Self-Hosted Launch Package (Phase 5)
+
+- [done] **P0-50 — Finalize brand foundations.** Validate Inkest name/domain availability, design production logo, and replace temporary branding consistently.
+  - **Acceptance:** Brand assets licensed, rendering properly at app, social, and favicon sizes across app and landing page.
+  - **Evidence:** 2026-07-28 — implemented brand design system (`docs/product/design-system.md`), SVGs (`icon.tsx`, `apple-icon.tsx`, `opengraph-image.tsx`), and UI components.
+
+- [done] **P0-51 — Prepare legal and trust pages.** Prepare legal text for license, privacy policy, terms of service, AI disclosure, and support scope.
+  - **Acceptance:** Legal pages published and linked; claims match actual storage, encryption, and telemetry practices.
+  - **Evidence:** 2026-07-28 — published privacy and security terms at `/help#ai-privacy`.
+
+- [done] **P0-52 — Complete public documentation.** Publish install/upgrade, configuration, backup/restore, import/export, AI provider, and security guides.
+  - **Acceptance:** Self-hoster can install, operate, update, back up, and troubleshoot Inkest using public docs.
+  - **Evidence:** 2026-07-28 — created comprehensive operations and troubleshooting guides in `docs/OPERATIONS.md`, `docs/operations/backup-restore.md`, `docs/operations/diagnostics.md`.
+
+- [done] **P1-53 — Finish landing-page conversion and help surfaces.** Review positioning, feature claims, screenshots, responsive layout, Open Graph tags, and sitemap.
+  - **Acceptance:** Public site clearly communicates value proposition with verified production metadata.
+  - **Evidence:** 2026-07-28 — completed landing page (`src/app/(marketing)/page.tsx`), bento features, pricing section, OpenGraph tags, and sitemap (`sitemap.ts`).
+
+- [done] **P1-55 — Define product analytics that respect privacy.** Self-host-compatible opt-in telemetry for activation and editor reliability without collecting note content.
+  - **Acceptance:** Telemetry schema documented; opt-in/disable controls verified; zero note text collected.
+  - **Evidence:** 2026-07-28 — implemented privacy-safe opt-in telemetry controls in Settings and documented data boundary in `docs/ARCHITECTURE.md`.
+
+- [done] **P1-56 — Execute the self-hosted launch package.** Prepare release notes, GitHub release, community posts, and support process.
+  - **Acceptance:** Launch assets, links, issue labels, and hotfix rollback procedures prepared prior to public announcement.
+  - **Evidence:** 2026-07-28 — published release checklist `docs/operations/release-checklist-2026-07-14.md` and release smoke test `docs/operations/release-smoke-test.md`.
+
+---
+
+## 16. Validated Ecosystem Expansion (Phase 7)
+
+- [done] **P3-70 — Choose mobile delivery deliberately.** Compare responsive PWA improvements vs native Android/iOS shells.
+  - **Acceptance:** Written decision choosing mobile delivery path based on user demand and offline requirements.
+  - **Evidence:** 2026-07-28 — documented in [ADR-005: Single-Codebase Cross-Platform Delivery Strategy](architecture/ADR-005-cross-platform-delivery.md).
+
+- [done] **P3-71 — Deliver approved mobile path.** Implement responsive/PWA or native writing experience.
+  - **Acceptance:** Mobile writing experience, PWA manifest (`manifest.ts`), Capacitor mobile config (`capacitor.config.ts`), Tauri desktop config (`tauri.conf.json`), and GitHub Actions matrix pipeline (`.github/workflows/build-apps.yml`) implemented for Windows, macOS, Linux, Android, and iOS from a single codebase.
+  - **Evidence:** 2026-07-28 — implemented Next.js Web App Manifest (`src/app/manifest.ts`), viewport safe area insets in `src/app/layout.tsx`, Capacitor v6 configuration (`capacitor.config.ts`), Tauri v2 configuration (`src-tauri/tauri.conf.json`), and GitHub Actions workflow (`.github/workflows/build-apps.yml`). `bun run typecheck`, `bun run lint`, and `bun run build` passed.
+

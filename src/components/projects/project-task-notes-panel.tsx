@@ -302,8 +302,13 @@ function TaskNotesColumn({
       )}
     >
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {label}
+          {status === "doing" && taskNotes.length > 5 && (
+            <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400" title="WIP limit of 5 exceeded. Focus on completing current tasks before starting new ones.">
+              WIP Exceeded ({taskNotes.length}/5)
+            </span>
+          )}
         </h3>
         <span className="text-xs text-muted-foreground">{taskNotes.length}</span>
       </div>

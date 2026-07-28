@@ -1,5 +1,4 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono, Lora, Vazirmatn } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppearanceSync } from "@/components/users/appearance-sync";
@@ -9,28 +8,19 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
+const geistSans = { variable: "font-sans" };
+const geistMono = { variable: "font-mono" };
+const lora = { variable: "font-serif" };
+const vazirmatn = { variable: "font-rtl-fallback" };
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const lora = Lora({
-  variable: "--font-serif",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const vazirmatn = Vazirmatn({
-  variable: "--font-rtl-fallback",
-  subsets: ["arabic"],
-  display: "swap",
-});
+export const viewport: Viewport = {
+  themeColor: "#18181b",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
@@ -40,6 +30,12 @@ export const metadata: Metadata = {
   },
   description:
     "A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and AI actions — self-hosted or cloud.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Inkest",
+  },
   openGraph: {
     title: "Inkest",
     description:
