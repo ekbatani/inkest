@@ -35,5 +35,5 @@ the bucket using an administrator credential: uploaded objects stay below the
 `attachments/<account-a-id>/` prefix and cannot be fetched without signed
 storage credentials. Restart the app and repeat Account A's download.
 
-Record the driver, browser, command result, and any failure in `docs/todo.md`
+Record the driver, browser, command result, and any failure in `docs/TODO.md`
 before closing P0-41.

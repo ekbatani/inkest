@@ -3,7 +3,7 @@
 > **Status:** APPROVED (Decision: **No-Go for app-wide note E2EE**; **Go for Phase R6 isolated zero-knowledge secret vault**)  
 > **Date:** 2026-07-26  
 > **Author:** Antigravity AI / Inkest Architecture Team  
-> **Task Reference:** P1-46 in [`docs/todo.md`](todo.md), R6 in [`docs/todo-research.md`](todo-research.md)
+> **Task Reference:** P1-46 in [`docs/DONE.md`](../DONE.md), R6 in [`docs/TODO.md`](../TODO.md)
 
 ---
 

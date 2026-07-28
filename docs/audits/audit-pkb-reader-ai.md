@@ -1,7 +1,7 @@
 # Audit Note: PKB, Reader, and AI-Grounding Surfaces (R0-01)
 
 > **Date:** 2026-07-23  
-> **Purpose:** Inventory shipped capabilities vs. gaps defined in `docs/todo-research.md` (Requirements: `FR-LINKS`, `FR-PKB`, `FR-RESEARCH`, `FR-READER`, `AI-GROUNDED`).
+> **Purpose:** Inventory shipped capabilities vs. gaps defined in `docs/TODO.md` (Requirements: `FR-LINKS`, `FR-PKB`, `FR-RESEARCH`, `FR-READER`, `AI-GROUNDED`).
 
 ---
 

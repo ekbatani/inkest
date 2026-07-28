@@ -73,7 +73,7 @@ secrets in the result.
 
 ## Known defects and release blockers at this snapshot
 
-- The public release gates listed in `todo.md` are not complete; in particular
+- The public release gates listed in `TODO.md` are not complete; in particular
   P0-02 through P0-04, P0-10 through P0-13, P0-20, P0-30 through P0-31,
   P0-40 through P0-43, and P0-50 through P0-52 remain open.
 - Configuration documentation has factual drift for P0-02: `.env.example`

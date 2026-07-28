@@ -1,749 +1,201 @@
-# Inkest execution plan
+# Inkest Remaining Tasks & Operational Backlog
 
-> **Purpose:** This is the single operational backlog for Inkest. It turns the
-> product and business direction into small, verifiable pieces of work. It is
-> deliberately ordered: do not begin a later phase while its stated release
-> gate is open, except for a clearly independent discovery task.
+> **Purpose:** This document is the single active operational backlog for Inkest. It contains all open, blocked, discovery, and future tasks required to deliver the public self-hosted release and the evidence-based cognitive workspace vision.
 >
-> Product context and durable decisions live in [Product](PRODUCT.md),
-> [Architecture](ARCHITECTURE.md), and [Operations](OPERATIONS.md). The
-> business rationale for this plan is in
-> [Business Plan](business-plan/business-plan.md).
-
-## How an AI agent maintains this file
-
-- Treat this file as the source of truth for planned work. Do not create a
-  second roadmap or duplicate completed work as a new task.
-- Before starting a task, confirm the current code and linked documentation;
-  mark a task **[blocked]** when a required product decision, secret, account,
-  or external service is missing.
-- Work on one task at a time. Keep changes tightly scoped to its acceptance
-  criteria. Split a task before implementation if it cannot be safely
-  reviewed in one focused change.
-- Change a task to **[done]** only after its acceptance criteria are met and
-  the verification command or manual flow has actually passed. Add a dated
-  `Evidence:` line beneath it with changed files and verification results.
-- Add newly discovered work as a numbered task in the relevant phase, with a
-  clear outcome and acceptance criteria. Do not silently broaden a task.
-- Keep unchecked tasks in priority order. Move obsolete tasks to the decision
-  log with the reason; never delete their history.
-- For any Next.js change, first read the relevant guide under
-  `node_modules/next/dist/docs/`, as required by `AGENTS.md`.
-
-### Status and priority
-
-- **[now]** — next task to execute; only one task may have this status.
-- **[todo]** — ready once higher-priority dependencies are complete.
-- **[discovery]** — time-boxed research that must end in a recorded decision.
-- **[blocked]** — cannot proceed without an explicit external decision or
-  credential; state the blocker beneath the task.
-- **[done]** — acceptance criteria and evidence are recorded.
-
-Priorities: **P0** blocks the public self-hosted release, **P1** materially
-improves the beta, **P2** is validated post-launch work, and **P3** is
-longer-term or optional work.
-
-## Current release position
-
-The core MVP is already present: authentication, Markdown notes and preview,
-Mermaid, attachments, tags/search, projects/tasks, daily notes/calendar,
-export, configurable AI actions, settings, and Docker deployment. This plan
-starts with the gaps between that implementation and a reliable public release.
-
-### Public self-hosted release gates
-
-All of the following must be complete before announcing a public release:
-
-- P0 editor-performance and writing-flow tasks.
-- P0 authorization, attachment, secret-handling, and backup/restore checks.
-- A clean Docker deployment verified from documented instructions.
-- A clear license, privacy/AI disclosure, support path, and install guide.
-- Critical accessibility, responsive-layout, and empty/error-state checks.
-- A small beta with feedback triaged; no unresolved data-loss, privacy, or
-  editor-blocking defects.
-
-## Phase 0 — establish the release baseline
-
-- [done] **P0-01 — Create a reproducible release baseline.** Record the
-  current commit, environment, database/storage driver, enabled integrations,
-  test account setup, and known defects in a dated release-checklist note.
-  - Acceptance: a second agent can start the app and repeat the baseline
-    checks using only repository documentation and the checklist.
-  - Evidence: 2026-07-14 — added `docs/release-checklist-2026-07-14.md` with
-    commit `05bc813553e18a8c0eb11137f6dbd2e6350b2541`, environment and
-    integration state, disposable two-account setup, repeatable local/Docker
-    checks, and known release blockers. `bun run typecheck` and `bun run build`
-    passed; the checklist records the current `bun run lint` failures and build
-    warnings for follow-up.
-
-- [done] **P0-02 — Reconcile docs with running behavior.** Verify the current
-  product, architecture, operations, README, and environment example against
-  source and a local run; correct only factual drift.
-  - Acceptance: no documented feature, configuration variable, or deployment
-    command contradicts the implementation.
-  - Evidence: 2026-07-14 — reconciled `.env.example`, `README.md`, and
-    `docs/OPERATIONS.md` with the active source configuration: attachment
-    storage uses `ATTACHMENT_STORAGE_DRIVER`; Google Calendar uses
-    `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` with its callback
-    derived from `NEXTAUTH_URL`; and the local setup copies `.env.example`.
-    Added the supported AI, Telegram, MinIO, public-URL, and default attachment
-    type settings to the now-tracked environment example. Verified a local `bun run dev`
-    response from `/` returned HTTP 200 (111,043-byte HTML); the known CSS
-    parser warning for `::highlight(tts-active-sentence)` remains recorded in
-    the release baseline.
-
-- [done] **P0-03 — Add a release smoke-test script/checklist.** Cover signup
-  or sign-in, note create/edit/reload, project task completion, attachment
-  upload/download, export, AI missing-provider handling, and disabled
-  integration states.
-  - Acceptance: the checklist names expected results and can be run on a
-    clean local or container deployment without hidden setup steps.
-  - Evidence: 2026-07-14 — added `scripts/release-smoke.mjs`, exposed as
-    `bun run smoke`, for repeatable unauthenticated routing/auth preflight;
-    added `docs/release-smoke-test.md` with disposable-deployment setup and
-    expected signup, note editing/reload, project task, attachment, export,
-    missing-AI-provider, and disabled Calendar/Telegram outcomes. The local
-    preflight passed all five HTTP checks against `http://127.0.0.1:3000`; `bun
-    run typecheck` and `bun run build` passed.
-
-- [done] **P0-04 — Define the beta feedback loop.** Add a lightweight,
-  privacy-respecting feedback route (for example GitHub issues/email), a bug
-  template, severity definitions, and a triage cadence.
-  - Acceptance: beta users can report a defect with reproduction steps and it
-    can be classified as release-blocking, high, normal, or enhancement.
-  - Evidence: 2026-07-14 — added the GitHub `Beta bug report` form and private
-    security-advisory route; documented public-report redaction rules, severity
-    definitions, and a twice-weekly triage cadence in `docs/beta-feedback.md`;
-    linked the feedback flow from `README.md` and the documentation index.
-    Manually verified all required report fields and the supported severity
-    classifications in the template.
-
-## Phase 1 — make writing fast, calm, and reliable
-
-- [done] **P0-10 — Profile and fix typing lag.** Measure input latency and
-  long tasks on short, medium, and large notes before changing code; remove
-  the proven bottlenecks in editor state, preview rendering, autosave, or
-  sidebar updates.
-  - Acceptance: representative typing remains responsive with no visible
-    keystroke delay; measurements, note sizes, device/browser, and before/after
-    results are recorded in `docs/OPERATIONS.md`.
-  - Evidence: 2026-07-14 — profiled the user-supplied Chrome DevTools traces
-    for short, medium, and large notes; worst renderer input handling was 44.5,
-    39.6, and 46.7 ms respectively, with no input handler exceeding 50 ms.
-    Scheduled parent note updates as a React transition in
-    `src/components/notes/note-editor.tsx`; `bun run typecheck` and
-    `bun run build` passed. The development-only trace details and deferred
-    production/throttled comparison are recorded in `docs/OPERATIONS.md`.
-
-- [done] **P0-11 — Split editor-route JavaScript by measured cost.** Keep
-  CodeMirror, Markdown preview, Mermaid, AI panel, and nonessential panels
-  from blocking initial note editing where safe.
-  - Acceptance: production measurements show a meaningful reduction from the
-    recorded 818 KiB editor script transfer and no regression to editing,
-    preview, Mermaid, or error states.
-  - Evidence: 2026-07-14 — made the AI panel interaction-loaded while
-    preserving the editor toolbar and command-menu `Ask AI` action; the
-    production note-route manifest lists 323.5 KiB gzip of initial scripts,
-    down from the recorded 818 KiB transfer, with the 4.6 KiB-gzip AI chunk
-    absent until requested. Existing CodeMirror, preview, Mermaid, and
-    super-focus dynamic boundaries remain in place. `bun run typecheck` and an
-    isolated production `bun run build` passed. Browser automation was not
-    installed locally, so repeat the authenticated browser waterfall on
-    representative hardware when available.
-
-- [done] **P0-12 — Repair Markdown code-block editing.** Reproduce the
-  reported inability to enter/edit code areas and the rounded-border-per-line
-  visual defect; fix the editor integration and add regression coverage or a
-  precise manual test.
-  - Acceptance: users can place the caret, select, paste, edit, and exit
-    fenced code blocks; each block renders as one coherent surface in light,
-    dark, LTR, and RTL notes.
-  - Evidence: 2026-07-18 — replaced the fenced-block replacement-widget path
-    with native editing; removed layout-changing code decorations that broke
-    mouse and keyboard navigation; added parser-backed syntax highlighting and
-    an explicit code-block formatter. Read-mode fenced blocks preserve their
-    semantic `<pre>` surface while Mermaid remains custom-rendered. `bun run
-    typecheck`, focused ESLint, and `bun run build` passed; marked done at the
-    user's direction pending further visual refinement.
-
-- [done] **P0-13 — Unify editing and reading into one note surface.** Replace
-  the separate read/edit mental model with an intentional inline editing and
-  preview experience, while preserving an explicit distraction-free reader
-  when it has distinct value.
-  - Acceptance: a user can write, inspect formatted output, and return to the
-    caret without route/mode confusion or lost draft content; the final
-    interaction is documented with keyboard behavior.
-  - Evidence: 2026-07-18 — removed the separate Read mode and obsolete
-    Edit/Split/Preview/Focus default-mode setting. Notes now stay on one
-    CodeMirror writing surface with inline Markdown formatting; Reader opens
-    the existing distraction-free super-focus overlay, and `Esc` returns focus
-    to the editor caret. `Ctrl+Shift+R` opens Reader, and the shortcut is
-    documented in `README.md`. `bun.cmd run typecheck` and `bun.cmd run build`
-    passed; the build retains the pre-existing Next/Turbopack NFT trace warning
-    from the attachment export path.
-
-- [done] **P1-14 — Improve large-Markdown paste.** Detect substantial
-  Markdown pastes, offer a fast preview/formatting path, and retain an easy
-  immediate return to source editing.
-  - Acceptance: a large paste does not lock the editor; users can decline the
-    assist, undo it, and keep original Markdown intact.
-  - Evidence: 2026-07-18 — large Markdown pastes remain native CodeMirror
-    source edits, then offer an optional Reader preview using the exact
-    post-paste editor document rather than stale debounced route state. Users
-    can keep editing, disable the prompt, exit Reader directly back to the
-    editor, or use the existing undo controls/standard `Ctrl/Cmd+Z`; no
-    Markdown is transformed. `bun.cmd run typecheck` passed. Focused ESLint
-    reached the pre-existing `react-hooks/refs` ref-read error in
-    `note-editor.tsx:318`, outside this paste workflow.
-
-- [done] **P1-15 — Merge and harden focus experiences.** Decide which
-  distinct capability remains from focus and super-focus, then make it
-  consistently discoverable after the unified editor work.
-  - Acceptance: there is one understandable focus entry point, a keyboard
-    shortcut, accessible exit control, reduced-motion behavior, and no mode
-    that appears only in one legacy view.
-  - Evidence: 2026-07-18 — removed the legacy inline editor focus mode and
-    kept the focus reader as the single focus entry point from the note toolbar
-    and `Ctrl+Shift+R`; `Esc` exits back to the editor caret. Added accessible
-    names for the focus reader content, controls, tracking buttons, and exit
-    action; kept the existing reduced-motion CSS for spotlight changes; and
-    aligned README/product/operations wording around one focus reader. Also
-    fixed the editor undo checkpoint render-time ref read that blocked focused
-    ESLint. `bun.cmd run typecheck`, focused `bun.cmd x eslint
-    src/components/notes/note-editor.tsx
-    src/components/notes/super-focus-reader.tsx`, and `bun.cmd run build`
-    passed; the build still reports the pre-existing Turbopack NFT trace
-    warning for the attachment export path.
-
-- [done] **P1-16 — Complete keyboard-first writing.** Document and implement
-  core shortcuts for create/search/open/save/focus/formatting/navigation;
-  assess high-value Vim-like actions such as next/previous match and select
-  all occurrences without conflicting with browser assistive technology.
-  - Acceptance: every core writing operation has a discoverable keyboard path,
-    command palette support where appropriate, and no shortcut steals input
-    from text fields unexpectedly.
-  - Evidence: 2026-07-18 — documented create, open/search, daily, sidebar,
-    save, focus-reader, find/next/previous-match, and core Markdown formatting
-    shortcuts in `README.md`. CodeMirror now handles `Ctrl/Cmd+B`, `I`,
-    `Shift+X`, and `E` for bold, italic, strikethrough, and inline code, and
-    restores native find navigation. The command palette exposes current-note
-    formatting and existing create/open/navigation actions. Global
-    create/daily/sidebar shortcuts now leave text fields alone; `Ctrl/Cmd+K`
-    remains the deliberate conventional command-palette shortcut. Vim-style
-    multi-cursor/select-all-occurrences remains intentionally unbound because
-    browser and assistive-technology conflicts outweigh its value here.
-
-- [done] **P1-17 — Add spelling and writing suggestions with user control.**
-  Evaluate browser-native spellcheck first; layer optional AI suggestions only
-  behind explicit consent and selected text.
-  - Acceptance: typo suggestions work for configured languages, can be
-    disabled, never send text to an AI provider implicitly, and preserve the
-    original text until accepted.
-  - Evidence: 2026-07-18 — added per-user native browser spellcheck controls
-    for browser-default, English, and Persian dictionaries in Settings; passed
-    the persisted preference to CodeMirror's editable DOM without any network
-    or AI request. Documented that existing AI writing actions remain manual,
-    selection-based, and reviewable before replacement. `bun.cmd run
-    typecheck`, focused ESLint, and `bun.cmd run build` passed.
-
-## Phase 2 — product coherence, navigation, and accessibility
-
-- [done] **P0-20 — Establish and apply one design system.** Audit the landing
-  page, application shell, settings, editor, panels, empty states, and
-  notifications; define shared tokens and reusable patterns for color,
-  typography, radius, spacing, elevation, and motion.
-  - Acceptance: app and landing share a coherent visual language in light and
-    dark themes; one-off styles are removed or intentionally documented.
-  - Evidence: 2026-07-18 — added `docs/design-system.md` as the maintained
-    visual contract for tokens, typography, spacing, surfaces, feedback, motion,
-    and intentional marketing/AI/focus exceptions; linked it from the docs
-    index. Added shared success/warning semantic tokens plus `notice`,
-    `app-page`, and `app-page-wide` patterns in `src/app/globals.css`; applied
-    them to Calendar feedback and the Calendar, Projects, and Settings route
-    layouts so they no longer rely on one-off fixed palette/layout classes.
-    Verification: `bun.cmd run typecheck`, focused ESLint, and `bun.cmd run
-    build` passed.
-
-- [done] **P1-21 — Refine settings and AI setup UX.** Group settings by
-  purpose, clarify instance versus user configuration, make provider setup
-  easy, and show actionable validation/error messages.
-  - Acceptance: a new user can configure an OpenAI-compatible provider or
-    understand why AI is unavailable without reading source code.
-  - Evidence: 2026-07-18 — grouped the Settings page into account, writing,
-    AI setup, data, connected services, and deletion; added explicit active
-    AI source states (personal key, instance default, unavailable), provider
-    defaults, client/server URL and model validation, and actionable missing
-    key errors. Personal API keys are no longer passed to the browser; Settings
-    receives only whether a key exists and can remove it explicitly. Updated
-    `README.md` with the instance-versus-personal precedence contract. `bun.cmd
-    run typecheck`, focused ESLint, and `bun.cmd run build` passed.
-
-- [done] **P1-22 — Make the right sidebar useful and predictable.** Redesign
-  it around contextual note/project properties, links, tasks, AI, and
-  integrations; align collapse behavior and animation with the left sidebar.
-  - Acceptance: the panel has clear information hierarchy, a persistent
-    accessible collapse control, reduced-motion support, and no layout shift
-    that interrupts writing.
-  - Evidence: 2026-07-18 — rebuilt the note metadata rail as a contextual
-    panel with a persistent accessible collapse control, remembered open state,
-    reduced-motion-safe width transition, and overlay positioning that keeps the
-    editor's writing width stable. It now prioritizes note/project properties,
-    project task access and counts, backlinks, explicit AI entry, daily Google
-    Calendar context, tags, and history/lifecycle controls. Verification:
-    `bun.cmd run typecheck`, focused ESLint, and `bun.cmd run build` passed.
-
-- [done] **P1-23 — Complete daily/calendar information architecture.** Remove
-  redundant Daily navigation only after Calendar and Home provide clear daily
-  entry points, deep links, and empty states.
-  - Acceptance: opening any day reliably reaches its daily note; navigation,
-    browser history, and Google Calendar-connected/disconnected states are
-    unambiguous.
-  - Evidence: 2026-07-18 — consolidated persistent navigation around Home and
-    Calendar by removing the duplicate Daily sidebar/topbar entries; Home now
-    opens an explicit date URL and Calendar supplies a Today reset plus a
-    selected-day deep link. Invalid day/month URL values no longer normalize to
-    a different date, and a failed daily-note open gives a recoverable Calendar
-    route rather than an indefinite loading screen. `bun.cmd run typecheck`,
-    focused ESLint, and `bun.cmd run build` passed.
-
-- [done] **P1-24 — Support nested projects intentionally.** Allow a project
-  note to be created in the tree and assigned/reassigned a parent project,
-  including cycle prevention and clear project/task roll-up semantics.
-  - Acceptance: nesting works from creation and edit flows, cannot create a
-    cycle, and hierarchy appears consistently in tree, project, and task views.
-  - Evidence: 2026-07-18 — added server-side parent validation for create,
-    edit, and tree-move paths, including workspace ownership, project-only
-    parents for projects, and descendant-cycle prevention. The sidebar now
-    builds a recursive hierarchy; a project can create a subproject directly,
-    and the parent picker supports reassignment without offering descendants.
-    Project overviews show subprojects while task boards remain local to each
-    project so project notes never appear as task cards. `bun.cmd run
-    typecheck`, focused ESLint, and `bun.cmd run build` passed; the build keeps
-    the pre-existing Turbopack NFT trace warning from the attachment export
-    path.
-
-- [done] **P1-25 — Accessibility and responsive audit.** Test keyboard-only,
-  screen-reader labels, focus order, contrast, zoom, narrow mobile layout,
-  RTL/mixed-direction notes, and reduced motion across core routes.
-  - Acceptance: critical violations are fixed; remaining limitations are
-    documented with an owner and priority.
-  - Evidence: 2026-07-18 — added an application-shell skip link and labelled
-    main landmark; made sidebar navigation focus-visible; and made the desktop
-    sidebar resize separator keyboard-operable with Arrow, Shift+Arrow, Home,
-    and End. The note-editor route now has a descriptive title for Next.js
-    route announcements. Static review confirmed the mobile Sheet, focus
-    reader, RTL note direction, and reduced-motion paths; `bun.cmd run
-    typecheck` and `git diff --check` passed. The focused ESLint check reaches
-    the pre-existing `react-hooks/set-state-in-effect` finding in
-    `sidebar-toggle-wrapper.tsx:40`. The required final device and
-    assistive-technology pass is recorded in `docs/OPERATIONS.md` with the
-    release maintainer as P0 owner.
-
-- [done] **P2-26 — Add curated themes and font choices.** Build on the shared
-  token system; do not introduce premium-only claims before licensing and
-  billing decisions exist.
-  - Acceptance: choices persist per user, meet contrast requirements, do not
-    cause layout shifts, and work in editor/preview/marketing routes.
-  - Evidence: 2026-07-19 — added persisted system/light/dark mode, Paper,
-    Forest, and Violet semantic palettes, plus bundled clean-sans, editorial,
-    and Persian-friendly writing-font choices. Authenticated appearance sync
-    applies the saved setting to the app, while the top-bar selector persists
-    its mode choice too; the editor/preview inherit the selected writing font
-    and marketing routes share the selected color mode/palette in the browser.
-    Updated `docs/design-system.md`. `bun.cmd run typecheck`, focused ESLint,
-    `git diff --check`, and `bun.cmd run build` passed; build retains the
-    pre-existing attachment-export NFT trace warning.
-
-- [done] **P2-27 — Improve notifications based on real workflows.** Define
-  reminders, due-date alerts, integration failures, and delivery preferences
-  before adding notification volume.
-  - Acceptance: each notification has an opt-in preference, a useful action,
-    and is deduplicated; Telegram and in-app behavior are tested separately.
-  - Status: [done] 2026-07-19. Added persisted, user-scoped in-app activity
-    with an inbox action that opens the relevant note or Settings. Due-task
-    alerts require the existing task-reminder preference and have a separate
-    in-app delivery opt-in; Telegram remains independently configured. Unique
-    per-user dedupe keys make scheduler retries safe, and a failed Telegram
-    due reminder creates one actionable in-app Settings notice. Added Drizzle
-    migration `0004_pretty_the_leader.sql`. `bun.cmd run typecheck`, focused
-    ESLint, and `bun.cmd run build` passed; the build keeps the pre-existing
-    attachment-export Turbopack NFT trace warning.
-
-## Phase 3 — AI that is explicit, safe, and useful
-
-- [done] **P0-30 — Audit the AI data and configuration contract.** Map every
-  action's input, provider selection, prompt, token limit, log, failure mode,
-  and persistence behavior; remove undocumented fallbacks.
-  - Acceptance: `docs/ARCHITECTURE.md` accurately states what selected note
-    data leaves the deployment and which configuration wins in every case.
-  - Evidence: 2026-07-19 — documented every shipped AI action's outbound
-    context, prompt envelope, JSON-mode temperature/token behavior, result
-    persistence, AI-event fields, Telegram delivery, and failure behavior in
-    `docs/ARCHITECTURE.md`. Documented per-field personal/instance/built-in
-    provider precedence and unavailable-provider behavior; aligned `README.md`.
-    `bun.cmd run typecheck` and `git diff --check` passed.
-
-- [done] **P0-31 — Encrypt stored user provider credentials and secure their
-  lifecycle.** Review existing secret storage, add migration/rotation/deletion
-  behavior as needed, and ensure keys are never returned to the browser,
-  exported, or logged.
-  - Acceptance: credentials are encrypted at rest with documented key
-    management, redacted from logs, removable by the user, and covered by a
-    migration/rollback plan.
-  - Evidence: 2026-07-19 - replaced the `NEXTAUTH_SECRET`-derived AI-key
-    cipher with versioned AES-256-GCM credential encryption using the dedicated
-    `AI_CREDENTIAL_ENCRYPTION_KEYS` key ring. Personal AI keys and Google
-    Calendar access/refresh tokens are encrypted for new writes and lazily
-    re-encrypted from legacy plaintext, v1 ciphertext, or a retired key during
-    authenticated use. Keys remain server-only, settings actions never return
-    them, explicit key removal and account deletion remove the stored values,
-    and `docs/ARCHITECTURE.md` now records rotation, migration, and rollback.
-    Added focused crypto rotation tests; `bun test
-    src/server/crypto/secret-box.test.ts` and `bun run typecheck` passed.
-
-- [done] **P1-32 — Add user-editable AI orchestration controls.** Provide
-  safe per-user controls for model/provider, temperature, input/output token
-  limits, instructions, and guardrails, with validated server-side bounds and
-  sensible defaults.
-  - Acceptance: settings apply only to the owning user, invalid limits are
-    rejected, action-specific schemas remain enforced, and reset-to-default is
-    available.
-  - Evidence: 2026-07-19 — added per-user Settings controls for generation
-    temperature, input/output token limits, personal instructions, and extra
-    guardrails. Server actions validate every field and update only the
-    authenticated user's settings; the AI runner enforces the input budget and
-    provider requests receive the output budget. Custom text can only add to
-    the action contract, never override its JSON schema or mandatory rules.
-    Reset restores defaults without changing provider credentials. `bun.cmd run
-    typecheck`, focused ESLint, and `bun.cmd run build` passed; the build retains
-    the pre-existing attachment-export Turbopack NFT trace warning.
-
-- [done] **P1-33 — Integrate AI into the right-side workflow.** Make the AI
-  panel contextual to the open note/selection and support review before
-  replace, append, or create operations; avoid disruptive popups.
-  - Acceptance: every AI change shows a clear target and preview/diff, supports
-    cancel, preserves the source until approval, and records a traceable event.
-  - Evidence: 2026-07-19 — moved the AI working flow into the lazy-loaded note
-    context panel while keeping the toolbar and command-menu triggers. Results
-    now show their original note or selection source beside the AI proposal,
-    label the target, and require an explicit append, replacement, or task
-    creation action; cancel leaves the note unchanged. Selection and full-note
-    replacement verify that the captured source has not changed before writing.
-    Existing `ai_events` records remain the traceable action/output audit.
-    `bun.cmd run typecheck`, focused ESLint for the AI panel and note editor,
-    and `bun.cmd run build` passed; the build retains the existing attachment
-    export Turbopack NFT trace warning.
-
-- [done] **P1-34 — Complete AI task extraction and project planning.** Let the
-  user review destination (current project, new project, sub-project, or
-  existing project), ownership, status, due dates, and editable planning
-  instructions before saving.
-  - Acceptance: generated tasks are structured, editable, user-confirmed, and
-    never create duplicate/cyclic projects; due-date assumptions are visible.
-  - Evidence: 2026-07-19 — task extraction now opens an explicit planning
-    review before saving. Users can edit title, description, status, priority,
-    and due date; see blank dates as no inferred deadline; and select the
-    current project, an existing project, a new top-level project, or a new
-    subproject. Tasks are owned by the signed-in user in this personal-workspace
-    model. The authenticated server action rechecks every project ID, blocks
-    duplicate project titles at the destination, relies on the existing
-    parent-assignment guard for valid project nesting, and skips duplicate task
-    titles. Updated `docs/ARCHITECTURE.md`; `bun.cmd run typecheck`, `git diff
-    --check`, and `bun.cmd run build` passed. The build retains the existing
-    attachment-export Turbopack NFT trace warning.
-
-- [done] **P1-35 — Add concise AI onboarding and privacy hints.** Explain
-  what each action does, what content is sent, provider costs/limits, and how
-  to use custom keys without overwhelming regular writing.
-  - Acceptance: first use has contextual help and links to the full privacy/AI
-    disclosure; hints can be dismissed and revisited.
-  - Evidence: 2026-07-19 — added a user-scoped first-use AI-panel guide that explains action context, review-before-apply behavior, provider costs, and server-enforced input/output limits before shortcut-triggered AI actions run. Dismissal is persisted in user settings and Settings can restore the guide; the new `/help#ai-privacy` disclosure covers sent data, custom keys, privacy, review controls, costs, and limits. Updated `docs/ARCHITECTURE.md`. `bun.cmd run typecheck`, focused ESLint, `git diff --check`, and `bun.cmd run build` passed; the build retains the pre-existing attachment-export Turbopack NFT trace warning.
-
-- [done] **P2-36 — Bound agentic workflows before implementation.** Define
-  permitted multi-step actions, maximum iterations/cost/time, confirmation
-  points, cancellation, audit records, and failure recovery; validate demand
-  with beta users first.
-  - Acceptance: an approved design explicitly prevents autonomous external
-    side effects and uncontrolled loops; no agentic execution ships before it.
-  - Evidence: 2026-07-19 — approved the read-only selected-note-to-plan beta
-    boundary in `docs/agentic-workflow-boundary.md`. It permits no tools,
-    browsing, background work, recursion, autonomous writes, or external
-    effects; caps a run at three calls, one revision, 90 seconds, 24,000 input
-    tokens, 3,600 output tokens, and US$0.25 with known pricing only. It
-    requires scope-specific confirmation, cancellation, an append-only
-    privacy-safe audit design, no automatic retries, and consented beta demand
-    thresholds before any executor can ship. Linked the boundary from
-    `docs/ARCHITECTURE.md` and `docs/README.md`. `git diff --check` passed.
-
-- [done] **P2-37 — Research semantic search and note-aware chat.** Compare
-  local/self-hosted and hosted architectures, privacy implications, indexing
-  cost, and quality on real opt-in notes.
-  - Acceptance: a written go/no-go decision and a small technical proposal
-    exist; no vector dependency is added merely for experimentation.
-  - Evidence: 2026-07-19 — recorded a no-go for shipping semantic search or
-    note-aware chat now in `docs/semantic-search-decision.md`. The decision
-    compares lexical search, local/self-hosted embeddings, hosted embeddings,
-    and managed vector services; accounts for disclosure, sensitive derived
-    data, re-index cost, service security/recovery, and retrieval quality.
-    It preserves the current explicit-AI contract and gives a local-first,
-    opt-in technical proposal with authorization, deletion, citation, abstain,
-    and beta-quality gates. Linked it from `docs/README.md` and
-    `docs/ARCHITECTURE.md`; no dependency or schema change was made. `git diff
-    --check` passed.
-
-## Phase 4 — privacy, security, reliability, and operations
-
-- [done] **P0-40 — Run a release security audit.** Trace authorization on all
-  server actions and API routes, especially notes, tasks, exports, versions,
-  attachments, AI events, calendar OAuth, and Telegram webhooks.
-  - Acceptance: cross-user access attempts are tested; all findings are fixed,
-    accepted with rationale, or tracked as release blockers.
-  - Evidence: 2026-07-19 — audited server actions, note/task/tag/version
-    services, attachment and export routes, AI, Calendar OAuth, and Telegram.
-    Fixed an authenticated cross-user tag disclosure by scoping both update
-    reads to the current user; prevented AI output from falling back to the
-    instance-wide Telegram chat for unlinked users; switched Telegram link-code
-    generation to cryptographic randomness; and reject unauthenticated or
-    declared-oversize attachment uploads before multipart parsing. Also fixed
-    Calendar OAuth-token serialization, arbitrary personal AI endpoint/instance
-    credential exfiltration, missing Telegram webhook-secret enforcement,
-    non-atomic link-code consumption, known Compose session secrets, and public
-    MinIO/default-admin deployment configuration. The completed scan report and
-    coverage ledger are in `.security-scan-artifacts/`; chunked multipart
-    uploads and in-memory workspace exports remain explicitly deferred to
-    P0-41/P0-42. `bun.cmd run typecheck` and `git diff --check` passed. A
-    production build was blocked only by this runner's unavailable Google Fonts;
-    the pre-existing attachment-export NFT trace warning was also reported.
-
-- [blocked] **P0-41 — Verify private attachment security.** Test file type/size
-  validation, path handling, ownership checks, storage-driver parity, download
-  headers, error responses, and cache behavior.
-  - Acceptance: an unauthenticated or different user cannot retrieve an
-    attachment; invalid uploads fail safely; approved downloads work using both
-    local and MinIO/S3-compatible configurations when supported.
-  - Evidence: 2026-07-19 — hardened upload/download handling before the live
-    drill: validated allowed filename extensions against conservative file
-    signatures, rejected malformed paths below storage, returned cache-disabled
-    private errors, disabled storage of authenticated responses, forced SVG to
-    download, and added `nosniff`. Added focused validation coverage in
-    `src/server/attachments/validation.test.ts`; `bun test
-    src/server/attachments/validation.test.ts`, `bun run typecheck`, focused
-    ESLint, and `git diff --check` passed. The complete repeatable Account
-    A/Account B and local/MinIO checklist is in
-    `docs/attachment-security-test.md`.
-  - Blocker: the local MinIO profile is disabled and Docker is inaccessible in
-    this runner, so the required authenticated cross-user and live
-    S3-compatible parity drill has not yet been performed. `bun run build` was
-    also blocked only by unavailable Google Fonts in this environment.
-
-- [done] **P0-42 — Prove backup, restore, and export.** Document backup of the
-  database, attachments, secrets/configuration boundaries, and restore steps;
-  perform a restore into a clean environment and compare notes, tasks, tags,
-  versions, and attachments.
-  - Acceptance: recovery is reproducible, data integrity is confirmed, and
-    user-facing export is separately verified as portable Markdown/workspace
-    data.
-  - Evidence: 2026-07-19 — added checksum-manifested local SQLite and
-    attachment backup/restore commands, a restore guard against overwriting
-    data, and the maintained `docs/backup-restore.md` recovery/secret-boundary
-    procedure. `bun run verify:backup` migrated clean temporary databases,
-    backed up/restored and compared notes, tags, tasks, note versions, and
-    attachment bytes; it also generated a real ZIP export and verified portable
-    Markdown, workspace metadata, tags, and attachment bytes. Remote
-    Turso/MinIO recovery remains provider-snapshot work and is documented as
-    such; no production data or credentials were used.
-
-- [blocked] **P0-43 — Verify clean Docker deployment and publish an image plan.**
-  Build and run the documented Compose path from scratch, test migration and
-  persistent volumes, then prepare registry namespace, tags, SBOM/provenance
-  policy, and image update process for Docker Hub.
-  - Acceptance: a clean host can deploy without source edits; image publishing
-    remains blocked until registry ownership and release credentials are
-    explicitly supplied.
-  - Evidence: 2026-07-19 — made the documented Compose path build from a clean
-    checkout, added a separate immutable-image release Compose file, and added
-    `docs/docker-publishing.md` covering the clean-host drill, Docker Hub
-    namespace/secrets gate, version/commit tags, SBOM/provenance attestations,
-    and safe update/rollback process. The GitHub workflow now builds every
-    candidate but cannot publish until `DOCKERHUB_NAMESPACE` and the documented
-    Docker Hub secrets are supplied. `bun.cmd run typecheck`, `git diff --check`,
-    and YAML parsing of all Compose and workflow files passed. `bun.cmd run
-    build` was blocked only because this runner cannot fetch the configured
-    Google Fonts; it also reported the pre-existing attachment-export NFT trace
-    warning. Live Compose build, migration, restart, and volume checks remain
-    unverified because this runner is denied access to Docker; no registry
-    namespace or credentials were supplied.
-  - Blocker: provide a Docker-capable clean host for the deployment drill and
-    registry ownership plus `DOCKERHUB_NAMESPACE`, `DOCKERHUB_USERNAME`, and
-    `DOCKERHUB_TOKEN` before a public image can be published.
-
-- [blocked] **P1-44 — Investigate browser memory growth.** Reproduce the reported
-  memory increase across note switching, preview/Mermaid, AI panel, uploads,
-  and refresh; use heap snapshots to identify retained objects before fixing.
-  - Acceptance: a reproducible scenario and before/after memory evidence show
-    no unbounded growth in the confirmed workflow.
-  - Evidence: 2026-07-19 — added the privacy-safe, repeatable Chrome DevTools
-    heap-snapshot protocol in `docs/browser-memory-investigation.md`, covering
-    baseline and post-cycle snapshots for note switching, Mermaid/focus reader,
-    AI-panel mounting, and attachments, plus the comparison and recording
-    criteria. `git diff --check` passed.
-  - Blocker: this runner has no available browser-automation executable,
-    Chrome/Edge binary, or Playwright/Puppeteer runtime, and no supplied
-    reproduction profile or heap snapshots. Run the documented drill in a
-    disposable authenticated browser profile, attach only the aggregate
-    measurements and retained-constructor findings, then reopen this task.
-
-- [done] **P1-45 — Establish error monitoring and privacy-safe diagnostics.**
-  Select a self-host-compatible monitoring approach, redact note content and
-  secrets, define retention, and verify alert paths.
-  - Acceptance: a deliberate test error is observable with useful metadata but
-    no note content, credentials, attachment paths, or tokens.
-  - Evidence: 2026-07-19 — added authenticated App Router error-boundary
-    diagnostics with structured stderr as the self-hosted baseline and an
-    optional HTTPS operator-webhook alert path. Reports are restricted to a
-    fixed surface, optional sanitized Next.js digest, timestamp, and retention
-    setting; they exclude note content, titles, user IDs, URLs, attachment
-    paths, messages, stacks, cookies, and credentials. Added documented
-    30-day-default retention and deployment/failed-delivery verification
-    procedure in `docs/diagnostics.md`. `bun.cmd run verify:diagnostics`
-    passed a synthetic error through both payload redaction and a mocked alert
-    receiver; `bun.cmd run typecheck`, focused ESLint, `bun.cmd run build`, and
-    `git diff --check` passed. The build retains only the pre-existing
-    attachment-export Turbopack NFT trace warning.
-
-- [done] **P1-46 — Make an end-to-end encryption decision.** Threat-model
-  an optional vault: key ownership/recovery, metadata exposure, browser crypto,
-  search, attachments, sharing, backups, multi-device sync, and incompatibility
-  with server-side AI. Compare against the current encryption-at-rest approach.
-  - Acceptance: a written security design and go/no-go decision are approved.
-    Do not market E2EE or begin partial implementation before this decision.
-  - Evidence: 2026-07-26 — completed security threat model and trade-off comparison in `docs/e2ee-decision.md`. Approved a formal **No-Go for full-app E2EE** on Markdown notes (preserving server AI actions, full-text SQLite search, and automatic backlink graph indexing) and a **Go for Phase R6 isolated zero-knowledge secret vault** for credentials and passwords. Linked from `docs/README.md`.
-
-- [todo] **P2-47 — Implement E2EE only if P1-46 is approved.** Deliver an
-  end-to-end vertical slice for an explicitly defined vault scope, including
-  migration, recovery warning, export/backup, and independent review.
-  - Acceptance: ciphertext is all the server can access for protected content;
-    supported/unsupported features are unmistakable; a security review passes.
-
-## Phase 5 — public self-hosted launch and product learning
-
-- [todo] **P0-50 — Finalize brand foundations.** Validate the Inkest name and
-  domain availability/ownership, design a production logo and usage rules, and
-  replace temporary branding consistently.
-  - Acceptance: brand assets have source files and licenses, render at app and
-    social sizes, and are used consistently on landing/app/favicon/metadata.
-
-- [todo] **P0-51 — Prepare legal and trust pages.** Obtain appropriate legal
-  review for license, privacy policy, terms, AI disclosure, cookie policy if
-  applicable, data export/deletion explanation, and self-hosted support scope.
-  - Acceptance: approved pages are linked from the site; claims accurately
-    reflect actual encryption, storage, AI, telemetry, and support behavior.
-
-- [todo] **P0-52 — Complete public documentation.** Publish install/upgrade,
-  configuration, backup/restore, import/export, AI provider, security,
-  troubleshooting, keyboard, and contribution guides; include screenshots or
-  a demo path where useful.
-  - Acceptance: an unfamiliar self-hoster can install, operate, update, back
-    up, and remove Inkest without private assistance.
-
-- [todo] **P1-53 — Finish landing-page conversion and help surfaces.** Review
-  positioning, feature claims, screenshots, pricing expectations, responsive
-  UI, metadata, Open Graph, canonical URL, sitemap, and accessible help pages.
-  - Acceptance: the public site clearly communicates “private Markdown notes,
-    clean projects, and explicit AI”; claims match shipped functionality and
-    production metadata validates.
-
-- [todo] **P1-54 — Run a private beta with 20–50 target users.** Recruit
-  technical knowledge workers, self-hosters, writers, and RTL users; provide a
-  scripted onboarding path and collect consented workflow feedback.
-  - Acceptance: feedback is triaged weekly; at least one complete journey is
-    observed for writing, projects, export, AI, and self-hosted setup; P0/P1
-    fixes are fed back into this plan.
-
-- [todo] **P1-55 — Define product analytics that respect privacy.** Choose
-  opt-in/self-host-compatible measurement for activation, retention, editor
-  reliability, project use, exports, and AI actions; do not collect note text.
-  - Acceptance: event schema, consent/disable behavior, retention, and metric
-    definitions are documented; a test verifies sensitive content is excluded.
-
-- [todo] **P1-56 — Execute the self-hosted launch package.** Create demo video,
-  release notes, GitHub/source release, Product Hunt/Hacker News/community
-  posts, and support coverage only after release gates pass.
-  - Acceptance: launch assets, links, issue labels, response owner, and a
-    rollback/hotfix process are ready before the announcement.
-
-## Phase 6 — hosted offering: validate before building
-
-- [discovery] **P2-60 — Validate hosted-plan demand and packaging.** Interview
-  beta users about the value of hosted sync, backups, storage, AI credits,
-  version history, and support; test the proposed Free, Pro, Power, and later
-  Team packaging without promising dates.
-  - Acceptance: a documented segment, willingness-to-pay evidence, feature
-    boundary, and success threshold justify hosted implementation.
-
-- [discovery] **P2-61 — Design hosted multi-tenant architecture.** Specify
-  tenant isolation, managed database/object storage, regional choices, domain
-  and email, secret management, backups/disaster recovery, observability,
-  migration from self-hosted, quotas, and data deletion/export.
-  - Acceptance: an architecture decision record includes cost model, threat
-    model, vendor choices, and operational ownership; it satisfies the product
-    privacy promises.
-
-- [todo] **P2-62 — Build hosted foundations after P2-60 and P2-61.** Add
-  production environments, tenant-safe provisioning, storage limits, backup
-  jobs, restore drills, transactional email, status communication, and support
-  tooling.
-  - Acceptance: a staged environment can onboard and fully delete a test user,
-    survive a restore drill, and enforce account/resource boundaries.
-
-- [todo] **P2-63 — Add billing and entitlement management.** Select a billing
-  provider, implement server-verified subscriptions, plan limits, AI credits,
-  invoices/tax requirements, cancellation, payment-failure handling, and
-  self-service portal.
-  - Acceptance: sandbox purchase/upgrade/downgrade/cancel/webhook replay flows
-    are tested; entitlement checks never trust client-provided plan data.
-
-- [todo] **P2-64 — Launch a small hosted beta.** Migrate only opt-in testers,
-  monitor reliability, support load, activation, retention, costs, and
-  free-to-paid conversion before broad availability.
-  - Acceptance: hosted launch metrics and incident thresholds are defined;
-    beta users can export/delete data and receive clear support/uptime terms.
-
-## Phase 7 — validated expansion
-
-- [discovery] **P3-70 — Choose mobile delivery deliberately.** Compare
-  responsive web improvements, PWA install/offline support, and native Android,
-  iOS, and desktop applications against user demand, offline requirements,
-  sync, E2EE scope, maintenance cost, and app-store obligations.
-  - Acceptance: a written decision names the first platform and validates a
-    core note-create/edit/offline flow before committing to three native apps.
-
-- [todo] **P3-71 — Deliver the approved mobile path.** Prioritize an
-  installable, responsive, accessible writing experience before native shells.
-  - Acceptance: the chosen platform meets defined offline, attachment,
-    authentication, and export expectations with real-device verification.
-
-- [discovery] **P3-72 — Validate collaboration and sharing.** Research demand
-  for inviting people to notes/projects, public sharing, permissions, audit
-  trails, conflicts, E2EE implications, and moderation/abuse controls.
-  - Acceptance: an approved permission model and conflict strategy exist; team
-    workspaces remain out of scope until personal-product retention is strong.
-
-- [todo] **P3-73 — Implement the smallest approved sharing vertical slice.**
-  Start with the collaboration model chosen in P3-72, not a broad Notion-like
-  workspace.
-  - Acceptance: permissions are server-enforced, revocation is immediate,
-    audit/export behavior is defined, and cross-user isolation tests pass.
-
-- [todo] **P3-74 — Improve import and migration.** Add the highest-demand
-  Markdown-folder import with a dry run, mapping preview, duplicate policy,
-  attachment handling, and rollback/retry behavior.
-  - Acceptance: a representative folder imports without data loss and can be
-    exported back as portable Markdown.
-
-## Decision log
-
-- **2026-07-14:** The existing feature list was replaced with a release-driven
-  plan because the repository already contains most MVP features. Hosted SaaS,
-  billing, collaboration, native apps, semantic search, and E2EE are retained
-  as validated future work rather than immediate implementation commitments.
+> For completed history and verification evidence, see [DONE.md](DONE.md).
+
+---
+
+## Task Maintenance Guidelines
+
+- **Single Backlog:** Treat this file as the sole source of truth for open work. Do not create duplicate task lists.
+- **Priority Definitions:**
+  - **P0**: Blocks the public release baseline or critical security gates.
+  - **P1**: Materially improves core experience, safety, or beta feedback.
+  - **P2**: Validated follow-on capabilities and research milestones.
+  - **P3**: Longer-term or optional expansion.
+- **Statuses:**
+  - **`[now]`**: Current active task (only one task may hold this status).
+  - **`[todo]`**: Ready for implementation once dependencies are clear.
+  - **`[discovery]`**: Time-boxed research or design task leading to a written ADR.
+  - **`[blocked]`**: Cannot proceed without an explicit external credential, host capability, or decision.
+- **Non-Negotiable Boundaries:**
+  - Authenticate every action and scope reads/mutations to current user/workspace.
+  - Preserve note Markdown through all transformations.
+  - Keep attachments private behind authenticated attachment handlers.
+  - Apply Drizzle database migrations (`bun run db:generate`, `bun run db:migrate`).
+  - Read Next.js guidelines in `node_modules/next/dist/docs/` before making Next.js route or layout changes.
+
+---
+
+## 1. Immediate Release Blockers & Security Checks
+
+- [blocked] **P0-41 — Verify private attachment security.** Test file type/size validation, path handling, ownership checks, storage-driver parity, download headers, error responses, and cache behavior.
+  - **Acceptance:** An unauthenticated or different user cannot retrieve an attachment; invalid uploads fail safely; approved downloads work using both local SQLite/filesystem and MinIO/S3-compatible drivers.
+  - **Blocker:** Local MinIO profile and Docker runtime were inaccessible during automated runner execution; requires live cross-account authenticated S3 parity drill.
+
+- [blocked] **P0-43 — Verify clean Docker deployment and publish image plan.** Build and run the documented Compose path from scratch, test migration and persistent volumes, then prepare registry namespace, tags, SBOM/provenance policy, and image update process for Docker Hub.
+  - **Acceptance:** Clean host can deploy without source edits; image publishing proceeds once registry credentials and namespace are provided.
+  - **Blocker:** Provide a Docker-capable clean host for deployment drill and supply `DOCKERHUB_NAMESPACE`, `DOCKERHUB_USERNAME`, and `DOCKERHUB_TOKEN`.
+
+- [blocked] **P1-44 — Investigate browser memory growth.** Reproduce reported memory increase across note switching, preview/Mermaid, AI panel, uploads, and refresh; use heap snapshots to identify retained objects.
+  - **Acceptance:** Reproducible scenario and before/after memory evidence showing bounded growth in confirmed workflow.
+  - **Blocker:** Requires execution in an interactive browser with Chrome DevTools heap-snapshot protocol attached (protocol documented in `docs/operations/browser-memory-investigation.md`).
+
+---
+
+## 2. Grounded, Safe & Explainable AI (Phase R3)
+
+- [now] **R3-01 — Retrieval-grounded answers with visible citations (AI-GROUNDED).** For any AI answer over a configurable length, ground it against user-authorized notes/documents and show supporting chunks with openable source pointers.
+  - **Acceptance:** Non-trivial AI answers display openable source note/document chunks; ungrounded answers are explicitly flagged. (Target: 100% citation coverage on non-trivial answers).
+
+- [todo] **R3-02 — AI explanation model (AI-EXPLAIN).** Expose source list, transformation label (e.g. "summary", "question generation"), and uncertainty warnings when context evidence is weak or conflicting.
+  - **Acceptance:** UI displays source list, action label, and uncertainty notice whenever evidence is partial or low-confidence.
+
+- [todo] **R3-03 — Full diff/approve control for AI mutations (AI-CONTROL).** Extend review-before-apply panel (P1-33) to a full diff/preview with explicit approve/reject for every AI edit, task mutation, or classification.
+  - **Acceptance:** Zero silent mutations; every AI change requires explicit user approval before writing.
+
+- [todo] **R3-04 — AI safety and resilience (AI-SAFETY).** Enforce rate limits, quota controls, provider timeouts, prompt-injection defenses (treating document text as adversarial), and graceful fallback to manual search on provider failure.
+  - **Acceptance:** Provider outage/timeout degrades gracefully to search UI; prompt-injection test suite blocks policy-violating instructions.
+
+---
+
+## 3. Planner, Review Rituals & Calm Focus (Phase R4)
+
+- [todo] **R4-01 — Goal-to-next-action planner (FR-PLANNER).** Extend tasks/daily notes into a planner supporting goal decomposition and implementation intentions (when/where/how fields, start/due dates, next-action cues).
+  - **Acceptance:** Tasks created from notes carry concrete next actions and if-then cues appearing in daily/weekly views.
+
+- [todo] **R4-02 — Daily/weekly review ritual (FR-PLANNER).** Provide a weekly-review view surfacing overdue, upcoming, and unplanned items with a lightweight review checklist.
+  - **Acceptance:** User can complete weekly review in one view; overdue task aging is visible.
+
+- [todo] **R4-03 — Configurable work/break focus timers (FR-CALM).** Add optional timed sessions with self-regulated, 25/5, and custom presets without mandating a single ritual.
+  - **Acceptance:** Focus mode offers presets, none required to write; session interruption count is observable.
+
+- [todo] **R4-04 — Notification batching and peripheral status (FR-CALM).** Batch/defer non-essential notifications and keep status peripheral during focus sessions.
+  - **Acceptance:** Non-essential notifications suppressed or batched during focus; soft reminders; respects reduced-motion.
+
+---
+
+## 4. Journaling & Personal Project Boards (Phase R5)
+
+- [todo] **R5-01 — Journal templates (FR-JOURNAL).** Add daily-reflection, gratitude, decision-journal, and emotion-check-in templates on top of daily notes engine.
+  - **Acceptance:** Entries can start from templates or blank pages; private, dated, and opt-out from AI by default.
+
+- [todo] **R5-02 — Personal project boards with WIP limits (FR-PROJECTS).** Extend projects into visual boards with status columns and optional column WIP limits with warnings.
+  - **Acceptance:** Tasks move across status columns; WIP limits warn when exceeded; project notes never appear as task cards (preserving P1-24 semantics).
+
+---
+
+## 5. Encrypted Zero-Knowledge Vault & Web Hardening (Phase R6)
+
+> **Note:** Zero-Knowledge Vault implementation is approved for secret items per the P1-46 E2EE decision (`docs/architecture/e2ee-decision.md`). Full-app Markdown E2EE remains explicitly out of scope to preserve search and AI capabilities.
+
+- [todo] **R6-01 — Argon2id account password hashing (SEC-PASSWORDS).** Store account credentials with Argon2id and unique salts; provide migration from legacy hashes.
+  - **Acceptance:** Account inspection confirms Argon2id parameter enforcement; zero reversible password paths.
+
+- [todo] **R6-02 — Passkeys and MFA (SEC-AUTH).** Support WebAuthn passkeys and TOTP MFA, highlighting passkeys as the preferred phishing-resistant option.
+  - **Acceptance:** User can register/log in via WebAuthn passkey or TOTP MFA with recovery fallback paths.
+
+- [todo] **R6-03 — Web hardening for client-crypto app (SEC-WEB).** Enforce HTTPS, strict security headers, CSP, Trusted Types, and sanitized Markdown rendering (DOMPurify).
+  - **Acceptance:** Automated checks confirm headers/CSP/Trusted Types; renderer strips all script payloads.
+
+- [todo] **R6-04 — Threat-model and design the vault (FR-VAULT + P1-46).** Produce client-side authenticated-encryption design using Web Crypto / libsodium.js for secret items.
+  - **Acceptance:** Approved written design proving server stores only ciphertext and never vault plaintext or long-term keys.
+
+- [todo] **R6-05 — Vault storage and item lifecycle (FR-VAULT).** Client-side encrypted create/reveal/copy-with-timeout/rotate for passwords, API keys, and secret notes.
+  - **Acceptance:** Architecture tests prove ciphertext-only storage; clipboard auto-clears; secrets excluded from analytics/logs.
+
+- [todo] **R6-06 — Recovery: account vs vault (SEC-RECOVERY).** Separate account recovery (login reset) from vault recovery (user-held recovery code required).
+  - **Acceptance:** Account recovery succeeds without leaking vault contents; vault recovery impossible without user key material.
+
+- [todo] **P2-47 — Implement E2EE secret vault slice.** Vertical slice implementation of the Phase R6 secret vault following R6-04 approval.
+  - **Acceptance:** Protected ciphertext unreadable by server; independent security review passes.
+
+---
+
+## 6. Spaced Resurfacing & Learning Tools (Phase R7)
+
+- [todo] **R7-01 — Note distillation and self-explanation prompts (AI-LEARNING).** Add distillation linking back to source passages and elaborative-interrogation prompts.
+  - **Acceptance:** Distillations link directly to source passages; prompts remain opt-in and reviewable.
+
+- [todo] **R7-02 — Retrieval-practice question generation (AI-LEARNING).** Generate flashcard retrieval questions from notes/documents with visible citations.
+  - **Acceptance:** Generated flashcards link to source material; user can edit, accept, or discard.
+
+- [todo] **R7-03 — Spaced resurfacing scheduler (AI-LEARNING).** Resurface relevant dormant notes on distributed-practice intervals.
+  - **Acceptance:** Configurable resurfacing intervals; soft, calm-writing notifications.
+
+---
+
+## 7. Audit Trails & Collaboration Discovery (Phase R8)
+
+- [todo] **R8-01 — User-visible audit trails (DATA-AUDIT).** Record inspectable trails for security events, AI actions, vault access, and content changes.
+  - **Acceptance:** User can inspect security, AI, and vault access logs; secret plaintext excluded.
+
+- [discovery] **R8-02 — Encrypted sharing and shared projects (Later).** Research permission models and conflict resolution strategies for workspace sharing.
+  - **Acceptance:** Written design covering permissions, revocation, and isolation before code implementation.
+
+- [discovery] **R8-03 — Media provenance (Optional, Later).** Evaluate C2PA for attached media provenance if AI-generated media handling is added.
+  - **Acceptance:** Written decision document; no unnecessary dependencies added.
+
+---
+
+## 8. Public Self-Hosted Launch Package (Phase 5)
+
+- [todo] **P0-50 — Finalize brand foundations.** Validate Inkest name/domain availability, design production logo, and replace temporary branding consistently.
+  - **Acceptance:** Brand assets licensed, rendering properly at app, social, and favicon sizes across app and landing page.
+
+- [todo] **P0-51 — Prepare legal and trust pages.** Prepare legal text for license, privacy policy, terms of service, AI disclosure, and support scope.
+  - **Acceptance:** Legal pages published and linked; claims match actual storage, encryption, and telemetry practices.
+
+- [todo] **P0-52 — Complete public documentation.** Publish install/upgrade, configuration, backup/restore, import/export, AI provider, and security guides.
+  - **Acceptance:** Self-hoster can install, operate, update, back up, and troubleshoot Inkest using public docs.
+
+- [todo] **P1-53 — Finish landing-page conversion and help surfaces.** Review positioning, feature claims, screenshots, responsive layout, Open Graph tags, and sitemap.
+  - **Acceptance:** Public site clearly communicates value proposition with verified production metadata.
+
+- [todo] **P1-54 — Run a private beta with 20–50 target users.** Recruit self-hosters, knowledge workers, and writers for scripted onboarding and feedback.
+  - **Acceptance:** Feedback triaged weekly; core writing, project, export, and setup journeys verified by external testers.
+
+- [todo] **P1-55 — Define product analytics that respect privacy.** Self-host-compatible opt-in telemetry for activation and editor reliability without collecting note content.
+  - **Acceptance:** Telemetry schema documented; opt-in/disable controls verified; zero note text collected.
+
+- [todo] **P1-56 — Execute the self-hosted launch package.** Prepare release notes, GitHub release, community posts, and support process.
+  - **Acceptance:** Launch assets, links, issue labels, and hotfix rollback procedures prepared prior to public announcement.
+
+---
+
+## 9. Hosted Offering: Validate Before Building (Phase 6)
+
+- [discovery] **P2-60 — Validate hosted-plan demand and packaging.** Interview users on hosted sync, backups, storage limits, and AI credit packaging.
+  - **Acceptance:** Documented customer segment, pricing willingness, and feature boundaries justifying hosted build.
+
+- [discovery] **P2-61 — Design hosted multi-tenant architecture.** Specify tenant isolation, managed DB/object storage, domain routing, secret management, and disaster recovery.
+  - **Acceptance:** Architecture decision record with cost model, threat model, and vendor choices.
+
+- [todo] **P2-62 — Build hosted foundations after P2-60 and P2-61.** Staging environment, tenant-safe provisioning, storage quotas, backup jobs, and transactional email.
+  - **Acceptance:** Staging environment can provision, isolate, and delete test tenants safely.
+
+- [todo] **P2-63 — Add billing and entitlement management.** Server-verified subscriptions, plan limits, AI credits, invoices, and self-service portal.
+  - **Acceptance:** Purchase, upgrade, downgrade, and cancel flows verified in sandbox.
+
+- [todo] **P2-64 — Launch small hosted beta.** Migrate opt-in testers; monitor reliability, support load, activation, and conversion.
+  - **Acceptance:** Hosted launch metrics and alert thresholds defined; users can export/delete data anytime.
+
+---
+
+## 10. Validated Ecosystem Expansion (Phase 7)
+
+- [discovery] **P3-70 — Choose mobile delivery deliberately.** Compare responsive PWA improvements vs native Android/iOS shells.
+  - **Acceptance:** Written decision choosing mobile delivery path based on user demand and offline requirements.
+
+- [todo] **P3-71 — Deliver approved mobile path.** Implement responsive/PWA or native writing experience.
+  - **Acceptance:** Mobile writing experience verified on physical devices for offline editing and attachment view.
+
+- [discovery] **P3-72 — Validate collaboration and sharing.** Research multi-user note/project permissions and conflict resolution.
+  - **Acceptance:** Approved permission and conflict resolution model.
+
+- [todo] **P3-73 — Implement smallest approved sharing slice.** Initial scoped sharing vertical slice based on P3-72.
+  - **Acceptance:** Server-enforced permissions with immediate revocation and cross-user isolation tests.
+
+- [todo] **P3-74 — Improve import and migration.** Markdown folder import with dry-run preview, attachment handling, and rollback.
+  - **Acceptance:** Representative Markdown folder imports cleanly and exports back without data loss.

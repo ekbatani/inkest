@@ -2,7 +2,7 @@
 
 > **Date:** 2026-07-26  
 > **Author:** Antigravity AI / Inkest Architecture Team  
-> **Task Reference:** R0-01 in [`docs/todo-research.md`](todo-research.md)  
+> **Task Reference:** R0-01 in [`docs/DONE.md`](../DONE.md) and [`docs/TODO.md`](../TODO.md)  
 > **Requirements Coverage:** FR-LINKS, FR-PKB, FR-RESEARCH, FR-READER, AI-GROUNDED
 
 ---
