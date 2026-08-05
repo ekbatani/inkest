@@ -185,7 +185,7 @@ export function MarkdownEditor({
   const editorFontFamily =
     usesRtlFont
       ? "var(--font-rtl)"
-      : '"Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif';
+      : "var(--inkest-font-writing, var(--font-sans))";
 
   const extensions = React.useMemo(
     () => [
@@ -223,15 +223,18 @@ export function MarkdownEditor({
       Prec.highest(
         EditorView.theme({
           "&": {
-            fontSize: "16.75px",
+            fontSize: "1.05rem",
             backgroundColor: "transparent",
             color: "color-mix(in oklab, var(--foreground) 91%, transparent)",
             minHeight: "100%",
+            WebkitFontSmoothing: "antialiased",
+            MozOsxFontSmoothing: "grayscale",
+            textRendering: "optimizeLegibility",
           },
           ".cm-scroller": {
             fontFamily: editorFontFamily,
-            lineHeight: "1.72",
-            letterSpacing: "-0.006em",
+            lineHeight: "1.75",
+            letterSpacing: "-0.011em",
             overflow: "auto",
           },
           ".cm-line": {

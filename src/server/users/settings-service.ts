@@ -64,7 +64,7 @@ export const userSettingsSchema = z.object({
     .object({
       preference: z.enum(["system", "light", "dark"]).optional(),
       palette: z.enum(["paper", "forest", "violet"]).optional(),
-      font: z.enum(["sans", "serif", "persian"]).optional(),
+      font: z.enum(["sans", "serif", "mono", "persian"]).optional(),
     })
     .optional(),
   googleCalendar: z

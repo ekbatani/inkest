@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 
 export type AppearanceTheme = "system" | "light" | "dark";
 export type AppearancePalette = "paper" | "forest" | "violet";
-export type AppearanceFont = "sans" | "serif" | "persian";
+export type AppearanceFont = "sans" | "serif" | "mono" | "persian";
 
 export function applyAppearance({ palette, font }: { palette: AppearancePalette; font: AppearanceFont }) {
   const root = document.documentElement;

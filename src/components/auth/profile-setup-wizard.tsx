@@ -83,9 +83,9 @@ export function ProfileSetupWizard({
   const [themePalette, setThemePalette] = React.useState<
     "paper" | "forest" | "violet"
   >(initialSettings?.theme?.palette || "paper");
-  const [themeFont, setThemeFont] = React.useState<"sans" | "serif" | "persian">(
-    initialSettings?.theme?.font || "sans",
-  );
+  const [themeFont, setThemeFont] = React.useState<
+    "sans" | "serif" | "mono" | "persian"
+  >(initialSettings?.theme?.font || "sans");
 
   // Get active avatar icon component
   const activeAvatarObj = PRESET_AVATARS.find((a) => a.id === selectedAvatar);
@@ -369,10 +369,11 @@ export function ProfileSetupWizard({
             {/* Font Selection */}
             <div className="flex flex-col gap-2.5">
               <Label className="text-xs font-semibold">Writing Typography Font</Label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
-                  { id: "sans", label: "Sans-Serif", sample: "Inter Clean" },
-                  { id: "serif", label: "Serif", sample: "Editorial Ink" },
+                  { id: "sans", label: "Sans-Serif", sample: "Geist Clean" },
+                  { id: "serif", label: "Serif", sample: "Lora Editorial" },
+                  { id: "mono", label: "Monospace", sample: "Geist Mono" },
                   { id: "persian", label: "Persian / Vazir", sample: "Vazirmatn" },
                 ].map((f) => {
                   const active = themeFont === f.id;
@@ -380,7 +381,7 @@ export function ProfileSetupWizard({
                     <button
                       key={f.id}
                       type="button"
-                      onClick={() => setThemeFont(f.id as "sans" | "serif" | "persian")}
+                      onClick={() => setThemeFont(f.id as "sans" | "serif" | "mono" | "persian")}
                       className={cn(
                         "flex flex-col text-start p-3 rounded-xl border transition-all",
                         active

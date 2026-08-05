@@ -15,7 +15,7 @@ const ProfileSetupSchema = z.object({
   workspaceName: z.string().trim().min(1, "Workspace name is required").max(100),
   themePreference: z.enum(["system", "light", "dark"]).optional(),
   themePalette: z.enum(["paper", "forest", "violet"]).optional(),
-  themeFont: z.enum(["sans", "serif", "persian"]).optional(),
+  themeFont: z.enum(["sans", "serif", "mono", "persian"]).optional(),
 });
 
 export type ProfileSetupInput = z.infer<typeof ProfileSetupSchema>;
