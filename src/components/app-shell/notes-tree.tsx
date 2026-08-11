@@ -9,6 +9,9 @@ import {
   FileText,
   FolderPlus,
   Plus,
+  FileUp,
+  FileCode,
+  File,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -26,6 +29,24 @@ import { createProjectAction, moveNoteInTreeAction } from "@/server/notes/action
 import { cn } from "@/lib/utils";
 import type { NoteTreeNode } from "@/server/notes/service";
 import { usesRtlTitleFont } from "@/lib/text/rtl";
+import { DocumentUploadModal } from "@/components/reader/document-upload-modal";
+
+function getNodeIcon(node: NoteTreeNode) {
+  if (node.type === "project") return Folder;
+  if (node.type === "document") {
+    if (node.fileType === "pdf") return File;
+    if (node.fileType === "markdown") return FileCode;
+    return FileText;
+  }
+  return FileText;
+}
+
+function getNodeHref(node: NoteTreeNode) {
+  if (node.type === "document") {
+    return `/reader/${node.documentId || node.id}`;
+  }
+  return `/notes/${node.id}`;
+}
 
 type TreeItem = NoteTreeNode;
 
@@ -256,6 +277,16 @@ export function NotesTree({
           Notes Tree
         </span>
         <div className="flex items-center gap-0.5">
+          <DocumentUploadModal>
+            <button
+              type="button"
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Upload document"
+              title="Upload document"
+            >
+              <FileUp className="size-3.5" />
+            </button>
+          </DocumentUploadModal>
           <form action={createProjectAction} onSubmit={onNavigate}>
             <button
               type="submit"
@@ -315,9 +346,9 @@ export function NotesTree({
                 <TreeRow
                   noteId={node.id}
                   title={node.title}
-                  href={`/notes/${node.id}`}
-                  isActive={pathname === `/notes/${node.id}`}
-                  icon={isProject ? Folder : FileText}
+                  href={getNodeHref(node)}
+                  isActive={pathname === getNodeHref(node)}
+                  icon={getNodeIcon(node)}
                   canAcceptChildren={isProject}
                   projectDropId={isProject ? makeProjectDropId(node.id) : null}
                   projectDropActive={isProject && isDropTargetActive(
@@ -388,15 +419,14 @@ function TreeChildren({
       {nodes.map((node) => {
         const isOpen = Boolean(open[node.id]);
         const hasChildren = node.children.length > 0;
-        const isProject = node.type === "project";
         return (
           <li key={node.id} className="notes-tree-row">
             <TreeRow
               noteId={node.id}
               title={node.title}
-              href={`/notes/${node.id}`}
-              isActive={pathname === `/notes/${node.id}`}
-              icon={isProject ? Folder : FileText}
+              href={getNodeHref(node)}
+              isActive={pathname === getNodeHref(node)}
+              icon={getNodeIcon(node)}
               onNavigate={onNavigate}
             >
               {hasChildren ? (
@@ -434,7 +464,7 @@ function TreeRow({
   title: string;
   href: string;
   isActive: boolean;
-  icon: typeof Folder;
+  icon: React.ComponentType<{ className?: string }>;
   canAcceptChildren?: boolean;
   projectDropId?: string | null;
   projectDropActive?: boolean;

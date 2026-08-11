@@ -299,6 +299,9 @@ export const documents = sqliteTable("documents", {
   attachmentId: text("attachment_id").references(() => attachments.id, {
     onDelete: "set null",
   }),
+  parentId: text("parent_id").references((): AnySQLiteColumn => notes.id, {
+    onDelete: "set null",
+  }),
   title: text("title").notNull(),
   fileType: text("file_type", { enum: ["pdf", "text", "markdown"] })
     .notNull()

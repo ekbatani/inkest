@@ -11,8 +11,9 @@ export async function uploadDocumentAction(formData: FormData) {
   if (!file) {
     throw new Error("No file provided");
   }
+  const parentId = (formData.get("parentId") as string | null) || null;
 
-  const result = await importDocument(file);
+  const result = await importDocument(file, parentId);
   if ("error" in result) {
     throw new Error(result.error);
   }

@@ -161,22 +161,27 @@ export function MarkdownEditor({
   spellcheck = true,
   spellcheckLanguage = "auto",
 }: Props) {
-  // Keep CodeMirror's controlled value local while a user is typing. Updating the
-  // note route for every character rerenders its toolbars, panels, and metadata
-  // controls; the parent receives the latest value shortly afterwards for saving.
+  const [prevPropValue, setPrevPropValue] = React.useState(value);
   const [editorState, setEditorState] = React.useState({
     value,
     sourceValue: value,
   });
-  if (editorState.sourceValue !== value) {
-    setEditorState({ value, sourceValue: value });
+
+  if (prevPropValue !== value) {
+    setPrevPropValue(value);
+    if (editorState.sourceValue !== value) {
+      setEditorState({ value, sourceValue: value });
+    }
   }
+
   const editorValue = editorState.value;
 
   React.useEffect(() => {
     if (editorValue === value) return;
 
-    const timer = setTimeout(() => onChange(editorValue), PARENT_UPDATE_DELAY_MS);
+    const timer = setTimeout(() => {
+      onChange(editorValue);
+    }, PARENT_UPDATE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [editorValue, onChange, value]);
 
@@ -384,7 +389,7 @@ export function MarkdownEditor({
       <CodeMirror
         ref={editorRef}
         value={editorValue}
-        onChange={(nextValue) => setEditorState({ value: nextValue, sourceValue: value })}
+        onChange={(nextValue) => setEditorState({ value: nextValue, sourceValue: nextValue })}
         extensions={extensions}
         height="100%"
         className="h-full text-sm"

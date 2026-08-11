@@ -609,39 +609,102 @@ export async function getOrCreateDailyNote(date: Date): Promise<Note> {
   return fetched!;
 }
 
-export type NoteTreeNode = Pick<
-  Note,
-  "id" | "title" | "slug" | "type" | "updatedAt" | "createdAt"
-> & { children: NoteTreeNode[] };
+export type NoteTreeNode = {
+  id: string;
+  title: string;
+  slug: string;
+  type: "note" | "project" | "daily" | "document";
+  fileType?: "pdf" | "text" | "markdown";
+  documentId?: string;
+  updatedAt: Date;
+  createdAt: Date;
+  children: NoteTreeNode[];
+};
 
 /**
- * Build a 2-level tree of notes for the sidebar: top-level notes with their
- * child notes (parentId = topLevel.id). Stays shallow to keep navigation
- * predictable. Sorted by tree order with creation time as the fallback.
+ * Build a 2-level tree of notes and documents for the sidebar: top-level notes/documents
+ * with their child notes/documents. Stays shallow to keep navigation predictable.
  */
 export async function listNotesTree(): Promise<NoteTreeNode[]> {
   const { user, workspace } = await getContext();
-  const rows = await db
-    .select({ id: schema.notes.id, title: schema.notes.title, slug: schema.notes.slug, type: schema.notes.type, parentId: schema.notes.parentId, updatedAt: schema.notes.updatedAt, createdAt: schema.notes.createdAt })
+  const noteRows = await db
+    .select({
+      id: schema.notes.id,
+      title: schema.notes.title,
+      slug: schema.notes.slug,
+      type: schema.notes.type,
+      parentId: schema.notes.parentId,
+      updatedAt: schema.notes.updatedAt,
+      createdAt: schema.notes.createdAt,
+    })
     .from(schema.notes)
-    .where(and(eq(schema.notes.userId, user.id), eq(schema.notes.workspaceId, workspace.id), isNull(schema.notes.deletedAt), eq(schema.notes.archived, false)))
+    .where(
+      and(
+        eq(schema.notes.userId, user.id),
+        eq(schema.notes.workspaceId, workspace.id),
+        isNull(schema.notes.deletedAt),
+        eq(schema.notes.archived, false),
+      ),
+    )
     .orderBy(...siblingSortColumns())
     .limit(500);
+
+  const docRows = await db
+    .select({
+      id: schema.documents.id,
+      title: schema.documents.title,
+      fileType: schema.documents.fileType,
+      parentId: schema.documents.parentId,
+      updatedAt: schema.documents.updatedAt,
+      createdAt: schema.documents.createdAt,
+    })
+    .from(schema.documents)
+    .where(
+      and(
+        eq(schema.documents.userId, user.id),
+        eq(schema.documents.workspaceId, workspace.id),
+      ),
+    )
+    .limit(200);
+
   const nodes = new Map<string, NoteTreeNode>();
   const childrenByParent = new Map<string | null, string[]>();
-  for (const row of rows) {
+
+  for (const row of noteRows) {
     nodes.set(row.id, { ...row, children: [] });
     const siblings = childrenByParent.get(row.parentId) ?? [];
     siblings.push(row.id);
     childrenByParent.set(row.parentId, siblings);
   }
-  const build = (parentId: string | null, ancestors = new Set<string>()): NoteTreeNode[] =>
+
+  for (const doc of docRows) {
+    nodes.set(doc.id, {
+      id: doc.id,
+      title: doc.title,
+      slug: doc.id,
+      type: "document",
+      fileType: doc.fileType,
+      documentId: doc.id,
+      updatedAt: doc.updatedAt,
+      createdAt: doc.createdAt,
+      children: [],
+    });
+    const siblings = childrenByParent.get(doc.parentId) ?? [];
+    siblings.push(doc.id);
+    childrenByParent.set(doc.parentId, siblings);
+  }
+
+  const build = (
+    parentId: string | null,
+    ancestors = new Set<string>(),
+  ): NoteTreeNode[] =>
     (childrenByParent.get(parentId) ?? []).flatMap((id) => {
       const node = nodes.get(id);
       if (!node || ancestors.has(id)) return [];
       node.children = build(id, new Set([...ancestors, id]));
       return [node];
     });
+
   return build(null);
 }
 

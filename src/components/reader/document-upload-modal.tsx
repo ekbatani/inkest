@@ -17,8 +17,12 @@ import { toast } from "sonner";
 
 export function DocumentUploadModal({
   children,
+  parentId,
+  onUploaded,
 }: {
   children?: React.ReactNode;
+  parentId?: string | null;
+  onUploaded?: () => void;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -44,9 +48,13 @@ export function DocumentUploadModal({
     try {
       const formData = new FormData();
       formData.append("file", file);
+      if (parentId) {
+        formData.append("parentId", parentId);
+      }
       const doc = await uploadDocumentAction(formData);
       toast.success(`Imported "${doc.title}" successfully.`);
       setOpen(false);
+      if (onUploaded) onUploaded();
       router.push(`/reader/${doc.id}`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to upload document.");

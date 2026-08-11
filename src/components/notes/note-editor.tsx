@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
@@ -11,13 +10,8 @@ import {
   ChevronLeft,
   Loader2,
   Check,
-  PanelRightOpen,
-  PanelRightClose,
   Download,
   Copy,
-  Circle,
-  CircleDot,
-  FolderKanban,
   Undo2,
   Redo2,
   BookOpen,
@@ -34,28 +28,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import type { Note } from "@/server/db/schema";
-import type { Tag } from "@/server/db/schema";
-import { updateNoteAction } from "@/server/notes/actions";
+import { AiChatSidebar } from "@/components/ai/ai-chat-sidebar";
+import { NoteDetailsPopover } from "@/components/notes/note-details-popover";
+import type { Note, Tag } from "@/server/db/schema";
+import { autoSaveNoteAction, updateNoteAction } from "@/server/notes/actions";
 import { deleteNoteAction, togglePinnedAction } from "@/server/notes/actions";
 import { ArchiveToggleButton } from "@/components/notes/archive-toggle-button";
-import { formatDate } from "@/lib/dates";
 import { FloatingMarkdownFormatToolbar } from "@/components/editor/markdown-format-toolbar";
 import { AttachmentUploadButton } from "@/components/editor/image-upload-button";
 import { SpeechToTextButton } from "@/components/editor/speech-to-text-button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TagSelector } from "@/components/notes/tag-selector";
-import { ParentPicker } from "@/components/notes/parent-picker";
-import { DueDatePicker } from "@/components/notes/due-date-picker";
 import { VersionHistoryButton } from "@/components/notes/version-history-button";
-import { DailyNoteCalendarPanel } from "@/components/calendar/daily-note-calendar-panel";
 import type { SuperFocusTrackingMode } from "@/components/notes/super-focus-reader";
 import { updateUserSettingsAction } from "@/server/users/settings-actions";
 import type { WikiLinkTarget } from "@/lib/markdown/wiki";
@@ -85,22 +68,6 @@ const SuperFocusReader = dynamic(
   () => import("@/components/notes/super-focus-reader").then((m) => m.SuperFocusReader),
   { ssr: false },
 );
-// AI is useful but not needed to begin writing. Keep its action menus, dialogs, and
-// result preview out of the editor route until the user explicitly opens AI (or invokes
-// the command-menu shortcut).
-const AiPanel = dynamic(
-  () => import("@/components/ai/ai-panel").then((m) => m.AiPanel),
-  {
-    ssr: false,
-    loading: () => (
-      <Button variant="ghost" size="sm" className="gap-1.5" disabled>
-        <Loader2 className="size-4 animate-spin text-violet-400" />
-        <span className="hidden sm:inline text-violet-400">AI</span>
-      </Button>
-    ),
-  },
-);
-
 const CONTEXT_PANEL_STORAGE_KEY = "inkest:note-context-panel-open";
 
 type NoteSnapshot = {
@@ -124,7 +91,6 @@ export function NoteEditor({
   superFocusPrefs,
   ttsPrefs,
   editorPrefs,
-  aiOnboardingDismissed = false,
   projectTaskCount = 0,
 }: {
   note: Note;
@@ -162,10 +128,6 @@ export function NoteEditor({
     return window.localStorage.getItem(CONTEXT_PANEL_STORAGE_KEY) !== "false";
   });
   const [showSuperFocus, setShowSuperFocus] = React.useState(false);
-  const [aiPanelRequested, setAiPanelRequested] = React.useState(false);
-  const [aiInitialAction, setAiInitialAction] = React.useState<"summarize" | null>(
-    null,
-  );
   const [trackingMode, setTrackingMode] = React.useState<SuperFocusTrackingMode>(
     superFocusPrefs?.trackingMode ?? "pointer",
   );
@@ -264,6 +226,63 @@ export function NoteEditor({
     };
   }, [trackingMode, radius, ttsRate, ttsVoiceURI]);
 
+  const saveSeqRef = React.useRef(0);
+  const lastSavedSeqRef = React.useRef(0);
+  const latestContentRef = React.useRef({ title, content });
+  React.useEffect(() => {
+    latestContentRef.current = { title, content };
+  }, [title, content]);
+
+  const flushBeaconSave = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+    const payload = JSON.stringify(latestContentRef.current);
+    if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
+      const blob = new Blob([payload], { type: "application/json" });
+      navigator.sendBeacon(`/api/notes/${note.id}/save`, blob);
+    } else {
+      void fetch(`/api/notes/${note.id}/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true,
+      });
+    }
+  }, [note.id]);
+
+  const performSave = React.useCallback(
+    async (options?: { forceRevalidate?: boolean }) => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+
+      const snapshot = latestContentRef.current;
+      const currentSeq = ++saveSeqRef.current;
+      setSaveState("saving");
+
+      try {
+        if (options?.forceRevalidate) {
+          await updateNoteAction(note.id, { title: snapshot.title, contentMd: snapshot.content });
+        } else {
+          await autoSaveNoteAction(note.id, { title: snapshot.title, contentMd: snapshot.content });
+        }
+
+        if (currentSeq >= lastSavedSeqRef.current) {
+          lastSavedSeqRef.current = currentSeq;
+          setSaveState("saved");
+          setTimeout(() => {
+            if (lastSavedSeqRef.current === currentSeq) {
+              setSaveState("idle");
+            }
+          }, 2000);
+        }
+      } catch {
+        if (currentSeq >= lastSavedSeqRef.current) {
+          setSaveState("idle");
+          toast.error("Failed to save note.");
+        }
+      }
+    },
+    [note.id],
+  );
+
   React.useEffect(() => {
     if (skipNextPersist.current) {
       skipNextPersist.current = false;
@@ -274,24 +293,36 @@ export function NoteEditor({
       return;
     }
 
-    setSaveState("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
 
-    saveTimer.current = setTimeout(async () => {
-      try {
-        await updateNoteAction(note.id, { title, contentMd: content });
-        setSaveState("saved");
-        setTimeout(() => setSaveState("idle"), 2000);
-      } catch {
-        setSaveState("idle");
-        toast.error("Failed to save note.");
-      }
+    saveTimer.current = setTimeout(() => {
+      void performSave({ forceRevalidate: false });
     }, 1500);
 
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [title, content, note.id]);
+  }, [title, content, performSave]);
+
+  React.useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && saveSeqRef.current > lastSavedSeqRef.current) {
+        flushBeaconSave();
+      }
+    };
+    const onBeforeUnload = () => {
+      if (saveSeqRef.current > lastSavedSeqRef.current) {
+        flushBeaconSave();
+      }
+    };
+
+    window.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [flushBeaconSave]);
 
   React.useEffect(() => {
     if (skipNextHistoryCheckpoint.current) {
@@ -323,17 +354,8 @@ export function NoteEditor({
   }, [title, content]);
 
   const forceSave = React.useCallback(async () => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    setSaveState("saving");
-    try {
-      await updateNoteAction(note.id, { title, contentMd: content });
-      setSaveState("saved");
-      setTimeout(() => setSaveState("idle"), 2000);
-    } catch {
-      setSaveState("idle");
-      toast.error("Failed to save note.");
-    }
-  }, [note.id, title, content]);
+    await performSave({ forceRevalidate: true });
+  }, [performSave]);
 
   const currentSnapshot = React.useMemo(
     () => ({ title, content }),
@@ -589,17 +611,15 @@ export function NoteEditor({
     });
   }, [openReader, pasteToPreview]);
 
-  const requestAiPanel = React.useCallback((initialAction?: "summarize") => {
-    setAiInitialAction(initialAction ?? null);
+  const requestAiPanel = React.useCallback(() => {
     setShowPanel(true);
-    setAiPanelRequested(true);
   }, []);
 
   React.useEffect(() => {
     const onAskAi = (event: Event) => {
       const detail = (event as CustomEvent<{ noteId?: string }>).detail;
       if (detail?.noteId !== note.id) return;
-      requestAiPanel("summarize");
+      requestAiPanel();
     };
 
     window.addEventListener("inkest:ask-ai", onAskAi);
@@ -658,69 +678,74 @@ export function NoteEditor({
 
           <AttachmentUploadButton editorRef={editorRef} />
           <SpeechToTextButton editorRef={editorRef} />
+
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={undo}
+            disabled={!canUndo}
+            aria-label="Undo"
+            title="Undo"
+          >
+            <Undo2 className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={redo}
+            disabled={!canRedo}
+            aria-label="Redo"
+            title="Redo"
+          >
+            <Redo2 className="size-4" />
+          </Button>
+
+          <DropdownMenu onOpenChange={(open) => open && setCopyMenuTouched(true)}>
+            <DropdownMenuTrigger
+              render={<Button variant="ghost" size="sm" className="gap-1.5" />}
+            >
+              <Copy className="size-4 text-muted-foreground" />
+              <span className="hidden sm:inline">Copy</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={() => void onCopyMarkdown()}>
+                Copy Markdown
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => void onCopyPreview()}>
+                Copy preview
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             variant="ghost"
             size="sm"
-            className="gap-1.5 text-foreground/80 hover:text-foreground"
-            onClick={() => requestAiPanel()}
+            className="gap-1.5"
+            nativeButton={false}
+            render={
+              <a
+                href={`/api/export/note/${note.id}`}
+                aria-label="Download this note as Markdown"
+                rel="noopener"
+              />
+            }
           >
-            <Sparkles className="size-4 text-violet-400" />
-            <span className="hidden sm:inline text-violet-400">AI</span>
+            <Download className="size-4 text-muted-foreground" />
+            <span className="hidden sm:inline">Export</span>
           </Button>
-          <>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={undo}
-                disabled={!canUndo}
-                aria-label="Undo"
-                title="Undo"
-              >
-                <Undo2 className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={redo}
-                disabled={!canRedo}
-                aria-label="Redo"
-                title="Redo"
-              >
-                <Redo2 className="size-4" />
-              </Button>
-            </>
-          <DropdownMenu onOpenChange={(open) => open && setCopyMenuTouched(true)}>
-              <DropdownMenuTrigger
-                render={<Button variant="ghost" size="sm" className="gap-1.5" />}
-              >
-                <Copy className="size-4 text-muted-foreground" />
-                <span className="hidden sm:inline">Copy</span>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem onClick={() => void onCopyMarkdown()}>
-                  Copy Markdown
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => void onCopyPreview()}>
-                  Copy preview
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              nativeButton={false}
-              render={
-                <a
-                  href={`/api/export/note/${note.id}`}
-                  aria-label="Download this note as Markdown"
-                  rel="noopener"
-                />
-              }
-            >
-              <Download className="size-4 text-muted-foreground" />
-              <span className="hidden sm:inline">Export</span>
-          </Button>
+
+          {/* Relocated Note Context Details Popover */}
+          <NoteDetailsPopover
+            note={note}
+            metadata={metadata}
+            onChange={onMetadataChange}
+            allTags={allTags}
+            noteTagIds={noteTagIds}
+            parentCandidates={parentCandidates}
+            backlinks={backlinks}
+            dailyAgenda={dailyAgenda}
+            projectTaskCount={projectTaskCount}
+          />
 
           <div className="ml-auto flex items-center gap-1">
             {saveState !== "idle" && (
@@ -736,11 +761,13 @@ export function NoteEditor({
                 {saveState === "saving" ? "Saving…" : "Saved"}
               </span>
             )}
+
             <Button
               variant="ghost"
               size="icon-sm"
               onClick={onTogglePin}
               aria-label={metadata.pinned ? "Unpin note" : "Pin note"}
+              title={metadata.pinned ? "Unpin note" : "Pin note"}
             >
               {metadata.pinned ? (
                 <PinOff className="size-4" />
@@ -748,28 +775,48 @@ export function NoteEditor({
                 <Pin className="size-4" />
               )}
             </Button>
+
+            <ArchiveToggleButton
+              noteId={note.id}
+              archived={note.archived}
+              variant="ghost"
+              size="icon-sm"
+            />
+
+            <VersionHistoryButton
+              noteId={note.id}
+              iconOnly
+              draft={{ title, contentMd: content }}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onUndo={undo}
+              onRedo={redo}
+              onRestoreVersion={applyRestoredVersion}
+            />
+
             <Button
               variant="ghost"
               size="icon-sm"
+              className="text-destructive hover:text-destructive"
+              onClick={onDelete}
+              aria-label="Delete note"
+              title="Delete note"
+            >
+              <Trash2 className="size-4" />
+            </Button>
+
+            {/* AI Assistant Sidebar Toggle Button */}
+            <Button
+              variant={showPanel ? "secondary" : "ghost"}
+              size="sm"
+              className="gap-1.5 rounded-xl border border-border/40 ml-1"
               onClick={toggleContextPanel}
               aria-controls="note-context-panel"
               aria-expanded={showPanel}
-              aria-label={
-                showPanel
-                  ? "Collapse note context panel"
-                  : "Expand note context panel"
-              }
-              title={
-                showPanel
-                  ? "Collapse note context panel"
-                  : "Expand note context panel"
-              }
+              title={showPanel ? "Close AI Assistant" : "Open AI Assistant"}
             >
-              {showPanel ? (
-                <PanelRightClose className="size-4" />
-              ) : (
-                <PanelRightOpen className="size-4" />
-              )}
+              <Sparkles className="size-4 text-violet-500" />
+              <span className="hidden sm:inline text-xs font-medium">AI Assistant</span>
             </Button>
           </div>
       </div>
@@ -778,7 +825,7 @@ export function NoteEditor({
         <div
           className={cn(
             "flex min-w-0 flex-1 flex-col transition-[margin-right] duration-200 motion-reduce:transition-none",
-            showPanel && "sm:mr-[320px]",
+            showPanel && "sm:mr-[340px]",
           )}
         >
           <div className="px-6 pt-6 sm:px-10 sm:pt-8">
@@ -794,6 +841,11 @@ export function NoteEditor({
                 ref={titleInputRef}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                onBlur={() => {
+                  if (saveSeqRef.current > lastSavedSeqRef.current) {
+                    void performSave({ forceRevalidate: false });
+                  }
+                }}
                 onKeyDown={(e) => {
                   if (e.key !== "Enter") return;
                   e.preventDefault();
@@ -831,45 +883,21 @@ export function NoteEditor({
           </div>
         </div>
 
+        {/* Refactored Right Sidebar: VS Code-style AI Assistant */}
         <aside
           id="note-context-panel"
-          aria-label="Note context"
+          aria-label="AI Assistant"
           aria-hidden={!showPanel}
           className="absolute inset-y-0 right-0 z-10 hidden overflow-hidden border-l bg-background shadow-xl transition-[width,box-shadow] duration-200 motion-reduce:transition-none sm:block"
-          style={{ width: showPanel ? 320 : 0 }}
+          style={{ width: showPanel ? 340 : 0 }}
         >
-          <div className="h-full w-80">
-            <MetadataPanel
-              note={note}
-              metadata={metadata}
-              onChange={onMetadataChange}
-              onDelete={onDelete}
-              allTags={allTags}
-              noteTagIds={noteTagIds}
-              parentCandidates={parentCandidates}
-              backlinks={backlinks}
-              dailyAgenda={dailyAgenda}
-              draft={{ title, contentMd: content }}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onUndo={undo}
-              onRedo={redo}
-              onRestoreVersion={applyRestoredVersion}
-              projectTaskCount={projectTaskCount}
-              onAskAi={() => requestAiPanel()}
-              aiPanel={aiPanelRequested ? (
-                <AiPanel
-                  noteId={note.id}
-                  editorRef={editorRef}
-                  variant="sidebar"
-                  initialAction={aiInitialAction ?? undefined}
-                  onboardingDismissed={aiOnboardingDismissed}
-                  onClose={() => {
-                    setAiPanelRequested(false);
-                    setAiInitialAction(null);
-                  }}
-                />
-              ) : undefined}
+          <div className="h-full w-[340px]">
+            <AiChatSidebar
+              noteId={note.id}
+              noteTitle={title}
+              noteContent={content}
+              editorRef={editorRef}
+              onClose={toggleContextPanel}
             />
           </div>
         </aside>
@@ -904,359 +932,4 @@ export function NoteEditor({
   );
 }
 
-function MetadataPanel({
-  note,
-  metadata,
-  onChange,
-  onDelete,
-  allTags,
-  noteTagIds,
-  parentCandidates,
-  backlinks,
-  dailyAgenda,
-  draft,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
-  onRestoreVersion,
-  projectTaskCount,
-  onAskAi,
-  aiPanel,
-}: {
-  note: Note;
-  metadata: {
-    type: string;
-    direction: string;
-    status: string;
-    priority: string;
-    pinned: boolean;
-    parentId: string | null;
-    dueDate: Date | null;
-  };
-  onChange: (field: string, value: string | boolean | null | Date) => void;
-  onDelete: () => void;
-  allTags: Tag[];
-  noteTagIds: string[];
-  parentCandidates: Pick<Note, "id" | "title" | "type">[];
-  backlinks: { id: string; title: string; snippet?: string }[];
-  dailyAgenda?: {
-    dateKey: string;
-    events: GoogleCalendarEvent[];
-    status: {
-      configured: boolean;
-      connected: boolean;
-      googleEmail: string | null;
-      lastSyncedAt: Date | null;
-    };
-  };
-  draft: { title: string; contentMd: string };
-  canUndo: boolean;
-  canRedo: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
-  onRestoreVersion: (snapshot: { title: string; contentMd: string }) => void;
-  projectTaskCount: number;
-  onAskAi: () => void;
-  aiPanel?: React.ReactNode;
-}) {
-  const showProjectLink = metadata.type === "project";
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex-1 space-y-3 overflow-y-auto p-4 pb-24">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Note context</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Keep this note organized without leaving your writing flow.
-          </p>
-        </div>
 
-        {showProjectLink && (
-          <div className="rounded-2xl border border-border/70 bg-muted/20 p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Project workspace
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {projectTaskCount} task note
-                  {projectTaskCount === 1 ? "" : "s"} linked to this project.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-full px-3 text-xs"
-                nativeButton={false}
-                render={<Link href={`/projects/${note.id}?tab=tasks`} />}
-              >
-                <FolderKanban className="size-3.5" />
-                Tasks
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {aiPanel ?? <div className="rounded-2xl border border-border/70 bg-muted/20 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                AI assistance
-              </h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Choose an action and review its result before applying it.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={onAskAi}
-            >
-              <Sparkles className="size-3.5 text-violet-400" />
-              Ask AI
-            </Button>
-          </div>
-        </div>}
-
-        <div className="rounded-2xl border border-border/70 bg-muted/20 p-3">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Properties
-              </h3>
-            </div>
-            {showProjectLink && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-full px-3 text-xs"
-                nativeButton={false}
-                render={<Link href={`/projects/${note.id}`} />}
-              >
-                <FolderKanban className="size-3.5" />
-                Project view
-              </Button>
-            )}
-          </div>
-
-          <div className="grid gap-3">
-            <CompactField label="Type">
-              <ChoiceGroup
-                value={metadata.type}
-                onChange={(v) => onChange("type", v)}
-                columns={2}
-                options={[
-                  { value: "note", label: "Note" },
-                  { value: "project", label: "Project" },
-                  { value: "daily", label: "Daily" },
-                ]}
-              />
-            </CompactField>
-
-            <CompactField label="Direction">
-              <ChoiceGroup
-                value={metadata.direction}
-                onChange={(v) => onChange("direction", v)}
-                columns={3}
-                options={[
-                  { value: "auto", label: "Auto" },
-                  { value: "ltr", label: "LTR" },
-                  { value: "rtl", label: "RTL" },
-                ]}
-              />
-            </CompactField>
-
-            <CompactField label="Status">
-              <Select
-                value={metadata.status}
-                onValueChange={(v) => v && onChange("status", v)}
-              >
-                <SelectTrigger className="h-9 w-full rounded-xl border-border/70 bg-background text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="todo">To do</SelectItem>
-                  <SelectItem value="doing">In progress</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
-                  <SelectItem value="paused">Paused</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-            </CompactField>
-
-            <DueDatePicker
-              value={metadata.dueDate}
-              onChange={(d) => onChange("dueDate", d)}
-            />
-
-            <ParentPicker
-              noteId={note.id}
-              value={metadata.parentId}
-              candidates={parentCandidates}
-              projectOnly={metadata.type === "project"}
-              onChange={(v) => onChange("parentId", v)}
-            />
-          </div>
-        </div>
-
-        <TagSelector
-          noteId={note.id}
-          allTags={allTags}
-          selectedTagIds={noteTagIds}
-        />
-
-        {metadata.type === "daily" && dailyAgenda && (
-          <DailyNoteCalendarPanel
-            dateKey={dailyAgenda.dateKey}
-            events={dailyAgenda.events}
-            status={dailyAgenda.status}
-          />
-        )}
-
-        {backlinks.length > 0 && (
-          <div className="rounded-2xl border border-border/70 p-3">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Links to this note
-            </h3>
-            <ul className="flex flex-col gap-2 text-xs">
-              {backlinks.map((b) => (
-                <li key={b.id} className="group">
-                  <Link
-                    href={`/notes/${b.id}`}
-                    className="block truncate font-medium text-foreground/90 hover:text-primary transition-colors"
-                  >
-                    ← {b.title || "Untitled"}
-                  </Link>
-                  {b.snippet && (
-                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground/80 italic font-mono bg-muted/30 p-1.5 rounded-lg border border-border/40">
-                      &quot;{b.snippet}&quot;
-                    </p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div className="rounded-2xl border border-border/70 p-3">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Dates
-          </h3>
-          <div className="grid gap-1 text-xs text-muted-foreground">
-            <span>Created: {formatDate(note.createdAt)}</span>
-            <span>Updated: {formatDate(note.updatedAt)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="sticky bottom-0 mt-auto border-t bg-background/95 p-4 backdrop-blur supports-backdrop-filter:bg-background/80">
-        <div className="flex items-center justify-center gap-2">
-          <ArchiveToggleButton
-            noteId={note.id}
-            archived={note.archived}
-            variant="outline"
-            size="icon-sm"
-            className="rounded-full"
-          />
-          <Button
-            variant="outline"
-            size="icon-sm"
-            className="rounded-full text-destructive hover:text-destructive"
-            onClick={onDelete}
-            aria-label="Delete note"
-            title="Delete"
-          >
-            <Trash2 className="size-4" />
-          </Button>
-          <VersionHistoryButton
-            noteId={note.id}
-            iconOnly
-            draft={draft}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onUndo={onUndo}
-            onRedo={onRedo}
-            onRestoreVersion={onRestoreVersion}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CompactField({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
-      {children}
-    </div>
-  );
-}
-
-function ChoiceGroup({
-  value,
-  onChange,
-  options,
-  columns = 1,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string; hint?: string }[];
-  columns?: 1 | 2 | 3 | 4;
-}) {
-  return (
-    <div
-      role="radiogroup"
-      className={cn(
-        "grid gap-2",
-        columns === 2 && "grid-cols-2",
-        columns === 3 && "grid-cols-3",
-        columns === 4 && "grid-cols-4",
-      )}
-    >
-      {options.map((option) => {
-        const checked = option.value === value;
-
-        return (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={checked}
-            onClick={() => onChange(option.value)}
-            className={cn(
-              "flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-left transition",
-              checked
-                ? "border-foreground/20 bg-foreground/[0.045] shadow-sm"
-                : "border-border/70 bg-background hover:border-foreground/15 hover:bg-muted/30",
-            )}
-          >
-            {checked ? (
-              <CircleDot className="size-4 shrink-0 text-foreground" />
-            ) : (
-              <Circle className="size-4 shrink-0 text-muted-foreground" />
-            )}
-            <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-medium text-foreground">
-                {option.label}
-              </span>
-              {option.hint && (
-                <span className="block text-xs text-muted-foreground">
-                  {option.hint}
-                </span>
-              )}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}

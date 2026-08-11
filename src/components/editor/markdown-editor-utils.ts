@@ -195,3 +195,17 @@ export function replaceEntireEditorContent(
   });
   view.focus();
 }
+
+export function replaceSelectedEditorText(
+  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  text: string,
+) {
+  const view = ref.current?.view;
+  if (!view) return;
+  const sel = view.state.selection.main;
+  view.dispatch({
+    changes: { from: sel.from, to: sel.to, insert: text },
+    selection: { anchor: sel.from + text.length },
+  });
+  view.focus();
+}

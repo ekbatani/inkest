@@ -9,6 +9,7 @@ import {
   Sparkles,
   Target,
   ListTodo,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,12 +26,21 @@ import {
 import { toast } from "sonner";
 import type { PlannerData, TaskWithNoteTitle } from "@/server/tasks/planner-service";
 import { updateTaskAction } from "@/server/tasks/actions";
+import { JournalView } from "@/components/journal/journal-view";
+import type { listJournalEntries } from "@/server/journal/journal-service";
 
 interface Props {
   initialData: PlannerData;
+  initialJournalEntries?: Awaited<ReturnType<typeof listJournalEntries>>;
+  initialTab?: "planner" | "journal";
 }
 
-export function PlannerView({ initialData }: Props) {
+export function PlannerView({
+  initialData,
+  initialJournalEntries = [],
+  initialTab = "planner",
+}: Props) {
+  const [activeTab, setActiveTab] = React.useState<"planner" | "journal">(initialTab);
   const [data, setData] = React.useState<PlannerData>(initialData);
   const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null);
   const [nextActionInput, setNextActionInput] = React.useState("");
@@ -68,6 +78,35 @@ export function PlannerView({ initialData }: Props) {
 
   return (
     <div className="app-page gap-6 sm:gap-8">
+      {/* Top Workspace Tab Switcher */}
+      <div className="flex items-center gap-2 border-b border-border/70 pb-3">
+        <Button
+          variant={activeTab === "planner" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setActiveTab("planner")}
+          className="gap-2 rounded-xl shadow-xs"
+        >
+          <Target className="size-4" />
+          Task Planner & Goals
+        </Button>
+        <Button
+          variant={activeTab === "journal" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setActiveTab("journal")}
+          className="gap-2 rounded-xl shadow-xs"
+        >
+          <BookOpen className="size-4" />
+          Journal & Reflections
+          <Badge variant="secondary" className="ml-1 text-[10px]">
+            {initialJournalEntries.length}
+          </Badge>
+        </Button>
+      </div>
+
+      {activeTab === "journal" ? (
+        <JournalView initialEntries={initialJournalEntries} />
+      ) : (
+        <>
       {/* Header Banner */}
       <div className="surface-card p-6 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -208,6 +247,8 @@ export function PlannerView({ initialData }: Props) {
           )}
         </section>
       </div>
+      </>
+      )}
 
       {/* Edit Cue Dialog */}
       <Dialog

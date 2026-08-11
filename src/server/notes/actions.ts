@@ -53,11 +53,11 @@ export async function createProjectTaskNoteAction(
   return note;
 }
 
-export async function updateNoteAction(
+export async function autoSaveNoteAction(
   id: string,
   input: Parameters<typeof updateNote>[1],
 ) {
-  await updateNote(id, input);
+  const updated = await updateNote(id, input);
   if (input.contentMd !== undefined) {
     try {
       await syncMarkdownTasks(id, input.contentMd);
@@ -65,10 +65,19 @@ export async function updateNoteAction(
       // Sync failure should not break note editing.
     }
   }
+  return updated;
+}
+
+export async function updateNoteAction(
+  id: string,
+  input: Parameters<typeof updateNote>[1],
+) {
+  const updated = await autoSaveNoteAction(id, input);
   revalidatePath("/notes");
   revalidatePath(`/notes/${id}`);
   revalidatePath(`/projects`);
   revalidatePath(`/projects/${id}`);
+  return updated;
 }
 
 export async function archiveNoteAction(id: string) {

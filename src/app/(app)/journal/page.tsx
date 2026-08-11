@@ -1,12 +1,5 @@
-import { listJournalEntries } from "@/server/journal/journal-service";
-import { JournalView } from "@/components/journal/journal-view";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Journal | Inkest",
-  description: "Structured journaling templates and reflection timeline.",
-};
-
-export default async function JournalPage() {
-  const entries = await listJournalEntries();
-  return <JournalView initialEntries={entries} />;
+export default function JournalPage() {
+  redirect("/planner?tab=journal");
 }

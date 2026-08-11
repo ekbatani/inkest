@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { NotebookPen, Plus, Pin, Archive, Search, X } from "lucide-react";
+import { NotebookPen, Plus, Pin, Archive, Search, X, BookOpen, File, FileCode, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { listNotes } from "@/server/notes/service";
 import { listTags } from "@/server/tags/service";
+import { listDocuments } from "@/server/documents/service";
+import { DocumentUploadModal } from "@/components/reader/document-upload-modal";
 import { formatRelativeDate } from "@/lib/dates";
 import { NoteStatusBadge } from "@/components/notes/note-status-badge";
 import type { Note } from "@/server/db/schema";
@@ -14,35 +16,37 @@ import { usesRtlTitleFont } from "@/lib/text/rtl";
 export default async function NotesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tag?: string | string[] }>;
+  searchParams: Promise<{ q?: string; tag?: string | string[]; view?: string }>;
 }) {
-  const { q, tag } = await searchParams;
+  const { q, tag, view } = await searchParams;
   const search = q?.trim() || undefined;
+  const isReaderView = view === "reader";
   const tagIds = Array.isArray(tag)
     ? tag.filter(Boolean)
     : tag
       ? [tag]
       : [];
 
-  const [notes, pinned, allTags] = await Promise.all([
+  const [notes, pinned, allTags, documents] = await Promise.all([
     listNotes({ search, tagIds }),
     listNotes({ pinnedOnly: true, limit: 10, tagIds }),
     listTags(),
+    listDocuments(),
   ]);
 
   const activeTagObjects = allTags.filter((t) => tagIds.includes(t.id));
-  // Filter out unknown tag ids silently to avoid confusing UI.
-  const unknownTagIds = tagIds.filter(
-    (id) => !allTags.some((t) => t.id === id),
-  );
-  void unknownTagIds;
-
   const pinnedIds = new Set(pinned.map((n) => n.id));
   const regularNotes = notes.filter((n) => !pinnedIds.has(n.id));
 
-  const buildHref = (delta: { removeTag?: string; addTag?: string; q?: string | null }) => {
+  const filteredDocuments = search
+    ? documents.filter((d) => d.title.toLowerCase().includes(search.toLowerCase()))
+    : documents;
+
+  const buildHref = (delta: { removeTag?: string; addTag?: string; q?: string | null; view?: string | null }) => {
     const params = new URLSearchParams();
     if (search && delta.q !== null) params.set("q", search);
+    const activeView = delta.view !== undefined ? delta.view : view;
+    if (activeView) params.set("view", activeView);
     let nextTagIds = tagIds.slice();
     if (delta.removeTag) {
       nextTagIds = nextTagIds.filter((id) => id !== delta.removeTag);
@@ -55,14 +59,23 @@ export default async function NotesPage({
     return qs ? `/notes?${qs}` : "/notes";
   };
 
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-10 sm:px-8 sm:py-14">
-      <header className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <NotebookPen className="size-5 text-muted-foreground" />
-          <h1 className="text-2xl font-semibold tracking-tight">Notes</h1>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <NotebookPen className="size-5 text-muted-foreground" />
+            <h1 className="text-2xl font-semibold tracking-tight">Notes Workspace</h1>
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          <DocumentUploadModal />
           <Button
             size="sm"
             variant="ghost"
@@ -81,6 +94,36 @@ export default async function NotesPage({
           </Button>
         </div>
       </header>
+
+      {/* Sub-view navigation tabs */}
+      <div className="flex items-center gap-2 border-b border-border/70 pb-3">
+        <Button
+          size="sm"
+          variant={!isReaderView ? "default" : "ghost"}
+          nativeButton={false}
+          render={<Link href={buildHref({ view: null })} />}
+          className="gap-2 rounded-xl"
+        >
+          <NotebookPen className="size-4" />
+          All Notes
+          <Badge variant="secondary" className="ml-1 text-[10px]">
+            {notes.length}
+          </Badge>
+        </Button>
+        <Button
+          size="sm"
+          variant={isReaderView ? "default" : "ghost"}
+          nativeButton={false}
+          render={<Link href={buildHref({ view: "reader" })} />}
+          className="gap-2 rounded-xl"
+        >
+          <BookOpen className="size-4" />
+          Research Reader & Files
+          <Badge variant="secondary" className="ml-1 text-[10px]">
+            {documents.length}
+          </Badge>
+        </Button>
+      </div>
 
       <form className="flex items-center gap-2" action="/notes" method="get">
         <div className="relative flex-1">
@@ -185,35 +228,106 @@ export default async function NotesPage({
         </div>
       )}
 
-      {!search && !activeTagObjects.length && pinned.length > 0 && (
-        <section>
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            <Pin className="size-3.5" /> Pinned Notes ({pinned.length})
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {pinned.map((note) => (
-              <NoteCard key={note.id} note={note} />
-            ))}
+      {isReaderView ? (
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                <BookOpen className="size-5 text-primary" />
+                Research Reader Documents ({filteredDocuments.length})
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                PDFs, Markdown papers, and text files uploaded to your workspace.
+              </p>
+            </div>
+            <DocumentUploadModal />
           </div>
-        </section>
-      )}
 
-      <section>
-        {!search && !activeTagObjects.length && regularNotes.length > 0 && (
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            All notes
-          </h2>
-        )}
-        {notes.length === 0 ? (
-          <EmptyState search={search} hasTagFilter={activeTagObjects.length > 0} />
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {(search || activeTagObjects.length ? notes : regularNotes).map((note) => (
-              <NoteCard key={note.id} note={note} />
-            ))}
-          </div>
-        )}
-      </section>
+          {filteredDocuments.length === 0 ? (
+            <div className="surface-card-dashed flex flex-col items-center gap-3 p-12 text-center">
+              <div className="flex size-10 items-center justify-center rounded-full bg-muted">
+                <BookOpen className="size-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">
+                  {search ? "No research documents match your search" : "No research documents uploaded yet"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Upload PDFs, text, or markdown files to read, annotate, and link with your notes.
+                </p>
+              </div>
+              <DocumentUploadModal />
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredDocuments.map((doc) => (
+                <Link
+                  key={doc.id}
+                  href={`/reader/${doc.id}`}
+                  className="surface-card-interactive group flex flex-col justify-between p-5"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <span className="flex size-9 items-center justify-center rounded-lg bg-muted/60 text-foreground">
+                        {doc.fileType === "pdf" ? (
+                          <File className="size-5 text-red-500" />
+                        ) : doc.fileType === "markdown" ? (
+                          <FileCode className="size-5 text-emerald-500" />
+                        ) : (
+                          <FileText className="size-5 text-blue-500" />
+                        )}
+                      </span>
+                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                        {doc.fileType}
+                      </Badge>
+                    </div>
+                    <h3 className="font-semibold text-sm line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+                      {doc.title}
+                    </h3>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{formatSize(doc.sizeBytes)}</span>
+                    <span>{formatRelativeDate(doc.createdAt)}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (
+        <>
+          {!search && !activeTagObjects.length && pinned.length > 0 && (
+            <section>
+              <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                <Pin className="size-3.5" /> Pinned Notes ({pinned.length})
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {pinned.map((note) => (
+                  <NoteCard key={note.id} note={note} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section>
+            {!search && !activeTagObjects.length && regularNotes.length > 0 && (
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                All notes
+              </h2>
+            )}
+            {notes.length === 0 ? (
+              <EmptyState search={search} hasTagFilter={activeTagObjects.length > 0} />
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {(search || activeTagObjects.length ? notes : regularNotes).map((note) => (
+                  <NoteCard key={note.id} note={note} />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }

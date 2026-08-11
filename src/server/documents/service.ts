@@ -51,6 +51,7 @@ export async function getDocumentById(id: string): Promise<DocType | null> {
 
 export async function importDocument(
   file: File,
+  parentId?: string | null,
 ): Promise<{ document: DocType } | { error: string }> {
   const ctx = await getContext();
   if (!ctx) return { error: "Unauthorized" };
@@ -75,6 +76,7 @@ export async function importDocument(
     userId: ctx.user.id,
     workspaceId: ctx.workspace.id,
     attachmentId: attachment.id,
+    parentId: parentId ?? null,
     title: attachment.originalName.replace(/\.[^/.]+$/, ""),
     fileType,
     mimeType: attachment.mimeType,
