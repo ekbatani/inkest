@@ -169,7 +169,19 @@ export function MarkdownEditor({
     if (value === lastEmittedValueRef.current) return;
     lastEmittedValueRef.current = value;
     setEditorValue(value);
-  }, [value]);
+
+    const view = editorRef?.current?.view;
+    if (view && view.state.doc.toString() !== value) {
+      const currentSelection = view.state.selection;
+      const newLen = value.length;
+      const newAnchor = Math.min(currentSelection.main.anchor, newLen);
+      const newHead = Math.min(currentSelection.main.head, newLen);
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: value },
+        selection: { anchor: newAnchor, head: newHead },
+      });
+    }
+  }, [value, editorRef]);
 
   const handleCodeMirrorChange = React.useCallback(
     (nextValue: string) => {

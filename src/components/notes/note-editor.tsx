@@ -192,7 +192,7 @@ export function NoteEditor({
       title: latestContentRef.current?.title ?? title,
       content: nextContent,
     };
-    React.startTransition(() => setContent(nextContent));
+    setContent(nextContent);
   }, [title]);
   const [historyState, setHistoryState] = React.useState<{
     past: NoteSnapshot[];
