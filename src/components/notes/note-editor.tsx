@@ -188,8 +188,12 @@ export function NoteEditor({
   // drives autosave, history, preview, and metadata, but it must not make those
   // route-level renders compete with the next keystroke.
   const handleEditorChange = React.useCallback((nextContent: string) => {
+    latestContentRef.current = {
+      title: latestContentRef.current?.title ?? title,
+      content: nextContent,
+    };
     React.startTransition(() => setContent(nextContent));
-  }, []);
+  }, [title]);
   const [historyState, setHistoryState] = React.useState<{
     past: NoteSnapshot[];
     future: NoteSnapshot[];
@@ -228,8 +232,9 @@ export function NoteEditor({
 
   const saveSeqRef = React.useRef(0);
   const lastSavedSeqRef = React.useRef(0);
-  const latestContentRef = React.useRef({ title, content });
+  const latestContentRef = React.useRef<NoteSnapshot>({ title: note.title, content: note.contentMd });
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
     latestContentRef.current = { title, content };
   }, [title, content]);
 
@@ -249,6 +254,8 @@ export function NoteEditor({
     }
   }, [note.id]);
 
+  const performSaveRef = React.useRef<(options?: { forceRevalidate?: boolean }) => Promise<void>>(async () => {});
+
   const performSave = React.useCallback(
     async (options?: { forceRevalidate?: boolean }) => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -266,12 +273,24 @@ export function NoteEditor({
 
         if (currentSeq >= lastSavedSeqRef.current) {
           lastSavedSeqRef.current = currentSeq;
+
+          const latest = latestContentRef.current;
+          const hasPendingEdits =
+            latest.title !== snapshot.title || latest.content !== snapshot.content;
+
           setSaveState("saved");
           setTimeout(() => {
             if (lastSavedSeqRef.current === currentSeq) {
               setSaveState("idle");
             }
           }, 2000);
+
+          if (hasPendingEdits) {
+            if (saveTimer.current) clearTimeout(saveTimer.current);
+            saveTimer.current = setTimeout(() => {
+              void performSaveRef.current({ forceRevalidate: false });
+            }, 1000);
+          }
         }
       } catch {
         if (currentSeq >= lastSavedSeqRef.current) {
@@ -282,6 +301,10 @@ export function NoteEditor({
     },
     [note.id],
   );
+
+  React.useEffect(() => {
+    performSaveRef.current = performSave;
+  }, [performSave]);
 
   React.useEffect(() => {
     if (skipNextPersist.current) {
