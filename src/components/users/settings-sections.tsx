@@ -346,10 +346,22 @@ export function AiProviderSection({
     const nextDef = getAiProviderDefinition(nextProvider);
     setSelectedProvider(nextProvider);
 
-    if (!url.trim() || url === currentDef.defaultBaseURL) {
+    const isOpencodeUrl = (u: string) =>
+      u.trim() === "https://opencode.ai" || u.trim().startsWith("https://opencode.ai/");
+
+    if (
+      !url.trim() ||
+      url === currentDef.defaultBaseURL ||
+      (isOpencodeUrl(url) && (nextProvider === "opencode" || nextProvider === "opencode-go"))
+    ) {
       setUrl(nextDef.defaultBaseURL);
     }
-    if (!mdl.trim() || mdl === currentDef.defaultModel) {
+    if (
+      !mdl.trim() ||
+      mdl === currentDef.defaultModel ||
+      (selectedProvider === "opencode" && nextProvider === "opencode-go" && mdl === "deepseek-v4-flash-free") ||
+      (selectedProvider === "opencode-go" && nextProvider === "opencode" && mdl === "deepseek-v4-flash")
+    ) {
       setMdl(nextDef.defaultModel);
     }
   };

@@ -34,16 +34,13 @@ export function normalizeAiBaseUrl(providerId: AiProviderId, baseUrl: string): s
 
   if (providerId === "opencode" || providerId === "opencode-go") {
     const stripped = trimmed.replace(/\/+$/, "");
-    if (stripped === "https://opencode.ai") {
+    if (
+      stripped === "https://opencode.ai" ||
+      stripped.startsWith("https://opencode.ai/")
+    ) {
       return providerId === "opencode-go"
         ? "https://opencode.ai/zen/go/v1"
         : "https://opencode.ai/zen/v1";
-    }
-    if (stripped === "https://opencode.ai/zen") {
-      return "https://opencode.ai/zen/v1";
-    }
-    if (stripped === "https://opencode.ai/zen/go" || stripped === "https://opencode.ai/go") {
-      return "https://opencode.ai/zen/go/v1";
     }
   }
 
@@ -58,6 +55,25 @@ function resolveEnvProviderId(): AiProviderId {
   return "openai";
 }
 
+function getEnvValue(
+  providerId: AiProviderId,
+  keyType: "API_KEY" | "BASE_URL" | "MODEL",
+): string | undefined {
+  const envPrefix = PROVIDER_ENV_PREFIX[providerId];
+  if (!envPrefix) return process.env[`OPENAI_${keyType}`]?.trim();
+
+  const primary = process.env[`${envPrefix}_${keyType}`]?.trim();
+  if (primary) return primary;
+
+  // Fall back to OPENCODE_* env vars for opencode-go if OPENCODE_GO_* is not set
+  if (providerId === "opencode-go") {
+    const fallback = process.env[`OPENCODE_${keyType}`]?.trim();
+    if (fallback) return fallback;
+  }
+
+  return undefined;
+}
+
 /**
  * Returns only setup metadata suitable for the Settings UI. In particular, it
  * never includes an API key or any other environment value.
@@ -67,10 +83,7 @@ export function getAiConfigurationStatus(
 ): AiConfigurationStatus {
   const provider = settings.ai?.provider ?? resolveEnvProviderId();
   const definition = getAiProviderDefinition(provider);
-  const envPrefix = PROVIDER_ENV_PREFIX[provider];
-  const instanceHasKey = Boolean(
-    (envPrefix ? process.env[`${envPrefix}_API_KEY`] : process.env.OPENAI_API_KEY)?.trim(),
-  );
+  const instanceHasKey = Boolean(getEnvValue(provider, "API_KEY"));
 
   return {
     provider,
@@ -86,23 +99,30 @@ export async function getAiProvider(): Promise<AiProvider | null> {
   const settings = await getUserSettings();
   const providerId = settings.ai?.provider ?? resolveEnvProviderId();
   const providerDef = getAiProviderDefinition(providerId);
-  const envPrefix = PROVIDER_ENV_PREFIX[providerId];
 
   const apiKey =
     settings.ai?.apiKey?.trim() ||
-    (envPrefix ? process.env[`${envPrefix}_API_KEY`] : process.env.OPENAI_API_KEY) ||
+    getEnvValue(providerId, "API_KEY") ||
     (providerDef.apiKeyOptional ? "not-required" : undefined);
   if (!apiKey) return null;
 
   const rawBaseUrl =
     settings.ai?.baseURL?.trim() ||
-    (envPrefix ? process.env[`${envPrefix}_BASE_URL`] : process.env.OPENAI_BASE_URL) ||
+    getEnvValue(providerId, "BASE_URL") ||
     providerDef.defaultBaseURL;
   const baseUrl = normalizeAiBaseUrl(providerId, rawBaseUrl);
-  const model =
+
+  let rawModel =
     settings.ai?.model?.trim() ||
-    (envPrefix ? process.env[`${envPrefix}_MODEL`] : process.env.OPENAI_MODEL) ||
+    getEnvValue(providerId, "MODEL") ||
     providerDef.defaultModel;
+
+  if (providerId === "opencode-go" && rawModel === "deepseek-v4-flash-free") {
+    rawModel = "deepseek-v4-flash";
+  } else if (providerId === "opencode" && rawModel === "deepseek-v4-flash") {
+    rawModel = "deepseek-v4-flash-free";
+  }
+  const model = rawModel;
   const temperature = settings.ai?.temperature ?? 0.4;
   const maxOutputTokens = settings.ai?.maxOutputTokens ?? 1_200;
   const instructions = settings.ai?.instructions?.trim();

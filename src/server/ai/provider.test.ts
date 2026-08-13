@@ -39,6 +39,10 @@ describe("AI provider configuration", () => {
       "https://opencode.ai/zen/v1",
     );
     assert.equal(
+      normalizeAiBaseUrl("opencode", "https://opencode.ai/zen/go/v1"),
+      "https://opencode.ai/zen/v1",
+    );
+    assert.equal(
       normalizeAiBaseUrl("opencode-go", "https://opencode.ai"),
       "https://opencode.ai/zen/go/v1",
     );
@@ -48,6 +52,10 @@ describe("AI provider configuration", () => {
     );
     assert.equal(
       normalizeAiBaseUrl("opencode-go", "https://opencode.ai/go"),
+      "https://opencode.ai/zen/go/v1",
+    );
+    assert.equal(
+      normalizeAiBaseUrl("opencode-go", "https://opencode.ai/zen/v1"),
       "https://opencode.ai/zen/go/v1",
     );
   });
