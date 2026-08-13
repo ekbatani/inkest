@@ -67,6 +67,7 @@ import {
   type AiContextItem,
 } from "@/server/ai/chat-actions";
 import { decryptVaultSecret } from "@/lib/vault-crypto";
+import { usePageContext } from "@/components/providers/page-context-provider";
 import { ChatHistoryDrawer } from "./chat-history-drawer";
 import { useChatScroll, ScrollToBottomButton } from "./scroll-controls";
 import { cn } from "@/lib/utils";
@@ -86,10 +87,10 @@ type ChatMessage = {
 };
 
 type Props = {
-  noteId: string;
-  noteTitle: string;
-  noteContent: string;
-  editorRef: React.RefObject<ReactCodeMirrorRef | null>;
+  noteId?: string;
+  noteTitle?: string;
+  noteContent?: string;
+  editorRef?: React.RefObject<ReactCodeMirrorRef | null>;
   onClose?: () => void;
 };
 
@@ -138,7 +139,16 @@ export function AiChatSidebar({
   noteContent,
   editorRef,
   onClose,
-}: Props) {
+}: Props = {}) {
+  const { pageContext } = usePageContext();
+  const fallbackEditorRef = React.useRef<ReactCodeMirrorRef | null>(null);
+
+  const activeNoteId = noteId ?? pageContext.noteId ?? "";
+  const activeNoteTitle = noteTitle ?? pageContext.pageTitle ?? "Workspace";
+  const activeNoteContent = noteContent ?? pageContext.pageContent ?? "";
+  const activeEditorRef = editorRef ?? pageContext.editorRef ?? fallbackEditorRef;
+
+  const [isPageContextAttached, setIsPageContextAttached] = React.useState(true);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [activeThreadId, setActiveThreadId] = React.useState<string | null>(null);
   const [input, setInput] = React.useState("");
@@ -164,9 +174,9 @@ export function AiChatSidebar({
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const refreshSelection = React.useCallback(() => {
-    const sel = getSelectedEditorText(editorRef);
+    const sel = getSelectedEditorText(activeEditorRef);
     setSelectedText(sel);
-  }, [editorRef]);
+  }, [activeEditorRef]);
 
   const {
     containerRef,
@@ -302,7 +312,7 @@ export function AiChatSidebar({
       const userText = (overridePrompt ?? input).trim();
       if (!userText || isGenerating) return;
 
-      const currentSelection = getSelectedEditorText(editorRef);
+      const currentSelection = getSelectedEditorText(activeEditorRef);
       const userMsg: ChatMessage = {
         id: `user-${Date.now()}`,
         role: "user",
@@ -322,9 +332,9 @@ export function AiChatSidebar({
 
         if (presetId === "summarize") {
           const res = await summarizeNoteAction({
-            noteId,
-            noteTitle,
-            noteContent,
+            noteId: activeNoteId,
+            noteTitle: activeNoteTitle,
+            noteContent: activeNoteContent,
             selectedText: currentSelection ?? undefined,
             threadId: activeThreadId ?? undefined,
           });
@@ -337,9 +347,9 @@ export function AiChatSidebar({
           }
         } else if (presetId === "improve") {
           const res = await improveWritingAction({
-            noteId,
-            noteTitle,
-            noteContent,
+            noteId: activeNoteId,
+            noteTitle: activeNoteTitle,
+            noteContent: activeNoteContent,
             selectedText: currentSelection ?? undefined,
             threadId: activeThreadId ?? undefined,
           });
@@ -352,9 +362,9 @@ export function AiChatSidebar({
           }
         } else if (presetId === "extract-tasks") {
           const res = await extractTasksAction({
-            noteId,
-            noteTitle,
-            noteContent,
+            noteId: activeNoteId,
+            noteTitle: activeNoteTitle,
+            noteContent: activeNoteContent,
             selectedText: currentSelection ?? undefined,
             threadId: activeThreadId ?? undefined,
           });
@@ -369,9 +379,9 @@ export function AiChatSidebar({
           }
         } else if (presetId === "mermaid") {
           const res = await generateMermaidAction({
-            noteId,
-            noteTitle,
-            noteContent,
+            noteId: activeNoteId,
+            noteTitle: activeNoteTitle,
+            noteContent: activeNoteContent,
             selectedText: currentSelection ?? undefined,
             threadId: activeThreadId ?? undefined,
           });
@@ -384,9 +394,9 @@ export function AiChatSidebar({
           }
         } else if (presetId === "translate") {
           const res = await translateTextAction({
-            noteId,
-            noteTitle,
-            selectedText: currentSelection || noteContent,
+            noteId: activeNoteId,
+            noteTitle: activeNoteTitle,
+            selectedText: currentSelection || activeNoteContent,
             targetLanguage: "English",
             threadId: activeThreadId ?? undefined,
           });
@@ -399,9 +409,9 @@ export function AiChatSidebar({
           }
         } else if (presetId === "explain") {
           const res = await explainTextAction({
-            noteId,
-            noteTitle,
-            selectedText: currentSelection || noteContent,
+            noteId: activeNoteId,
+            noteTitle: activeNoteTitle,
+            selectedText: currentSelection || activeNoteContent,
             threadId: activeThreadId ?? undefined,
           });
           returnedThreadId = res.threadId;
@@ -417,10 +427,11 @@ export function AiChatSidebar({
             .map((m) => ({ role: m.role, content: m.content }));
 
           const res = await runAiChatPromptAction({
-            noteId,
-            noteTitle,
-            noteContent,
-            selectedText: currentSelection ?? undefined,
+            noteId: isPageContextAttached ? activeNoteId : undefined,
+            noteTitle: isPageContextAttached ? activeNoteTitle : undefined,
+            noteContent: isPageContextAttached ? activeNoteContent : undefined,
+            selectedText: isPageContextAttached ? currentSelection ?? undefined : undefined,
+            includePageContext: isPageContextAttached,
             userPrompt: userText,
             history: historyForServer,
             threadId: activeThreadId ?? undefined,
@@ -463,7 +474,7 @@ export function AiChatSidebar({
         setIsGenerating(false);
       }
     },
-    [input, isGenerating, editorRef, messages, noteId, noteTitle, noteContent, activeThreadId, attachedContexts],
+    [input, isGenerating, activeEditorRef, messages, activeNoteId, activeNoteTitle, activeNoteContent, activeThreadId, attachedContexts, isPageContextAttached],
   );
 
   const handleCopy = (id: string, text: string) => {
@@ -474,22 +485,34 @@ export function AiChatSidebar({
   };
 
   const handleInsertAtCursor = (text: string) => {
-    insertTextAtCursor(editorRef, text);
+    if (!activeEditorRef.current) {
+      toast.error("No active editor to insert text into");
+      return;
+    }
+    insertTextAtCursor(activeEditorRef, text);
     toast.success("Inserted text into note");
   };
 
   const handleReplaceSelection = (text: string) => {
-    const sel = getSelectedEditorText(editorRef);
+    if (!activeEditorRef.current) {
+      toast.error("No active editor to replace text in");
+      return;
+    }
+    const sel = getSelectedEditorText(activeEditorRef);
     if (!sel) {
       toast.error("No text selected in editor to replace");
       return;
     }
-    replaceSelectedEditorText(editorRef, text);
+    replaceSelectedEditorText(activeEditorRef, text);
     toast.success("Replaced selection in note");
   };
 
   const handleReplaceEntireNote = (text: string) => {
-    replaceEntireEditorContent(editorRef, text);
+    if (!activeEditorRef.current) {
+      toast.error("No active editor to replace content in");
+      return;
+    }
+    replaceEntireEditorContent(activeEditorRef, text);
     toast.success("Replaced entire note content");
   };
 
@@ -719,8 +742,31 @@ export function AiChatSidebar({
       </div>
 
       {/* Context Tags Bar */}
-      {attachedContexts.length > 0 && (
+      {(isPageContextAttached || attachedContexts.length > 0) && (
         <div className="flex flex-wrap items-center gap-1.5 px-3 py-1.5 border-t bg-muted/20">
+          {isPageContextAttached && activeNoteTitle && (
+            <Badge
+              variant="outline"
+              className="gap-1 pr-1 text-[11px] font-normal transition-colors bg-violet-500/10 border-violet-500/30 text-violet-600 dark:text-violet-400"
+            >
+              <FileText className="size-3 shrink-0" />
+              <span className="max-w-[130px] truncate">
+                Page: {activeNoteTitle}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPageContextAttached(false);
+                  toast.info("Current page context detached");
+                }}
+                className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                title="Detach current page context"
+              >
+                <X className="size-2.5" />
+              </button>
+            </Badge>
+          )}
+
           {attachedContexts.map((ctx) => (
             <Badge
               key={ctx.id}
@@ -795,6 +841,21 @@ export function AiChatSidebar({
                   Attach Context
                 </PopoverTrigger>
                 <PopoverContent side="top" align="start" className="w-[280px] p-2 space-y-2">
+                  {!isPageContextAttached && activeNoteTitle && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPageContextAttached(true);
+                        setContextPickerOpen(false);
+                        toast.success(`Re-attached current page "${activeNoteTitle}"`);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg border border-violet-500/20 bg-violet-500/10 p-2 text-left text-xs font-medium text-violet-600 dark:text-violet-400 transition-colors hover:bg-violet-500/20"
+                    >
+                      <Plus className="size-3.5 shrink-0 text-violet-500" />
+                      <span className="truncate">Attach page: {activeNoteTitle}</span>
+                    </button>
+                  )}
+
                   <div className="flex items-center gap-2 border-b pb-2 px-1">
                     <Search className="size-3.5 text-muted-foreground shrink-0" />
                     <Input

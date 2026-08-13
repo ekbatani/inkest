@@ -143,14 +143,15 @@ export async function searchContextItemsAction(query: string): Promise<{
 }
 
 export async function runAiChatPromptAction(args: {
-  noteId: string;
-  noteTitle: string;
-  noteContent: string;
+  noteId?: string;
+  noteTitle?: string;
+  noteContent?: string;
   selectedText?: string;
   userPrompt: string;
   history?: { role: "user" | "assistant"; content: string }[];
   threadId?: string;
   attachedContexts?: AiContextItem[];
+  includePageContext?: boolean;
 }): Promise<AiActionResult<string> & { threadId?: string }> {
   let activeThreadId = args.threadId;
 
@@ -176,10 +177,16 @@ export async function runAiChatPromptAction(args: {
   }
 
   const hasSelection = Boolean(args.selectedText && args.selectedText.trim());
+  const shouldIncludeContext =
+    args.includePageContext !== false &&
+    Boolean((args.noteTitle && args.noteTitle.trim()) || (args.noteContent && args.noteContent.trim()));
 
-  let contextBlock = `Current Note Title: ${args.noteTitle}\n\nCurrent Note Content:\n\`\`\`markdown\n${args.noteContent}\n\`\`\``;
-  if (hasSelection) {
-    contextBlock += `\n\nSelected Text in Editor:\n\`\`\`\n${args.selectedText}\n\`\`\``;
+  let contextBlock = "";
+  if (shouldIncludeContext) {
+    contextBlock = `Current Page / Note: ${args.noteTitle || "Untitled"}\n\nCurrent Page Content:\n\`\`\`markdown\n${args.noteContent || ""}\n\`\`\``;
+    if (hasSelection) {
+      contextBlock += `\n\nSelected Text in Editor:\n\`\`\`\n${args.selectedText}\n\`\`\``;
+    }
   }
 
   let attachedContextBlock = "";
@@ -203,13 +210,13 @@ export async function runAiChatPromptAction(args: {
         .join("\n\n");
   }
 
-  const promptToModel = `${contextBlock}${attachedContextBlock}${conversationBlock}\n\nUser Request / Instruction:\n${args.userPrompt}`;
+  const promptToModel = `${contextBlock}${attachedContextBlock}${conversationBlock}\n\nUser Request / Instruction:\n${args.userPrompt}`.trim();
 
   const systemPrompt =
-    "You are an AI assistant in Inkest, a Markdown personal workspace. Answer the user's questions or follow their instructions based on the note context, referenced items (@notes, @projects, @files, @vault secrets), and selection provided. Provide clear, direct, and beautifully formatted Markdown responses. When modifying or drafting content, present the content cleanly so the user can easily insert or replace it into their note.";
+    "You are an AI assistant in Inkest, a Markdown personal workspace. Answer the user's questions or follow their instructions based on the page/note context, referenced items (@notes, @projects, @files, @vault secrets), and selection provided. Provide clear, direct, and beautifully formatted Markdown responses. When modifying or drafting content, present the content cleanly so the user can easily insert or replace it into their note.";
 
   const result = await runTextAction({
-    noteId: args.noteId,
+    noteId: args.noteId || null,
     action: "chat-prompt",
     systemPrompt,
     inputForAudit: args.userPrompt,

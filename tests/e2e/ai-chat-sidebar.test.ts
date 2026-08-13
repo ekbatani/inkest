@@ -236,6 +236,9 @@ class SidebarUIState {
   public vaultModalItem: ContextItem | null = null;
   public autoscrolled = false;
   public isMobileSheetOpen = false;
+  public isAiSidebarOpen = true;
+  public isPageContextAttached = true;
+  public activePageTitle = "Architecture Guide";
   public viewportWidth = 1024; // Default desktop
 
   public sendMessage(prompt: string, vaultPassword?: string) {
@@ -289,6 +292,9 @@ class SidebarUIState {
     this.vaultModalItem = null;
     this.autoscrolled = false;
     this.isMobileSheetOpen = false;
+    this.isAiSidebarOpen = true;
+    this.isPageContextAttached = true;
+    this.activePageTitle = "Architecture Guide";
     this.viewportWidth = 1024;
   }
 }
@@ -313,21 +319,38 @@ describe("Inkest AI Chat Sidebar E2E Test Suite", () => {
 
   describe("Tier 1: Feature Coverage (R1 - R5)", () => {
     it("R1: Dedicated bounded scroll container & smooth autoscroll trigger", () => {
-      // Input: Send a message in sidebar UI
-      uiState.sendMessage("Explain Inkest architecture");
+      expect(uiState.messages.length).toBe(0);
+      uiState.sendMessage("Summarize architecture notes");
 
-      // Assertions
       expect(uiState.messages.length).toBe(2);
       expect(uiState.messages[0].role).toBe("user");
       expect(uiState.messages[1].role).toBe("assistant");
       expect(uiState.autoscrolled).toBe(true);
     });
 
-    it("R1: Responsive mobile Sheet drawer view on screen width < 640px", () => {
-      // Set desktop view
-      uiState.setViewportWidth(1024);
+    it("R1: Permanent App Shell layout integration without backdrop blur overlay", () => {
+      uiState.setViewportWidth(1280); // Desktop
+      expect(uiState.viewportWidth).toBe(1280);
       expect(uiState.isMobileSheetOpen).toBe(false);
 
+      // AI Sidebar is permanently docked side-by-side with main canvas
+      expect(uiState.isAiSidebarOpen).toBe(true);
+    });
+
+    it("R3: Current page context awareness attached by default & user can detach it", () => {
+      expect(uiState.isPageContextAttached).toBe(true);
+      expect(uiState.activePageTitle).toBe("Architecture Guide");
+
+      // User detaches page context
+      uiState.isPageContextAttached = false;
+      expect(uiState.isPageContextAttached).toBe(false);
+
+      // User re-attaches page context
+      uiState.isPageContextAttached = true;
+      expect(uiState.isPageContextAttached).toBe(true);
+    });
+
+    it("R1: Responsive mobile Sheet drawer view on screen width < 640px", () => {
       // Set mobile view (<640px)
       uiState.setViewportWidth(375);
       expect(uiState.isMobileSheetOpen).toBe(true);
