@@ -21,6 +21,26 @@ export type AiActionResult<T = string> =
 export const AI_NOT_CONFIGURED_ERROR =
   "AI is not configured. Add an AI provider in Settings or set the server AI environment variables.";
 
+export function formatAiErrorMessage(err: unknown): string {
+  if (!(err instanceof Error)) return "AI request failed.";
+
+  const message = err.message || "";
+
+  // If response contained HTML (such as a 404 webpage from opencode.ai or a proxy)
+  if (
+    message.includes("<!DOCTYPE html>") ||
+    message.includes("<html") ||
+    message.includes("Not Found | opencode")
+  ) {
+    if (message.includes("404") || message.includes("Not Found")) {
+      return "AI request failed (HTTP 404): The endpoint URL or model was not found. Please verify your provider Base URL (e.g., https://opencode.ai/zen/v1 or https://opencode.ai/zen/go/v1) and model settings in Settings.";
+    }
+    return "AI request failed: The provider endpoint returned an HTML error page instead of a JSON response. Please check your provider Base URL and API key in Settings.";
+  }
+
+  return `AI request failed: ${message}`;
+}
+
 /**
  * Sanitize prompt inputs to defend against basic prompt injection attacks
  * within untrusted content or uploaded documents.
@@ -146,10 +166,7 @@ export async function runTextAction(args: {
   } catch (err) {
     return {
       ok: false,
-      error:
-        err instanceof Error
-          ? `AI request failed: ${err.message}`
-          : "AI request failed.",
+      error: formatAiErrorMessage(err),
     };
   }
 }
@@ -243,10 +260,7 @@ export async function runJsonAction<T>(args: {
   } catch (err) {
     return {
       ok: false,
-      error:
-        err instanceof Error
-          ? `AI request failed: ${err.message}`
-          : "AI request failed.",
+      error: formatAiErrorMessage(err),
     };
   }
 }

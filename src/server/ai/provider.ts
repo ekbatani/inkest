@@ -23,9 +23,32 @@ export type AiConfigurationStatus = {
 const PROVIDER_ENV_PREFIX: Partial<Record<AiProviderId, string>> = {
   openrouter: "OPENROUTER",
   opencode: "OPENCODE",
+  "opencode-go": "OPENCODE_GO",
   nvidia: "NVIDIA",
   ollama: "OLLAMA",
 };
+
+export function normalizeAiBaseUrl(providerId: AiProviderId, baseUrl: string): string {
+  const trimmed = baseUrl.trim();
+  if (!trimmed) return trimmed;
+
+  if (providerId === "opencode" || providerId === "opencode-go") {
+    const stripped = trimmed.replace(/\/+$/, "");
+    if (stripped === "https://opencode.ai") {
+      return providerId === "opencode-go"
+        ? "https://opencode.ai/zen/go/v1"
+        : "https://opencode.ai/zen/v1";
+    }
+    if (stripped === "https://opencode.ai/zen") {
+      return "https://opencode.ai/zen/v1";
+    }
+    if (stripped === "https://opencode.ai/zen/go" || stripped === "https://opencode.ai/go") {
+      return "https://opencode.ai/zen/go/v1";
+    }
+  }
+
+  return trimmed;
+}
 
 function resolveEnvProviderId(): AiProviderId {
   const value = process.env.AI_PROVIDER;
@@ -71,10 +94,11 @@ export async function getAiProvider(): Promise<AiProvider | null> {
     (providerDef.apiKeyOptional ? "not-required" : undefined);
   if (!apiKey) return null;
 
-  const baseUrl =
+  const rawBaseUrl =
     settings.ai?.baseURL?.trim() ||
     (envPrefix ? process.env[`${envPrefix}_BASE_URL`] : process.env.OPENAI_BASE_URL) ||
     providerDef.defaultBaseURL;
+  const baseUrl = normalizeAiBaseUrl(providerId, rawBaseUrl);
   const model =
     settings.ai?.model?.trim() ||
     (envPrefix ? process.env[`${envPrefix}_MODEL`] : process.env.OPENAI_MODEL) ||

@@ -29,6 +29,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AiChatSidebar } from "@/components/ai/ai-chat-sidebar";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { NoteDetailsPopover } from "@/components/notes/note-details-popover";
 import type { Note, Tag } from "@/server/db/schema";
 import { autoSaveNoteAction, updateNoteAction } from "@/server/notes/actions";
@@ -906,7 +912,7 @@ export function NoteEditor({
           </div>
         </div>
 
-        {/* Refactored Right Sidebar: VS Code-style AI Assistant */}
+        {/* Desktop Right Sidebar: VS Code-style AI Assistant (>= 640px) */}
         <aside
           id="note-context-panel"
           aria-label="AI Assistant"
@@ -924,6 +930,29 @@ export function NoteEditor({
             />
           </div>
         </aside>
+
+        {/* Mobile Right Drawer: Sheet for AI Assistant (< 640px) */}
+        <div className="sm:hidden">
+          <Sheet open={showPanel} onOpenChange={setShowPanel}>
+            <SheetContent
+              side="right"
+              showCloseButton={false}
+              className="w-full p-0 flex flex-col h-full sm:max-w-md border-l"
+            >
+              <SheetTitle className="sr-only">AI Assistant</SheetTitle>
+              <SheetDescription className="sr-only">
+                AI Assistant chat sidebar for note {title}
+              </SheetDescription>
+              <AiChatSidebar
+                noteId={note.id}
+                noteTitle={title}
+                noteContent={content}
+                editorRef={editorRef}
+                onClose={() => setShowPanel(false)}
+              />
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
       <div
         ref={previewCopyRef}

@@ -2,6 +2,7 @@ export const AI_PROVIDER_IDS = [
   "openai",
   "openrouter",
   "opencode",
+  "opencode-go",
   "nvidia",
   "ollama",
   "custom",
@@ -40,6 +41,13 @@ export const AI_PROVIDERS: readonly AiProviderDefinition[] = [
     defaultBaseURL: "https://opencode.ai/zen/v1",
     defaultModel: "deepseek-v4-flash-free",
     apiKeyPlaceholder: "opencode Zen API key",
+  },
+  {
+    id: "opencode-go",
+    label: "opencode Go",
+    defaultBaseURL: "https://opencode.ai/zen/go/v1",
+    defaultModel: "deepseek-v4-flash",
+    apiKeyPlaceholder: "opencode Go API key",
   },
   {
     id: "nvidia",

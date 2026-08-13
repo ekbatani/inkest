@@ -456,6 +456,42 @@ export const auditLogs = sqliteTable("audit_logs", {
   createdAt: timestamp("created_at").notNull(),
 });
 
+// ── chat_threads ──────────────────────────────────────────────────────────
+export const chatThreads = sqliteTable("chat_threads", {
+  id: idCol(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  title: text("title").notNull().default("New Chat"),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
+// ── chat_messages ─────────────────────────────────────────────────────────
+export const chatMessages = sqliteTable("chat_messages", {
+  id: idCol(),
+  threadId: text("thread_id")
+    .notNull()
+    .references(() => chatThreads.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  role: text("role", { enum: ["user", "assistant"] }).notNull(),
+  content: text("content").notNull(),
+  isError: integer("is_error", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  createdAt: timestamp("created_at").notNull(),
+});
+
 // ── Type exports ─────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -479,3 +515,8 @@ export type SavedView = typeof savedViews.$inferSelect;
 export type JournalEntry = typeof journalEntries.$inferSelect;
 export type VaultItem = typeof vaultItems.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
+export type ChatThread = typeof chatThreads.$inferSelect;
+export type NewChatThread = typeof chatThreads.$inferInsert;
+export type ChatMessageEntity = typeof chatMessages.$inferSelect;
+export type NewChatMessage = typeof chatMessages.$inferInsert;
+
