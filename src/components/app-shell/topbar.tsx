@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, Plus, Search } from "lucide-react";
+import { Menu, Plus, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 import { NotificationInbox } from "@/components/app-shell/notification-inbox";
@@ -65,6 +65,9 @@ export function Topbar({ notesTree = [], notifications = [] }: { notesTree?: Not
       } else if (key === "\\") {
         e.preventDefault();
         document.dispatchEvent(new CustomEvent("inkest:toggle-sidebar"));
+      } else if (key === "j" || (e.shiftKey && key === "a")) {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent("inkest:toggle-ai-sidebar"));
       }
     };
     window.addEventListener("keydown", onKey);
@@ -130,6 +133,16 @@ export function Topbar({ notesTree = [], notifications = [] }: { notesTree?: Not
           </Button>
           <NotificationInbox notifications={notifications} />
           <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle AI Assistant sidebar"
+            title="Toggle AI Assistant sidebar"
+            onClick={() => document.dispatchEvent(new CustomEvent("inkest:toggle-ai-sidebar"))}
+            className="rounded-xl text-muted-foreground hover:text-foreground"
+          >
+            <Sparkles className="size-4" />
+          </Button>
         </div>
       </header>
 

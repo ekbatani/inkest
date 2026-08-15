@@ -8,15 +8,26 @@ const SIDEBAR_DEFAULT_WIDTH = 240;
 const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 420;
 const SIDEBAR_STORAGE_KEY = "inkest:sidebar-width";
+const AI_SIDEBAR_STORAGE_KEY = "inkest:ai-sidebar-open";
+const AI_SIDEBAR_WIDTH = 350;
 
 export function SidebarToggleWrapper({
   sidebar,
+  aiSidebar,
   children,
 }: {
   sidebar: React.ReactNode;
+  aiSidebar?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = React.useState(false);
+  const [aiSidebarOpen, setAiSidebarOpen] = React.useState(() => {
+    if (typeof window === "undefined") return true;
+    const saved = window.localStorage.getItem(AI_SIDEBAR_STORAGE_KEY);
+    if (saved === null) return true;
+    return saved === "true";
+  });
+
   const [sidebarWidth, setSidebarWidth] = React.useState(() => {
     if (typeof window === "undefined") return SIDEBAR_DEFAULT_WIDTH;
     const savedWidth = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
@@ -36,12 +47,20 @@ export function SidebarToggleWrapper({
   }, []);
 
   React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
+    const handler = () => setAiSidebarOpen((v) => !v);
+    document.addEventListener("inkest:toggle-ai-sidebar", handler);
+    return () => document.removeEventListener("inkest:toggle-ai-sidebar", handler);
+  }, []);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
     window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarWidth));
   }, [sidebarWidth]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(AI_SIDEBAR_STORAGE_KEY, String(aiSidebarOpen));
+  }, [aiSidebarOpen]);
 
   React.useEffect(() => {
     return () => {
@@ -165,6 +184,25 @@ export function SidebarToggleWrapper({
         />
       </button>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+      {aiSidebar ? (
+        <aside
+          id="app-ai-sidebar"
+          aria-label="AI Assistant Sidebar"
+          aria-hidden={!aiSidebarOpen}
+          className={cn(
+            "relative hidden shrink-0 border-l bg-background text-foreground transition-[width] duration-200 lg:block",
+            !aiSidebarOpen && "w-0 overflow-hidden border-l-0",
+          )}
+          style={{ width: aiSidebarOpen ? AI_SIDEBAR_WIDTH : 0 }}
+        >
+          {aiSidebarOpen ? (
+            <div className="h-full w-[350px]">
+              {aiSidebar}
+            </div>
+          ) : null}
+        </aside>
+      ) : null}
     </div>
   );
 }
+

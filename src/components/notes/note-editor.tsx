@@ -28,7 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AiChatSidebar } from "@/components/ai/ai-chat-sidebar";
+import { usePageContext } from "@/components/providers/page-context-provider";
 import { NoteDetailsPopover } from "@/components/notes/note-details-popover";
 import type { Note, Tag } from "@/server/db/schema";
 import { autoSaveNoteAction, updateNoteAction } from "@/server/notes/actions";
@@ -176,20 +176,35 @@ export function NoteEditor({
     React.useState<NoteSnapshot>(initialCheckpoint);
   const lastCheckpointRef = React.useRef<NoteSnapshot>(initialCheckpoint);
 
-  const toggleContextPanel = React.useCallback(() => {
-    setShowPanel((open) => {
-      const next = !open;
-      window.localStorage.setItem(CONTEXT_PANEL_STORAGE_KEY, String(next));
-      return next;
+  const { setPageContext, clearPageContext } = usePageContext();
+
+  React.useEffect(() => {
+    setPageContext({
+      noteId: note.id,
+      pageTitle: title || "Untitled Note",
+      pageContent: content,
+      pageType: "note",
+      editorRef,
     });
+    return () => {
+      clearPageContext();
+    };
+  }, [note.id, title, content, editorRef, setPageContext, clearPageContext]);
+
+  const toggleContextPanel = React.useCallback(() => {
+    document.dispatchEvent(new CustomEvent("inkest:toggle-ai-sidebar"));
   }, []);
 
   // CodeMirror keeps the keystroke path local. Its debounced parent update still
   // drives autosave, history, preview, and metadata, but it must not make those
   // route-level renders compete with the next keystroke.
   const handleEditorChange = React.useCallback((nextContent: string) => {
-    React.startTransition(() => setContent(nextContent));
-  }, []);
+    latestContentRef.current = {
+      title: latestContentRef.current?.title ?? title,
+      content: nextContent,
+    };
+    setContent(nextContent);
+  }, [title]);
   const [historyState, setHistoryState] = React.useState<{
     past: NoteSnapshot[];
     future: NoteSnapshot[];
@@ -228,8 +243,9 @@ export function NoteEditor({
 
   const saveSeqRef = React.useRef(0);
   const lastSavedSeqRef = React.useRef(0);
-  const latestContentRef = React.useRef({ title, content });
+  const latestContentRef = React.useRef<NoteSnapshot>({ title: note.title, content: note.contentMd });
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
     latestContentRef.current = { title, content };
   }, [title, content]);
 
@@ -249,6 +265,8 @@ export function NoteEditor({
     }
   }, [note.id]);
 
+  const performSaveRef = React.useRef<(options?: { forceRevalidate?: boolean }) => Promise<void>>(async () => {});
+
   const performSave = React.useCallback(
     async (options?: { forceRevalidate?: boolean }) => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -266,12 +284,24 @@ export function NoteEditor({
 
         if (currentSeq >= lastSavedSeqRef.current) {
           lastSavedSeqRef.current = currentSeq;
+
+          const latest = latestContentRef.current;
+          const hasPendingEdits =
+            latest.title !== snapshot.title || latest.content !== snapshot.content;
+
           setSaveState("saved");
           setTimeout(() => {
             if (lastSavedSeqRef.current === currentSeq) {
               setSaveState("idle");
             }
           }, 2000);
+
+          if (hasPendingEdits) {
+            if (saveTimer.current) clearTimeout(saveTimer.current);
+            saveTimer.current = setTimeout(() => {
+              void performSaveRef.current({ forceRevalidate: false });
+            }, 1000);
+          }
         }
       } catch {
         if (currentSeq >= lastSavedSeqRef.current) {
@@ -282,6 +312,10 @@ export function NoteEditor({
     },
     [note.id],
   );
+
+  React.useEffect(() => {
+    performSaveRef.current = performSave;
+  }, [performSave]);
 
   React.useEffect(() => {
     if (skipNextPersist.current) {
@@ -822,12 +856,7 @@ export function NoteEditor({
       </div>
 
       <div className="relative flex min-h-0 flex-1">
-        <div
-          className={cn(
-            "flex min-w-0 flex-1 flex-col transition-[margin-right] duration-200 motion-reduce:transition-none",
-            showPanel && "sm:mr-[340px]",
-          )}
-        >
+        <div className="flex min-w-0 flex-1 flex-col">
           <div className="px-6 pt-6 sm:px-10 sm:pt-8">
             <div className="w-full">
               <Label
@@ -882,25 +911,6 @@ export function NoteEditor({
             </div>
           </div>
         </div>
-
-        {/* Refactored Right Sidebar: VS Code-style AI Assistant */}
-        <aside
-          id="note-context-panel"
-          aria-label="AI Assistant"
-          aria-hidden={!showPanel}
-          className="absolute inset-y-0 right-0 z-10 hidden overflow-hidden border-l bg-background shadow-xl transition-[width,box-shadow] duration-200 motion-reduce:transition-none sm:block"
-          style={{ width: showPanel ? 340 : 0 }}
-        >
-          <div className="h-full w-[340px]">
-            <AiChatSidebar
-              noteId={note.id}
-              noteTitle={title}
-              noteContent={content}
-              editorRef={editorRef}
-              onClose={toggleContextPanel}
-            />
-          </div>
-        </aside>
       </div>
       <div
         ref={previewCopyRef}

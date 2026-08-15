@@ -45,7 +45,6 @@ type Props = {
 };
 
 const LARGE_PASTE_THRESHOLD = 1500;
-const PARENT_UPDATE_DELAY_MS = 120;
 
 const markdownFormattingKeymap = keymap.of([
   {
@@ -161,29 +160,37 @@ export function MarkdownEditor({
   spellcheck = true,
   spellcheckLanguage = "auto",
 }: Props) {
-  const [prevPropValue, setPrevPropValue] = React.useState(value);
-  const [editorState, setEditorState] = React.useState({
-    value,
-    sourceValue: value,
-  });
+  const [editorValue, setEditorValue] = React.useState(value);
+  const lastEmittedValueRef = React.useRef(value);
 
-  if (prevPropValue !== value) {
-    setPrevPropValue(value);
-    if (editorState.sourceValue !== value) {
-      setEditorState({ value, sourceValue: value });
-    }
-  }
-
-  const editorValue = editorState.value;
-
+  // Sync external changes (e.g. Undo, Redo, Version Restore, Note switch) down to CodeMirror state.
+  // Ignore echo prop updates that match the last value emitted by CodeMirror.
   React.useEffect(() => {
-    if (editorValue === value) return;
+    if (value === lastEmittedValueRef.current) return;
+    lastEmittedValueRef.current = value;
+    setEditorValue(value);
 
-    const timer = setTimeout(() => {
-      onChange(editorValue);
-    }, PARENT_UPDATE_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [editorValue, onChange, value]);
+    const view = editorRef?.current?.view;
+    if (view && view.state.doc.toString() !== value) {
+      const currentSelection = view.state.selection;
+      const newLen = value.length;
+      const newAnchor = Math.min(currentSelection.main.anchor, newLen);
+      const newHead = Math.min(currentSelection.main.head, newLen);
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: value },
+        selection: { anchor: newAnchor, head: newHead },
+      });
+    }
+  }, [value, editorRef]);
+
+  const handleCodeMirrorChange = React.useCallback(
+    (nextValue: string) => {
+      lastEmittedValueRef.current = nextValue;
+      setEditorValue(nextValue);
+      onChange(nextValue);
+    },
+    [onChange],
+  );
 
   const usesRtlFont =
     direction === "rtl" || (direction === "auto" && containsArabicScript(editorValue));
@@ -389,7 +396,7 @@ export function MarkdownEditor({
       <CodeMirror
         ref={editorRef}
         value={editorValue}
-        onChange={(nextValue) => setEditorState({ value: nextValue, sourceValue: nextValue })}
+        onChange={handleCodeMirrorChange}
         extensions={extensions}
         height="100%"
         className="h-full text-sm"

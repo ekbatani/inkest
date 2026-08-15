@@ -530,7 +530,7 @@ export async function getBacklinks(noteId: string): Promise<BacklinkItem[]> {
 }
 
 const WIKI_TOKEN_RE = /\[\[([^\]\n]+?)\]\]/g;
-function extractWikiTokens(content: string): string[] {
+export function extractWikiTokens(content: string): string[] {
   // Skip fenced code blocks where wiki syntax should stay literal.
   const lines = content.split("\n");
   let inFence = false;
