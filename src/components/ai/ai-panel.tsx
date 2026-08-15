@@ -66,6 +66,7 @@ const MarkdownPreview = dynamic(
 type ActionId =
   | "summarize"
   | "improve-writing"
+  | "gently-edit"
   | "extract-tasks"
   | "create-project-plan"
   | "generate-mermaid"
@@ -463,7 +464,7 @@ export function AiPanel({
                     <li><span className="font-medium text-foreground">Provider costs:</span> depend on your provider and model; your Settings input/output limits bound each request.</li>
                   </ul>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Link href="/help#ai-privacy" className="underline underline-offset-4 hover:text-foreground">Full AI and privacy details</Link>
+                    <Link href="/docs/ai-assistant#privacy" className="underline underline-offset-4 hover:text-foreground">Full AI and privacy details</Link>
                     <Button variant="ghost" size="xs" onClick={() => void dismissOnboarding()} disabled={dismissingOnboarding}>Don&apos;t show again</Button>
                   </div>
                 </div>
@@ -489,7 +490,7 @@ export function AiPanel({
             <div className="mt-3 rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-xs">
               <p>{state.message}</p>
               <div className="mt-3 flex justify-end gap-2">
-                {state.notConfigured && <Button size="xs" nativeButton={false} render={<Link href="/help#ai" />}>Set up</Button>}
+                {state.notConfigured && <Button size="xs" nativeButton={false} render={<Link href="/docs/ai-assistant#ai-setup" />}>Set up</Button>}
                 <Button variant="outline" size="xs" onClick={() => setState({ status: "idle" })}>Back</Button>
               </div>
             </div>
@@ -699,7 +700,7 @@ export function AiPanel({
                   <Button
                     size="sm"
                     nativeButton={false}
-                    render={<Link href="/help#ai" />}
+                    render={<Link href="/docs/ai-assistant#ai-setup" />}
                   >
                     Set it up →
                   </Button>
@@ -848,6 +849,7 @@ export function AiPanel({
 const ACTION_LABELS: Record<ActionId, string> = {
   summarize: "Summarizing...",
   "improve-writing": "Improving writing...",
+  "gently-edit": "Gently polishing...",
   "extract-tasks": "Extracting tasks...",
   "create-project-plan": "Planning project...",
   "generate-mermaid": "Generating diagram...",

@@ -124,8 +124,8 @@ export function NoteEditor({
   const [title, setTitle] = React.useState(note.title);
   const [content, setContent] = React.useState(note.contentMd);
   const [showPanel, setShowPanel] = React.useState(() => {
-    if (typeof window === "undefined") return true;
-    return window.localStorage.getItem(CONTEXT_PANEL_STORAGE_KEY) !== "false";
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(CONTEXT_PANEL_STORAGE_KEY) === "true";
   });
   const [showSuperFocus, setShowSuperFocus] = React.useState(false);
   const [trackingMode, setTrackingMode] = React.useState<SuperFocusTrackingMode>(

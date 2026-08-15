@@ -20,8 +20,11 @@ export function MarketingFooter() {
           <div>
             <p className="marketing-footer-label">Explore</p>
             <nav className="mt-4 grid gap-2.5 text-sm opacity-70">
-              <a href="#product">Product</a><a href="#workflow">Workflow</a>
-              <a href="#open-source">Self-host</a><a href="#pricing">Pricing</a>
+              <Link href="/docs">Documentation</Link>
+              <Link href="/#product">Product</Link>
+              <Link href="/#workflow">Workflow</Link>
+              <Link href="/docs/self-hosting">Self-host Guide</Link>
+              <Link href="/#pricing">Pricing</Link>
             </nav>
           </div>
           <div>

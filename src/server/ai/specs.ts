@@ -3,6 +3,7 @@ import { z } from "zod";
 export const NoteEditorActionSchema = z.enum([
   "summarize",
   "improve-writing",
+  "gently-edit",
   "extract-tasks",
   "create-project-plan",
   "generate-mermaid",
@@ -85,6 +86,18 @@ const AI_ACTION_SPECS: Record<AiActionId, ActionSpec> = {
       "Preserve Markdown structure such as headings, lists, checklists, links, and emphasis.",
       "Fix grammar, clarity, and flow without changing intent.",
       "Do not add new facts, claims, or sections that are not implied by the source.",
+    ],
+    outputSchema: MarkdownResponseSchema,
+  },
+  "gently-edit": {
+    goal: "Gently edit and polish note text, making targeted improvements to flow, phrasing, and structure without disrupting the author's original voice or formatting.",
+    contextKeys: ["noteTitle", "noteContent", "selectedText", "promptHint"],
+    rules: [
+      "If selectedText is present, edit only that selection.",
+      "Make subtle, gentle edits: fix awkward phrasing, punctuation, sentence flow, and clarity.",
+      "Retain all Markdown markup, link targets, headers, bold/italics, and list nesting exactly.",
+      "Never delete significant paragraphs or alter the core message.",
+      "Return the complete improved text ready for drop-in diff and merge.",
     ],
     outputSchema: MarkdownResponseSchema,
   },

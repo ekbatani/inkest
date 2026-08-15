@@ -84,13 +84,24 @@ const aiProviderInputSchema = z.object({
   apiKey: z.string().trim().max(512, "API key is unexpectedly long.").optional(),
 });
 
-const aiOrchestrationInputSchema = z.object({
-  temperature: z.number().min(0).max(2),
-  maxInputTokens: z.number().int().min(256).max(32_768),
-  maxOutputTokens: z.number().int().min(64).max(8_192),
-  instructions: z.string().trim().max(2_000),
-  guardrails: z.string().trim().max(2_000),
-});
+const aiOrchestrationInputSchema = z
+  .object({
+    temperature: z.number().min(0).max(2),
+    minInputTokens: z.number().int().min(0).max(32_768).default(0),
+    maxInputTokens: z.number().int().min(64).max(128_000),
+    minOutputTokens: z.number().int().min(0).max(8_192).default(0),
+    maxOutputTokens: z.number().int().min(16).max(32_768),
+    instructions: z.string().trim().max(4_000).default(""),
+    guardrails: z.string().trim().max(4_000).default(""),
+  })
+  .refine((data) => data.maxInputTokens >= data.minInputTokens, {
+    message: "Max input tokens must be greater than or equal to min input tokens.",
+    path: ["maxInputTokens"],
+  })
+  .refine((data) => data.maxOutputTokens >= data.minOutputTokens, {
+    message: "Max output tokens must be greater than or equal to min output tokens.",
+    path: ["maxOutputTokens"],
+  });
 
 export async function updateAiProviderSettingsAction(input: unknown) {
   const parsed = aiProviderInputSchema.safeParse(input);
@@ -129,7 +140,9 @@ export async function resetAiOrchestrationSettingsAction() {
   await updateUserSettings({
     ai: {
       temperature: 0.4,
+      minInputTokens: 0,
       maxInputTokens: 8_000,
+      minOutputTokens: 0,
       maxOutputTokens: 1_200,
       instructions: "",
       guardrails: "",

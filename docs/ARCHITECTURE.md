@@ -69,7 +69,7 @@ is no background AI processing and ordinary editing, previewing, searching,
 spellcheck, export, and calendar work do not send note text to a provider.
 The first AI-panel use shows a concise sent-context, review, cost, and limit
 hint. A user can dismiss it, restore it in Settings, or revisit the maintained
-[AI privacy help](/help#ai-privacy) at any time.
+[AI privacy doc](/docs/ai-assistant#privacy) at any time.
 
 Inkest does not ship agentic execution. The approved boundary for evaluating a
 future, read-only note-to-plan beta is documented in

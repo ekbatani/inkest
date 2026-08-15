@@ -4,10 +4,11 @@ import { LogoMark } from "@/components/brand/logo-mark";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 
 const LINKS = [
-  ["Product", "#product"],
-  ["Philosophy", "#workflow"],
-  ["Open source", "#open-source"],
-  ["Pricing", "#pricing"],
+  { label: "Product", href: "/#product" },
+  { label: "Philosophy", href: "/#workflow" },
+  { label: "Open source", href: "/#open-source" },
+  { label: "Docs", href: "/docs" },
+  { label: "Pricing", href: "/#pricing" },
 ] as const;
 
 export function MarketingNav() {
@@ -20,9 +21,17 @@ export function MarketingNav() {
         </Link>
 
         <nav className="hidden items-center gap-8 lg:flex" aria-label="Main navigation">
-          {LINKS.map(([label, href]) => (
-            <a key={href} href={href} className="marketing-nav-link">{label}</a>
-          ))}
+          {LINKS.map(({ label, href }) =>
+            href.startsWith("/#") || href.startsWith("#") ? (
+              <a key={href} href={href} className="marketing-nav-link">
+                {label}
+              </a>
+            ) : (
+              <Link key={href} href={href} className="marketing-nav-link">
+                {label}
+              </Link>
+            ),
+          )}
         </nav>
 
         <div className="flex items-center gap-1 sm:gap-2">

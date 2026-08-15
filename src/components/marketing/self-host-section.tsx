@@ -35,6 +35,14 @@ export function SelfHostSection() {
           <div><small>ZERO MAINTENANCE</small><strong>Inkest Cloud</strong><span>Managed · Backed up · Updated</span></div>
         </div>
         <CopyCodeBlock code={DOCKER_COMMAND} />
+        <div className="flex justify-end pt-1">
+          <a
+            href="/docs/self-hosting"
+            className="text-xs font-medium text-[var(--marketing-accent)] hover:underline flex items-center gap-1"
+          >
+            Read self-hosting documentation →
+          </a>
+        </div>
       </div>
     </section>
   );

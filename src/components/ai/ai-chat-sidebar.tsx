@@ -19,21 +19,46 @@ import {
   Languages,
   HelpCircle,
   FileCode2,
+  Split,
+  ChevronDown,
+  ArrowDown,
+  ArrowUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   getSelectedEditorText,
   insertTextAtCursor,
   replaceEntireEditorContent,
   replaceSelectedEditorText,
+  appendTextToEditor,
+  prependTextToEditor,
+  applyGentlePatch,
 } from "@/components/editor/markdown-editor-utils";
+import { AiCitationList, type CitationItem } from "@/components/ai/ai-citation-list";
+import { AiDiffViewer } from "@/components/ai/ai-diff-viewer";
 import {
   runAiChatPromptAction,
   summarizeNoteAction,
   improveWritingAction,
+  gentlyEditNoteAction,
   extractTasksAction,
   generateMermaidAction,
   translateTextAction,
@@ -52,7 +77,12 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   isError?: boolean;
+  citations?: CitationItem[];
+  transformType?: string;
+  uncertaintyNote?: string;
   timestamp: Date;
+  targetScope?: "selection" | "note";
+  originalSourceSnippet?: string;
 };
 
 type Props = {
@@ -65,16 +95,16 @@ type Props = {
 
 const PRESET_PROMPTS = [
   {
+    id: "gently-polish",
+    label: "Gently polish note",
+    icon: Wand2,
+    prompt: "Gently polish the text, refining sentence flow, phrasing, and clarity without changing meaning or formatting.",
+  },
+  {
     id: "summarize",
     label: "Summarize note",
     icon: Sparkles,
     prompt: "Summarize the key points of this note concisely.",
-  },
-  {
-    id: "improve",
-    label: "Improve writing",
-    icon: Wand2,
-    prompt: "Improve the writing style, grammar, and structure of this note.",
   },
   {
     id: "extract-tasks",
@@ -115,6 +145,14 @@ export function AiChatSidebar({
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const [selectedText, setSelectedText] = React.useState<string | null>(null);
 
+  // Diff Review Modal state
+  const [diffModal, setDiffModal] = React.useState<{
+    isOpen: boolean;
+    original: string;
+    modified: string;
+    targetScope: "selection" | "note";
+  } | null>(null);
+
   const scrollBottomRef = React.useRef<HTMLDivElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -134,6 +172,9 @@ export function AiChatSidebar({
       if (!userText || isGenerating) return;
 
       const currentSelection = getSelectedEditorText(editorRef);
+      const targetScope: "selection" | "note" = currentSelection ? "selection" : "note";
+      const originalSourceSnippet = currentSelection || noteContent;
+
       const userMsg: ChatMessage = {
         id: `user-${Date.now()}`,
         role: "user",
@@ -149,9 +190,27 @@ export function AiChatSidebar({
         let resultOutput = "";
         let isSuccess = false;
         let errorMessage = "";
+        let citations: CitationItem[] | undefined;
+        let transformType: string | undefined;
+        let uncertaintyNote: string | undefined;
 
-        // Use dedicated specs when preset matches, else use general chat action
-        if (presetId === "summarize") {
+        if (presetId === "gently-polish") {
+          const res = await gentlyEditNoteAction({
+            noteId,
+            noteTitle,
+            noteContent,
+            selectedText: currentSelection ?? undefined,
+          });
+          if (res.ok) {
+            isSuccess = true;
+            resultOutput = res.output;
+            citations = res.citations;
+            transformType = "Gentle Polish";
+            uncertaintyNote = res.uncertaintyNote;
+          } else {
+            errorMessage = res.error;
+          }
+        } else if (presetId === "summarize") {
           const res = await summarizeNoteAction({
             noteId,
             noteTitle,
@@ -161,6 +220,9 @@ export function AiChatSidebar({
           if (res.ok) {
             isSuccess = true;
             resultOutput = res.output;
+            citations = res.citations;
+            transformType = "Summary";
+            uncertaintyNote = res.uncertaintyNote;
           } else {
             errorMessage = res.error;
           }
@@ -174,6 +236,9 @@ export function AiChatSidebar({
           if (res.ok) {
             isSuccess = true;
             resultOutput = res.output;
+            citations = res.citations;
+            transformType = "Improve Writing";
+            uncertaintyNote = res.uncertaintyNote;
           } else {
             errorMessage = res.error;
           }
@@ -189,6 +254,8 @@ export function AiChatSidebar({
             resultOutput = res.output.tasks
               .map((t) => `- [ ] ${t.title}${t.description ? `: ${t.description}` : ""}`)
               .join("\n");
+            citations = res.citations;
+            transformType = "Task Extraction";
           } else {
             errorMessage = res.error;
           }
@@ -202,6 +269,8 @@ export function AiChatSidebar({
           if (res.ok) {
             isSuccess = true;
             resultOutput = res.output;
+            citations = res.citations;
+            transformType = "Diagram Generation";
           } else {
             errorMessage = res.error;
           }
@@ -215,6 +284,8 @@ export function AiChatSidebar({
           if (res.ok) {
             isSuccess = true;
             resultOutput = res.output;
+            citations = res.citations;
+            transformType = "Translation";
           } else {
             errorMessage = res.error;
           }
@@ -227,11 +298,13 @@ export function AiChatSidebar({
           if (res.ok) {
             isSuccess = true;
             resultOutput = res.output;
+            citations = res.citations;
+            transformType = "Explanation";
           } else {
             errorMessage = res.error;
           }
         } else {
-          // General conversation prompt
+          // General conversation prompt with workspace grounding
           const historyForServer = messages
             .filter((m) => !m.isError)
             .map((m) => ({ role: m.role, content: m.content }));
@@ -243,10 +316,14 @@ export function AiChatSidebar({
             selectedText: currentSelection ?? undefined,
             userPrompt: userText,
             history: historyForServer,
+            enableGrounding: true,
           });
           if (res.ok) {
             isSuccess = true;
             resultOutput = res.output;
+            citations = res.citations;
+            transformType = res.transformType;
+            uncertaintyNote = res.uncertaintyNote;
           } else {
             errorMessage = res.error;
           }
@@ -257,7 +334,12 @@ export function AiChatSidebar({
             id: `assistant-${Date.now()}`,
             role: "assistant",
             content: resultOutput,
+            citations,
+            transformType,
+            uncertaintyNote,
             timestamp: new Date(),
+            targetScope,
+            originalSourceSnippet,
           };
           setMessages((prev) => [...prev, assistantMsg]);
         } else {
@@ -286,11 +368,23 @@ export function AiChatSidebar({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // ADD actions
   const handleInsertAtCursor = (text: string) => {
     insertTextAtCursor(editorRef, text);
     toast.success("Inserted text into note");
   };
 
+  const handleAppendToNote = (text: string) => {
+    appendTextToEditor(editorRef, text);
+    toast.success("Appended text to note");
+  };
+
+  const handlePrependToNote = (text: string) => {
+    prependTextToEditor(editorRef, text);
+    toast.success("Prepended text to note");
+  };
+
+  // REPLACE actions
   const handleReplaceSelection = (text: string) => {
     const sel = getSelectedEditorText(editorRef);
     if (!sel) {
@@ -304,6 +398,30 @@ export function AiChatSidebar({
   const handleReplaceEntireNote = (text: string) => {
     replaceEntireEditorContent(editorRef, text);
     toast.success("Replaced entire note content");
+  };
+
+  // GENTLE EDIT / DIFF actions
+  const handleOpenDiffReview = (msg: ChatMessage) => {
+    const currentSelection = getSelectedEditorText(editorRef);
+    const scope = msg.targetScope || (currentSelection ? "selection" : "note");
+    const original = (scope === "selection" ? currentSelection : noteContent) || msg.originalSourceSnippet || noteContent;
+
+    setDiffModal({
+      isOpen: true,
+      original,
+      modified: msg.content,
+      targetScope: scope,
+    });
+  };
+
+  const handleApplyGentleEdit = (text: string, targetScope: "selection" | "note") => {
+    applyGentlePatch(editorRef, text, targetScope);
+    toast.success(
+      targetScope === "selection"
+        ? "Applied gentle edit to selection"
+        : "Applied gentle edit to note",
+    );
+    setDiffModal(null);
   };
 
   const handleClearHistory = () => {
@@ -324,7 +442,7 @@ export function AiChatSidebar({
             <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
                 <FileCode2 className="size-3 text-muted-foreground" />
-                {selectedText ? "Selected text" : "Current note"}
+                {selectedText ? "Selected text context" : "Full note context"}
               </span>
             </div>
           </div>
@@ -357,7 +475,7 @@ export function AiChatSidebar({
             </div>
             <h3 className="mt-3 text-sm font-medium text-foreground">How can I help with this note?</h3>
             <p className="mt-1 max-w-[240px] text-xs text-muted-foreground">
-              Ask questions, transform writing, or choose a quick preset action below.
+              Ask questions across your workspace, replace or add text, or gently polish your note.
             </p>
 
             <div className="mt-5 w-full space-y-1.5">
@@ -411,54 +529,107 @@ export function AiChatSidebar({
                   ) : msg.isError ? (
                     <p>{msg.content}</p>
                   ) : (
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <MarkdownPreview content={msg.content} />
+                    <div className="space-y-2.5">
+                      {/* Citations from workspace */}
+                      {msg.citations && msg.citations.length > 0 && (
+                        <AiCitationList
+                          citations={msg.citations}
+                          transformType={msg.transformType}
+                          uncertaintyNote={msg.uncertaintyNote}
+                        />
+                      )}
+
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <MarkdownPreview content={msg.content} />
+                      </div>
                     </div>
                   )}
 
-                  {/* Actions bar for Assistant responses */}
+                  {/* Complete 3-Way Action Bar (Replace / Add / Gently Edit) */}
                   {msg.role === "assistant" && !msg.isError && (
-                    <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-border/40 pt-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-2.5">
+                      {/* Gently Edit / Diff Review */}
                       <Button
-                        variant="ghost"
+                        variant="secondary"
                         size="xs"
-                        onClick={() => handleInsertAtCursor(msg.content)}
-                        className="h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                        title="Insert response at current cursor position"
+                        onClick={() => handleOpenDiffReview(msg)}
+                        className="h-6.5 gap-1 rounded-lg px-2 text-[11px] font-medium text-violet-700 bg-violet-500/10 hover:bg-violet-500/20 dark:text-violet-300"
+                        title="Review diff and gently apply edits"
                       >
-                        <Plus className="size-3" />
-                        Insert
+                        <Split className="size-3" />
+                        Gently Edit
                       </Button>
 
-                      {selectedText && (
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => handleReplaceSelection(msg.content)}
-                          className="h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                          title="Replace currently selected text"
+                      {/* Replace Dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              className="h-6.5 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                            />
+                          }
                         >
                           <Replace className="size-3" />
-                          Replace Selection
-                        </Button>
-                      )}
+                          Replace
+                          <ChevronDown className="size-2.5 opacity-60" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-44 text-xs">
+                          <DropdownMenuLabel>Replace options</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {selectedText && (
+                            <DropdownMenuItem onClick={() => handleReplaceSelection(msg.content)}>
+                              <Replace className="size-3.5 mr-1.5" />
+                              Replace selection
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onClick={() => handleReplaceEntireNote(msg.content)}>
+                            <FileText className="size-3.5 mr-1.5" />
+                            Replace entire note
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
 
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => handleReplaceEntireNote(msg.content)}
-                        className="h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                        title="Replace entire note content"
-                      >
-                        <FileText className="size-3" />
-                        Replace Note
-                      </Button>
+                      {/* Add Dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              className="h-6.5 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                            />
+                          }
+                        >
+                          <Plus className="size-3" />
+                          Add
+                          <ChevronDown className="size-2.5 opacity-60" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-44 text-xs">
+                          <DropdownMenuLabel>Add options</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleInsertAtCursor(msg.content)}>
+                            <Plus className="size-3.5 mr-1.5" />
+                            Insert at cursor
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAppendToNote(msg.content)}>
+                            <ArrowDown className="size-3.5 mr-1.5" />
+                            Append to bottom
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handlePrependToNote(msg.content)}>
+                            <ArrowUp className="size-3.5 mr-1.5" />
+                            Prepend to top
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
 
+                      {/* Copy */}
                       <Button
                         variant="ghost"
                         size="xs"
                         onClick={() => handleCopy(msg.id, msg.content)}
-                        className="ml-auto h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                        className="ml-auto h-6.5 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
                         title="Copy to clipboard"
                       >
                         {copiedId === msg.id ? (
@@ -477,7 +648,7 @@ export function AiChatSidebar({
             {isGenerating && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="size-3.5 animate-spin text-violet-500" />
-                <span>Thinking & generating response...</span>
+                <span>Generating response with workspace context...</span>
               </div>
             )}
             <div ref={scrollBottomRef} />
@@ -501,8 +672,8 @@ export function AiChatSidebar({
             }}
             placeholder={
               selectedText
-                ? "Ask AI about selected text..."
-                : "Ask AI or type a prompt... (Enter to send)"
+                ? "Ask AI or instruct how to edit selected text..."
+                : "Ask AI or instruct how to edit note... (Enter to send)"
             }
             className="min-h-[64px] max-h-[160px] resize-none border-0 bg-transparent px-3 py-2.5 text-xs shadow-none focus-visible:ring-0"
           />
@@ -525,6 +696,34 @@ export function AiChatSidebar({
           </div>
         </div>
       </div>
+
+      {/* Diff Review Dialog */}
+      <Dialog
+        open={Boolean(diffModal?.isOpen)}
+        onOpenChange={(open) => !open && setDiffModal(null)}
+      >
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="size-4 text-violet-500" />
+              Review AI Edits
+            </DialogTitle>
+            <DialogDescription>
+              Inspect differences before gently applying edits to your {diffModal?.targetScope === "selection" ? "selected text" : "note"}.
+            </DialogDescription>
+          </DialogHeader>
+
+          {diffModal && (
+            <AiDiffViewer
+              originalText={diffModal.original}
+              modifiedText={diffModal.modified}
+              scopeLabel={diffModal.targetScope === "selection" ? "Selected Text" : "Entire Note"}
+              onApply={() => handleApplyGentleEdit(diffModal.modified, diffModal.targetScope)}
+              onCancel={() => setDiffModal(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

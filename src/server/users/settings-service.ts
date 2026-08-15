@@ -39,10 +39,12 @@ export const aiProviderSettingsSchema = z
     baseURL: z.string().url().optional().or(z.literal("")),
     model: z.string().optional(),
     temperature: z.number().min(0).max(2).optional(),
-    maxInputTokens: z.number().int().min(256).max(32_768).optional(),
-    maxOutputTokens: z.number().int().min(64).max(8_192).optional(),
-    instructions: z.string().trim().max(2_000).optional(),
-    guardrails: z.string().trim().max(2_000).optional(),
+    minInputTokens: z.number().int().min(0).max(32_768).optional(),
+    maxInputTokens: z.number().int().min(64).max(128_000).optional(),
+    minOutputTokens: z.number().int().min(0).max(8_192).optional(),
+    maxOutputTokens: z.number().int().min(16).max(32_768).optional(),
+    instructions: z.string().trim().max(4_000).optional(),
+    guardrails: z.string().trim().max(4_000).optional(),
     onboardingDismissed: z.boolean().optional(),
   })
   .partial();
@@ -97,6 +99,15 @@ export const userSettingsSchema = z.object({
       dailyNoteNudge: z.boolean().optional(),
     })
     .optional(),
+  agentHarness: z
+    .object({
+      enabled: z.boolean().optional(),
+      apiToken: z.string().optional(),
+      maxLoopSteps: z.number().int().min(1).max(15).optional(),
+      allowModifyNotes: z.boolean().optional(),
+      allowCreateTasks: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 export type UserSettings = z.infer<typeof userSettingsSchema>;
@@ -111,7 +122,9 @@ const DEFAULTS: UserSettings = {
   },
   ai: {
     temperature: 0.4,
+    minInputTokens: 0,
     maxInputTokens: 8_000,
+    minOutputTokens: 0,
     maxOutputTokens: 1_200,
     instructions: "",
     guardrails: "",
@@ -126,6 +139,12 @@ const DEFAULTS: UserSettings = {
     aiResults: true,
     taskDueReminders: false,
     dailyNoteNudge: false,
+  },
+  agentHarness: {
+    enabled: true,
+    maxLoopSteps: 6,
+    allowModifyNotes: true,
+    allowCreateTasks: true,
   },
 };
 

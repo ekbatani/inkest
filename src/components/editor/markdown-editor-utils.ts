@@ -209,3 +209,48 @@ export function replaceSelectedEditorText(
   });
   view.focus();
 }
+
+export function appendTextToEditor(
+  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  text: string,
+) {
+  const view = ref.current?.view;
+  if (!view) return;
+  const docLen = view.state.doc.length;
+  const separator = docLen > 0 ? "\n\n" : "";
+  const insert = `${separator}${text.trim()}\n`;
+  view.dispatch({
+    changes: { from: docLen, insert },
+    selection: { anchor: docLen + insert.length },
+  });
+  view.focus();
+}
+
+export function prependTextToEditor(
+  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  text: string,
+) {
+  const view = ref.current?.view;
+  if (!view) return;
+  const docLen = view.state.doc.length;
+  const separator = docLen > 0 ? "\n\n" : "";
+  const insert = `${text.trim()}${separator}`;
+  view.dispatch({
+    changes: { from: 0, insert },
+    selection: { anchor: insert.length },
+  });
+  view.focus();
+}
+
+export function applyGentlePatch(
+  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  patchedText: string,
+  targetScope: "selection" | "note" = "note",
+) {
+  if (targetScope === "selection") {
+    replaceSelectedEditorText(ref, patchedText);
+  } else {
+    replaceEntireEditorContent(ref, patchedText);
+  }
+}
+

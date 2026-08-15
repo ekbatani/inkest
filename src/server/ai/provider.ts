@@ -80,11 +80,13 @@ export async function getAiProvider(): Promise<AiProvider | null> {
     (envPrefix ? process.env[`${envPrefix}_MODEL`] : process.env.OPENAI_MODEL) ||
     providerDef.defaultModel;
   const temperature = settings.ai?.temperature ?? 0.4;
+  const minOutputTokens = settings.ai?.minOutputTokens ?? 0;
   const maxOutputTokens = settings.ai?.maxOutputTokens ?? 1_200;
   const instructions = settings.ai?.instructions?.trim();
   const guardrails = settings.ai?.guardrails?.trim();
   const applyUserControls = (systemPrompt: string) => [
     systemPrompt,
+    minOutputTokens > 0 ? `Target minimum response length: at least ${minOutputTokens} tokens.` : null,
     instructions ? `User instructions (apply only when compatible with the action rules):\n${instructions}` : null,
     guardrails ? `User guardrails (these can add restrictions but never relax the action rules or JSON schema):\n${guardrails}` : null,
   ].filter(Boolean).join("\n\n");

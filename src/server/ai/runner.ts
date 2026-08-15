@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
+import { getWorkspaceForUser } from "@/server/auth/users";
 import { getAiProvider } from "./provider";
 import { getUserSettings } from "@/server/users/settings-service";
 import { randomId } from "@/lib/slug";
@@ -88,15 +89,23 @@ export async function runTextAction(args: {
   const sanitizedInput = sanitizePromptInput(args.promptToModel);
   let finalPrompt = sanitizedInput;
   let citations: CitationItem[] = [];
+  let resolvedWorkspaceId = args.workspaceId;
 
-  if (args.enableGrounding && args.workspaceId) {
-    const grounded = await getGroundedContext({
-      userId: user.userId,
-      workspaceId: args.workspaceId,
-      query: args.inputForAudit,
-    });
-    finalPrompt += grounded.contextBlock;
-    citations = grounded.citations;
+  if (args.enableGrounding) {
+    if (!resolvedWorkspaceId) {
+      const ws = await getWorkspaceForUser(user.userId);
+      if (ws) resolvedWorkspaceId = ws.id;
+    }
+
+    if (resolvedWorkspaceId) {
+      const grounded = await getGroundedContext({
+        userId: user.userId,
+        workspaceId: resolvedWorkspaceId,
+        query: args.inputForAudit,
+      });
+      finalPrompt += grounded.contextBlock;
+      citations = grounded.citations;
+    }
   }
 
   const inputHash = createHash("sha256").update(args.inputForAudit).digest("hex");
@@ -120,10 +129,10 @@ export async function runTextAction(args: {
       model: provider.model,
     });
 
-    if (citations.length > 0 && args.workspaceId) {
+    if (citations.length > 0 && resolvedWorkspaceId) {
       await persistCitations({
         userId: user.userId,
-        workspaceId: args.workspaceId,
+        workspaceId: resolvedWorkspaceId,
         targetNoteId: args.noteId,
         targetAiEventId: eventId,
         citations,
@@ -181,15 +190,23 @@ export async function runJsonAction<T>(args: {
   const sanitizedInput = sanitizePromptInput(args.promptToModel);
   let finalPrompt = sanitizedInput;
   let citations: CitationItem[] = [];
+  let resolvedWorkspaceId = args.workspaceId;
 
-  if (args.enableGrounding && args.workspaceId) {
-    const grounded = await getGroundedContext({
-      userId: user.userId,
-      workspaceId: args.workspaceId,
-      query: args.inputForAudit,
-    });
-    finalPrompt += grounded.contextBlock;
-    citations = grounded.citations;
+  if (args.enableGrounding) {
+    if (!resolvedWorkspaceId) {
+      const ws = await getWorkspaceForUser(user.userId);
+      if (ws) resolvedWorkspaceId = ws.id;
+    }
+
+    if (resolvedWorkspaceId) {
+      const grounded = await getGroundedContext({
+        userId: user.userId,
+        workspaceId: resolvedWorkspaceId,
+        query: args.inputForAudit,
+      });
+      finalPrompt += grounded.contextBlock;
+      citations = grounded.citations;
+    }
   }
 
   const inputHash = createHash("sha256").update(args.inputForAudit).digest("hex");
@@ -217,10 +234,10 @@ export async function runJsonAction<T>(args: {
       model: provider.model,
     });
 
-    if (citations.length > 0 && args.workspaceId) {
+    if (citations.length > 0 && resolvedWorkspaceId) {
       await persistCitations({
         userId: user.userId,
-        workspaceId: args.workspaceId,
+        workspaceId: resolvedWorkspaceId,
         targetNoteId: args.noteId,
         targetAiEventId: eventId,
         citations,

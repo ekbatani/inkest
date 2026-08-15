@@ -121,8 +121,8 @@
   - **Evidence:** 2026-07-19 — added explicit planning review dialog before saving extracted tasks; verified project ownership and title checks.
 
 - [done] **P1-35 — Add concise AI onboarding and privacy hints.** Contextual first-use onboarding guide and privacy documentation.
-  - **Acceptance:** Contextual help dismissible by user; links to `/help#ai-privacy`.
-  - **Evidence:** 2026-07-19 — added first-use AI panel guide and detailed privacy disclosure at `/help#ai-privacy`.
+  - **Acceptance:** Contextual help dismissible by user; links to `/docs/ai-assistant#privacy`.
+  - **Evidence:** 2026-07-19 — added first-use AI panel guide and detailed privacy disclosure at `/docs/ai-assistant#privacy`.
 
 - [done] **P2-36 — Bound agentic workflows before implementation.** Define bounds for multi-step AI execution.
   - **Acceptance:** Approved design preventing autonomous external side-effects, capping iterations, execution time, and token cost.
@@ -334,7 +334,7 @@
 
 - [done] **P0-51 — Prepare legal and trust pages.** Prepare legal text for license, privacy policy, terms of service, AI disclosure, and support scope.
   - **Acceptance:** Legal pages published and linked; claims match actual storage, encryption, and telemetry practices.
-  - **Evidence:** 2026-07-28 — published privacy and security terms at `/help#ai-privacy`.
+  - **Evidence:** 2026-07-28 — published privacy and security terms at `/docs/ai-assistant#privacy`.
 
 - [done] **P0-52 — Complete public documentation.** Publish install/upgrade, configuration, backup/restore, import/export, AI provider, and security guides.
   - **Acceptance:** Self-hoster can install, operate, update, back up, and troubleshoot Inkest using public docs.

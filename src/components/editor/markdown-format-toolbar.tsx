@@ -14,6 +14,7 @@ import {
   MessageSquarePlus,
   Pilcrow,
   Quote,
+  Sparkles,
   Strikethrough,
   Type,
 } from "lucide-react";
@@ -59,6 +60,11 @@ export function MarkdownFormatToolbar({ editorRef, className, onAction }: Props)
       return;
     }
     applyMarkdownFormat(editorRef, "comment", { comment });
+    onAction?.();
+  };
+
+  const triggerAskAi = () => {
+    window.dispatchEvent(new CustomEvent("inkest:ask-ai"));
     onAction?.();
   };
 
@@ -131,6 +137,27 @@ export function MarkdownFormatToolbar({ editorRef, className, onAction }: Props)
       <ToolButton label="Comment" onClick={addComment}>
         <MessageSquarePlus className="size-3.5" />
       </ToolButton>
+
+      <div className="mx-0.5 h-4 w-px bg-border/60" />
+
+      {/* Ask AI button on selection */}
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Ask AI Assistant"
+              onClick={triggerAskAi}
+              className="text-violet-500 hover:text-violet-600 hover:bg-violet-500/10"
+            />
+          }
+        >
+          <Sparkles className="size-3.5 text-violet-500" />
+        </TooltipTrigger>
+        <TooltipContent>Ask AI about selection</TooltipContent>
+      </Tooltip>
     </div>
   );
 }
@@ -145,7 +172,7 @@ export function FloatingMarkdownFormatToolbar({ editorRef }: Props) {
   }>({ open: false, x: 0, y: 0 });
 
   const clampPosition = React.useCallback((x: number, y: number) => {
-    const width = toolbarRef.current?.offsetWidth ?? 360;
+    const width = toolbarRef.current?.offsetWidth ?? 380;
     const height = toolbarRef.current?.offsetHeight ?? 38;
     const margin = 12;
 
@@ -172,7 +199,7 @@ export function FloatingMarkdownFormatToolbar({ editorRef }: Props) {
     const to = view.coordsAtPos(selection.to);
     if (!from || !to) return;
 
-    const next = clampPosition((from.left + to.right) / 2 - 180, from.top - 48);
+    const next = clampPosition((from.left + to.right) / 2 - 190, from.top - 48);
     openSourceRef.current = "selection";
     setPosition({ open: true, ...next });
   }, [clampPosition, editorRef]);

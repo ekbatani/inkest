@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/server/auth";
 import { getNoteById } from "@/server/notes/service";
 import { summarizeNote } from "@/server/ai/summarize-note";
 import { improveWriting } from "@/server/ai/improve-writing";
+import { gentlyEdit } from "@/server/ai/gently-edit";
 import { extractTasks } from "@/server/ai/extract-tasks";
 import { createProjectPlan } from "@/server/ai/create-project-plan";
 import { generateMermaid } from "@/server/ai/generate-mermaid";
@@ -157,6 +158,35 @@ export async function POST(request: NextRequest) {
       noteTitle: note.title,
       noteContent: note.contentMd,
       selectedText,
+    });
+    if (!r.ok)
+      return NextResponse.json(
+        { error: r.error, notConfigured: r.notConfigured },
+        { status: statusFor(r) },
+      );
+    await notifySuccessfulAiAction({
+      action,
+      noteTitle: note.title,
+      output: r.output,
+      model: r.model,
+      provider: r.provider,
+    });
+    return NextResponse.json({
+      kind: "text",
+      output: r.output,
+      citations: r.citations,
+      transformType: r.transformType,
+      uncertaintyNote: r.uncertaintyNote,
+    });
+  }
+
+  if (action === "gently-edit") {
+    const r = await gentlyEdit({
+      noteId: note.id,
+      noteTitle: note.title,
+      noteContent: note.contentMd,
+      selectedText,
+      promptHint,
     });
     if (!r.ok)
       return NextResponse.json(

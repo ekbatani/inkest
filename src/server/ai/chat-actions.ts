@@ -3,6 +3,7 @@
 import { runTextAction, type AiActionResult } from "./runner";
 import { summarizeNote } from "./summarize-note";
 import { improveWriting } from "./improve-writing";
+import { gentlyEdit } from "./gently-edit";
 import { extractTasks, type ExtractTasksOutput } from "./extract-tasks";
 import { generateMermaid } from "./generate-mermaid";
 import { translateText } from "./translate-text";
@@ -15,6 +16,7 @@ export async function runAiChatPromptAction(args: {
   selectedText?: string;
   userPrompt: string;
   history?: { role: "user" | "assistant"; content: string }[];
+  enableGrounding?: boolean;
 }): Promise<AiActionResult<string>> {
   const hasSelection = Boolean(args.selectedText && args.selectedText.trim());
 
@@ -36,15 +38,26 @@ export async function runAiChatPromptAction(args: {
   const promptToModel = `${contextBlock}${conversationBlock}\n\nUser Request / Instruction:\n${args.userPrompt}`;
 
   const systemPrompt =
-    "You are an AI assistant in Inkest, a Markdown personal workspace. Answer the user's questions or follow their instructions based on the note context and selection provided. Provide clear, direct, and beautifully formatted Markdown responses. When modifying or drafting content, present the content cleanly so the user can easily insert or replace it into their note.";
+    "You are an AI assistant in Inkest, a Markdown personal workspace. Answer the user's questions or follow their instructions based on the note context, workspace knowledge, and selection provided. Provide clear, direct, and beautifully formatted Markdown responses. When modifying, gently editing, or drafting content, present the content cleanly so the user can easily insert, replace, or gently merge it into their note.";
 
   return runTextAction({
     noteId: args.noteId,
     action: "chat-prompt",
     systemPrompt,
-    inputForAudit: args.userPrompt,
+    inputForAudit: `${args.userPrompt} ${args.noteTitle}`,
     promptToModel,
+    enableGrounding: args.enableGrounding !== false,
   });
+}
+
+export async function gentlyEditNoteAction(args: {
+  noteId: string;
+  noteTitle: string;
+  noteContent: string;
+  selectedText?: string;
+  promptHint?: string;
+}): Promise<AiActionResult<string>> {
+  return gentlyEdit(args);
 }
 
 export async function summarizeNoteAction(args: {
