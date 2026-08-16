@@ -6,9 +6,16 @@ import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 export type PageContextData = {
   pageTitle: string;
   pageContent?: string;
-  pageType?: string;
+  pageType?: "note" | "project" | "daily" | "journal" | "page" | string;
   noteId?: string;
+  projectId?: string;
   editorRef?: React.RefObject<ReactCodeMirrorRef | null>;
+  projectMeta?: {
+    taskCount?: number;
+    childNotesCount?: number;
+    subprojectsCount?: number;
+    status?: string;
+  };
 };
 
 type PageContextValue = {

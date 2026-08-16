@@ -28,6 +28,11 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { completeProfileSetupAction } from "@/server/users/profile-actions";
 import type { UserSettings } from "@/server/users/settings-service";
+import type {
+  AppearanceFont,
+  AppearancePalette,
+  AppearanceTheme,
+} from "@/components/users/appearance-sync";
 
 const PRESET_AVATARS = [
   { id: "feather", label: "Quill", icon: Feather, color: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
@@ -77,15 +82,15 @@ export function ProfileSetupWizard({
   );
 
   // Theme & Preferences
-  const [themePreference, setThemePreference] = React.useState<
-    "system" | "light" | "dark"
-  >(initialSettings?.theme?.preference || "system");
-  const [themePalette, setThemePalette] = React.useState<
-    "paper" | "forest" | "violet"
-  >(initialSettings?.theme?.palette || "paper");
-  const [themeFont, setThemeFont] = React.useState<
-    "sans" | "serif" | "mono" | "persian"
-  >(initialSettings?.theme?.font || "sans");
+  const [themePreference, setThemePreference] = React.useState<AppearanceTheme>(
+    initialSettings?.theme?.preference || "system",
+  );
+  const [themePalette, setThemePalette] = React.useState<AppearancePalette>(
+    (initialSettings?.theme?.palette as AppearancePalette) || "paper",
+  );
+  const [themeFont, setThemeFont] = React.useState<AppearanceFont>(
+    (initialSettings?.theme?.font as AppearanceFont) || "sans",
+  );
 
   // Get active avatar icon component
   const activeAvatarObj = PRESET_AVATARS.find((a) => a.id === selectedAvatar);
@@ -339,22 +344,27 @@ export function ProfileSetupWizard({
             {/* Palette Selection */}
             <div className="flex flex-col gap-2.5">
               <Label className="text-xs font-semibold">Color Palette Accent</Label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
-                  { id: "paper", label: "Paper Warm", desc: "Classic ink feel" },
-                  { id: "forest", label: "Forest Emerald", desc: "Calm green tint" },
-                  { id: "violet", label: "Violet Slate", desc: "Modern indigo" },
+                  { id: "paper" as const, label: "Paper Warm", desc: "Classic ink feel" },
+                  { id: "forest" as const, label: "Forest Emerald", desc: "Calm green tint" },
+                  { id: "violet" as const, label: "Violet Slate", desc: "Modern indigo" },
+                  { id: "amber" as const, label: "Amber Honey", desc: "Warm parchment" },
+                  { id: "nord" as const, label: "Nord Frost", desc: "Arctic slate" },
+                  { id: "rose" as const, label: "Rose Quartz", desc: "Earthy crimson" },
+                  { id: "terracotta" as const, label: "Terracotta", desc: "Burnt copper clay" },
+                  { id: "midnight" as const, label: "Midnight Dusk", desc: "Obsidian electric" },
                 ].map((p) => {
                   const active = themePalette === p.id;
                   return (
                     <button
                       key={p.id}
                       type="button"
-                      onClick={() => setThemePalette(p.id as "paper" | "forest" | "violet")}
+                      onClick={() => setThemePalette(p.id)}
                       className={cn(
                         "flex flex-col text-start p-3 rounded-xl border transition-all",
                         active
-                          ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                          ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-xs"
                           : "border-border/80 bg-card hover:bg-muted/40",
                       )}
                     >
@@ -369,23 +379,28 @@ export function ProfileSetupWizard({
             {/* Font Selection */}
             <div className="flex flex-col gap-2.5">
               <Label className="text-xs font-semibold">Writing Typography Font</Label>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {[
-                  { id: "sans", label: "Sans-Serif", sample: "Geist Clean" },
-                  { id: "serif", label: "Serif", sample: "Lora Editorial" },
-                  { id: "mono", label: "Monospace", sample: "Geist Mono" },
-                  { id: "persian", label: "Persian / Vazir", sample: "Vazirmatn" },
+                  { id: "sans" as const, label: "Sans-Serif", sample: "Geist Clean" },
+                  { id: "serif" as const, label: "Serif", sample: "Lora Editorial" },
+                  { id: "mono" as const, label: "Monospace", sample: "Geist Mono" },
+                  { id: "persian" as const, label: "Persian / Vazir", sample: "Vazirmatn" },
+                  { id: "slab" as const, label: "Humanist Slab", sample: "Merriweather" },
+                  { id: "typewriter" as const, label: "Typewriter", sample: "Courier Prime" },
+                  { id: "grotesk" as const, label: "Modern Grotesk", sample: "Space Grotesk" },
+                  { id: "baskerville" as const, label: "Academic Classic", sample: "Baskerville" },
+                  { id: "persian-serif" as const, label: "Persian Traditional", sample: "B Nazanin" },
                 ].map((f) => {
                   const active = themeFont === f.id;
                   return (
                     <button
                       key={f.id}
                       type="button"
-                      onClick={() => setThemeFont(f.id as "sans" | "serif" | "mono" | "persian")}
+                      onClick={() => setThemeFont(f.id)}
                       className={cn(
                         "flex flex-col text-start p-3 rounded-xl border transition-all",
                         active
-                          ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                          ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-xs"
                           : "border-border/80 bg-card hover:bg-muted/40",
                       )}
                     >

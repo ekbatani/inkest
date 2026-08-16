@@ -8,6 +8,7 @@ import { extractTasks, type ExtractTasksOutput } from "./extract-tasks";
 import { generateMermaid } from "./generate-mermaid";
 import { translateText } from "./translate-text";
 import { explainText } from "./explain-text";
+import { createProjectPlan } from "./create-project-plan";
 import {
   createChatThread,
   listChatThreads,
@@ -215,7 +216,11 @@ export async function runAiChatPromptAction(args: {
   const promptToModel = `${contextBlock}${attachedContextBlock}${conversationBlock}\n\nUser Request / Instruction:\n${args.userPrompt}`.trim();
 
   const systemPrompt =
-    "You are an AI assistant in Inkest, a Markdown personal workspace. Answer the user's questions or follow their instructions based on the page/note context, referenced items (@notes, @projects, @files, @vault secrets), workspace knowledge, and selection provided. Provide clear, direct, and beautifully formatted Markdown responses. When modifying, gently editing, or drafting content, present the content cleanly so the user can easily insert, replace, or gently merge it into their note.";
+    "You are an AI assistant in Inkest, a Markdown-first personal workspace. Answer the user's questions or follow their instructions based on the page/note context, referenced items (@notes, @projects, @files, @vault secrets), workspace knowledge, and selection provided. Provide clear, direct, and beautifully formatted Markdown responses. When modifying, gently editing, or drafting content, present the content cleanly so the user can easily insert, replace, or gently merge it into their note.\n\n" +
+    "COLLABORATION & CLARIFICATION GUIDELINES:\n" +
+    "- If the user's request, note, or project has ambiguities, missing constraints, or multiple possible directions, provide your best initial response AND conclude with a concise '### ❓ Clarifications & Follow-up' section with 2-3 specific questions or choices to confirm with the user.\n" +
+    "- If working on a project or task list, output actionable task items using markdown checklist format `- [ ] Task title` so they can be easily converted into project tasks.\n" +
+    "- When referencing related concepts in the workspace, you may use double brackets [[Note Title]] for wiki-links.";
 
   const result = await runTextAction({
     noteId: args.noteId || null,
@@ -549,3 +554,142 @@ export async function explainTextAction(args: {
 
   return { ...res, threadId: activeThreadId };
 }
+
+export async function createProjectPlanAction(args: {
+  noteId: string;
+  noteTitle: string;
+  noteContent: string;
+  promptHint?: string;
+  threadId?: string;
+}): Promise<AiActionResult<string> & { threadId?: string }> {
+  let activeThreadId = args.threadId;
+  if (!activeThreadId) {
+    try {
+      const thread = await createChatThread("Draft Project Plan");
+      activeThreadId = thread.id;
+    } catch {}
+  }
+  if (activeThreadId) {
+    try {
+      await addChatMessage({
+        threadId: activeThreadId,
+        role: "user",
+        content: "Draft Project Plan",
+      });
+    } catch {}
+  }
+
+  const res = await createProjectPlan(args);
+
+  if (activeThreadId) {
+    try {
+      if (res.ok) {
+        await addChatMessage({
+          threadId: activeThreadId,
+          role: "assistant",
+          content: res.output,
+        });
+      } else {
+        await addChatMessage({
+          threadId: activeThreadId,
+          role: "assistant",
+          content: res.error,
+          isError: true,
+        });
+      }
+    } catch {}
+  }
+
+  return { ...res, threadId: activeThreadId };
+}
+
+export async function clarifyAndFindGapsAction(args: {
+  noteId: string;
+  noteTitle: string;
+  noteContent: string;
+  selectedText?: string;
+  threadId?: string;
+}): Promise<AiActionResult<string> & { threadId?: string }> {
+  let activeThreadId = args.threadId;
+  if (!activeThreadId) {
+    try {
+      const thread = await createChatThread("Clarify & Find Gaps");
+      activeThreadId = thread.id;
+    } catch {}
+  }
+  if (activeThreadId) {
+    try {
+      await addChatMessage({
+        threadId: activeThreadId,
+        role: "user",
+        content: "Analyze this note/project for ambiguities, missing details, and clarifying questions",
+      });
+    } catch {}
+  }
+
+  const userPrompt = `Please analyze the current note or context: "${args.noteTitle}". Identify any ambiguities, missing details, edge cases, risks, or open design decisions. Present your analysis clearly in Markdown with:\n1. 🔍 **Gaps & Blind Spots Summary**\n2. ❓ **Clarifying Questions for the User** (with 2-3 suggested options or directions to consider).`;
+
+  const res = await runAiChatPromptAction({
+    noteId: args.noteId,
+    noteTitle: args.noteTitle,
+    noteContent: args.noteContent,
+    selectedText: args.selectedText,
+    userPrompt,
+    threadId: activeThreadId,
+    enableGrounding: true,
+  });
+
+  return res;
+}
+
+export async function checkTyposAction(args: {
+  noteId: string;
+  noteTitle: string;
+  noteContent: string;
+  selectedText?: string;
+  threadId?: string;
+}): Promise<AiActionResult<string> & { threadId?: string }> {
+  let activeThreadId = args.threadId;
+  if (!activeThreadId) {
+    try {
+      const thread = await createChatThread("Check Typos & Grammar");
+      activeThreadId = thread.id;
+    } catch {}
+  }
+  if (activeThreadId) {
+    try {
+      await addChatMessage({
+        threadId: activeThreadId,
+        role: "user",
+        content: "Check typos & grammar suggestions",
+      });
+    } catch {}
+  }
+
+  const isSelection = Boolean(args.selectedText && args.selectedText.trim());
+  const userPrompt = `Please carefully check the following ${isSelection ? "selected text" : "note text"} for typos, spelling mistakes, punctuation errors, and grammatical slips.\n\n` +
+    `Structure your response with:\n` +
+    `1. 🔍 **Detected Typos & Suggestions**: A clear bulleted list showing what was wrong, the correction, and why (e.g. \`- **\`originaal\`** → **\`original\`**: Fixed spelling mistake\`). If no typos are found, state that the text is clean.\n\n` +
+    `2. ✏️ **Corrected Version**: Provide the complete revised text ready for review and direct replacement without altering original Markdown structure or meaning.`;
+
+  const res = await runAiChatPromptAction({
+    noteId: args.noteId,
+    noteTitle: args.noteTitle,
+    noteContent: args.noteContent,
+    selectedText: args.selectedText,
+    userPrompt,
+    threadId: activeThreadId,
+    enableGrounding: false,
+  });
+
+  if (!res.ok) {
+    return res;
+  }
+
+  return {
+    ...res,
+    transformType: "Typo & Grammar Check",
+  };
+}
+
+

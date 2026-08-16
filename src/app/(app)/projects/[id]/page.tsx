@@ -22,6 +22,7 @@ import { ProjectTitleEditor } from "@/components/projects/project-title-editor";
 import { NoteStatusBadge } from "@/components/notes/note-status-badge";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import { ProjectTaskNotesPanel } from "@/components/projects/project-task-notes-panel";
+import { ProjectContextSync } from "@/components/projects/project-context-sync";
 import { formatRelativeDate, formatDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +63,15 @@ export default async function ProjectDetailPage({
 
   return (
     <div className="flex h-full flex-col">
+      <ProjectContextSync
+        projectId={note.id}
+        title={note.title}
+        contentMd={note.contentMd}
+        status={note.status}
+        taskCount={taskNotes.length}
+        childNotesCount={referenceNotes.length}
+        subprojectsCount={childProjects.length}
+      />
       <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3 sm:px-4">
         <Button
           variant="ghost"

@@ -31,6 +31,10 @@ import {
   Folder,
   Search,
   ShieldCheck,
+  Target,
+  Lightbulb,
+  MessageSquarePlus,
+  SpellCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -79,6 +83,9 @@ import {
   generateMermaidAction,
   translateTextAction,
   explainTextAction,
+  createProjectPlanAction,
+  clarifyAndFindGapsAction,
+  checkTyposAction,
   getChatThreadMessagesAction,
   deleteChatThreadAction,
   searchContextItemsAction,
@@ -117,44 +124,46 @@ type Props = {
   onClose?: () => void;
 };
 
-const PRESET_PROMPTS = [
-  {
-    id: "gently-polish",
-    label: "Gently polish note",
-    icon: Wand2,
-    prompt: "Gently polish the text, refining sentence flow, phrasing, and clarity without changing meaning or formatting.",
-  },
-  {
-    id: "summarize",
-    label: "Summarize note",
-    icon: Sparkles,
-    prompt: "Summarize the key points of this note concisely.",
-  },
-  {
-    id: "extract-tasks",
-    label: "Extract tasks",
-    icon: ListChecks,
-    prompt: "Extract all actionable tasks and checklist items from this note into a clean task list.",
-  },
-  {
-    id: "mermaid",
-    label: "Generate diagram",
-    icon: GitGraph,
-    prompt: "Generate a Mermaid flowchart or diagram representing the core concept in this note.",
-  },
-  {
-    id: "translate",
-    label: "Translate to English",
-    icon: Languages,
-    prompt: "Translate the content or selection to clear English.",
-  },
-  {
-    id: "explain",
-    label: "Explain context",
-    icon: HelpCircle,
-    prompt: "Explain the concepts and background of this note in simple terms.",
-  },
-];
+type QuickAction = {
+  id: string;
+  label: string;
+  category: "context" | "project" | "writing" | "structure" | "clarify";
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  prompt: string;
+};
+
+function extractClarificationSuggestions(content: string): string[] {
+  if (!content) return [];
+  const suggestions: string[] = [];
+
+  // Match questions in "### ❓ Clarifications" section or list items
+  const clarificationMatch = content.match(
+    /###\s*❓?\s*Clarifications[^\n]*\n([\s\S]*?)(?=\n###|\n\n\n|$)/i,
+  );
+  if (clarificationMatch?.[1]) {
+    const lines = clarificationMatch[1].split("\n");
+    for (const line of lines) {
+      const clean = line.replace(/^[-*•\d.)\]\s]+/, "").trim();
+      if (clean && clean.length > 5 && clean.length < 100) {
+        suggestions.push(clean);
+      }
+    }
+  }
+
+  // Also check for bulleted bold items
+  if (suggestions.length === 0) {
+    const lines = content.split("\n");
+    for (const line of lines) {
+      const match = line.match(/^[-*•]\s+\*\*([^*?]+)\*\*\??/);
+      if (match?.[1] && match[1].length > 4 && match[1].length < 70) {
+        suggestions.push(match[1].trim());
+      }
+    }
+  }
+
+  return suggestions.slice(0, 4);
+}
 
 export function AiChatSidebar({
   noteId,
@@ -166,7 +175,8 @@ export function AiChatSidebar({
   const { pageContext } = usePageContext();
   const fallbackEditorRef = React.useRef<ReactCodeMirrorRef | null>(null);
 
-  const activeNoteId = noteId ?? pageContext.noteId ?? "";
+  const isProjectPage = pageContext.pageType === "project";
+  const activeNoteId = noteId ?? pageContext.noteId ?? pageContext.projectId ?? "";
   const activeNoteTitle = noteTitle ?? pageContext.pageTitle ?? "Workspace";
   const activeNoteContent = noteContent ?? pageContext.pageContent ?? "";
   const activeEditorRef = editorRef ?? pageContext.editorRef ?? fallbackEditorRef;
@@ -193,6 +203,7 @@ export function AiChatSidebar({
   const [attachedContexts, setAttachedContexts] = React.useState<AiContextItem[]>([]);
   const [contextPickerOpen, setContextPickerOpen] = React.useState(false);
   const [contextSearchQuery, setContextSearchQuery] = React.useState("");
+  const [contextFilterTab, setContextFilterTab] = React.useState<"all" | "note" | "project" | "vault">("all");
   const [contextSearchResults, setContextSearchResults] = React.useState<AiContextItem[]>([]);
   const [isSearchingContext, setIsSearchingContext] = React.useState(false);
 
@@ -220,6 +231,159 @@ export function AiChatSidebar({
     isGenerating,
   });
 
+  // Dynamic quick actions depending on context (Project vs Note vs Selection)
+  const quickActions = React.useMemo<QuickAction[]>(() => {
+    if (selectedText) {
+      return [
+        {
+          id: "check-typos",
+          label: "Check typos & suggestions",
+          category: "writing",
+          icon: SpellCheck,
+          description: "Detects typos, spelling errors & grammar suggestions",
+          prompt: "Carefully check the selected text for typos, spelling mistakes, punctuation errors, and grammar. Provide the corrected version and a bulleted list of detected typos with suggestions.",
+        },
+        {
+          id: "gently-polish",
+          label: "Gently polish selection",
+          category: "writing",
+          icon: Wand2,
+          description: "Refines wording & grammar without changing meaning",
+          prompt: "Gently polish the selected text, refining sentence flow, phrasing, and clarity without changing meaning.",
+        },
+        {
+          id: "explain",
+          label: "Explain selection",
+          category: "context",
+          icon: HelpCircle,
+          description: "Explains concepts in simple terms",
+          prompt: "Explain the concepts and background of the selected text in simple, clear terms.",
+        },
+        {
+          id: "extract-tasks",
+          label: "Extract tasks from selection",
+          category: "project",
+          icon: ListChecks,
+          description: "Converts selection into actionable checklists",
+          prompt: "Extract all actionable tasks and checklist items from the selected text into a clean task list.",
+        },
+        {
+          id: "translate",
+          label: "Translate selection to English",
+          category: "writing",
+          icon: Languages,
+          description: "Translates text cleanly",
+          prompt: "Translate the selected text into clear, fluent English.",
+        },
+      ];
+    }
+
+    if (isProjectPage) {
+      return [
+        {
+          id: "project-tasks",
+          label: "Break down into Project Tasks",
+          category: "project",
+          icon: ListChecks,
+          description: "Generates actionable tasks formatted for project boards",
+          prompt: "Break down this project into actionable, prioritized checklist items formatted as `- [ ] Task title: Description`.",
+        },
+        {
+          id: "project-plan",
+          label: "Draft Project Roadmap & Milestones",
+          category: "project",
+          icon: Target,
+          description: "Structures project goals, milestones, and deliverables",
+          prompt: "Draft a comprehensive project plan with milestones, deliverables, key risks, and immediate next steps.",
+        },
+        {
+          id: "check-typos",
+          label: "Check typos & suggestions",
+          category: "writing",
+          icon: SpellCheck,
+          description: "Identifies spelling errors and wording suggestions",
+          prompt: "Carefully check this project for typos, spelling mistakes, punctuation errors, and grammar. Provide the corrected version and a list of suggestions.",
+        },
+        {
+          id: "clarify-gaps",
+          label: "Analyze Project & Find Gaps",
+          category: "clarify",
+          icon: HelpCircle,
+          description: "Highlights missing requirements, risks & open questions",
+          prompt: "Analyze this project. Identify any ambiguities, missing scope details, risks, and ask clarifying questions to confirm.",
+        },
+        {
+          id: "mermaid",
+          label: "Generate Workflow Diagram",
+          category: "structure",
+          icon: GitGraph,
+          description: "Creates a Mermaid flowchart of the project workflow",
+          prompt: "Generate a Mermaid flowchart representing the lifecycle, stages, or architecture of this project.",
+        },
+      ];
+    }
+
+    // Default Note Quick Actions
+    return [
+      {
+        id: "check-typos",
+        label: "Check typos & suggestions",
+        category: "writing",
+        icon: SpellCheck,
+        description: "Finds spelling errors, typos & phrasing suggestions",
+        prompt: "Carefully check this note for typos, spelling mistakes, punctuation errors, and grammatical issues. Provide the corrected text and a list of corrections and suggestions.",
+      },
+      {
+        id: "gently-polish",
+        label: "Gently polish note",
+        category: "writing",
+        icon: Wand2,
+        description: "Improves clarity and structure gently",
+        prompt: "Gently polish the text, refining sentence flow, phrasing, and clarity without changing meaning or formatting.",
+      },
+      {
+        id: "summarize",
+        label: "Summarize key points",
+        category: "context",
+        icon: Sparkles,
+        description: "Concise overview and takeaways",
+        prompt: "Summarize the key points of this note concisely.",
+      },
+      {
+        id: "extract-tasks",
+        label: "Extract actionable tasks",
+        category: "project",
+        icon: ListChecks,
+        description: "Creates checklist of next actions",
+        prompt: "Extract all actionable tasks and checklist items from this note into a clean task list.",
+      },
+      {
+        id: "clarify-gaps",
+        label: "Ask clarifying questions & find gaps",
+        category: "clarify",
+        icon: HelpCircle,
+        description: "Pinpoints ambiguity, blind spots and missing details",
+        prompt: "Analyze this note for ambiguities, missing details, assumptions, and ask 2-3 specific clarifying questions to confirm.",
+      },
+      {
+        id: "mermaid",
+        label: "Generate concept diagram",
+        category: "structure",
+        icon: GitGraph,
+        description: "Visual Mermaid diagram of concepts",
+        prompt: "Generate a Mermaid flowchart or diagram representing the core concept in this note.",
+      },
+      {
+        id: "project-plan",
+        label: "Convert to project roadmap",
+        category: "project",
+        icon: Target,
+        description: "Turns concepts into structured milestones",
+        prompt: "Turn this note's goals and concepts into a structured project plan with milestones and next steps.",
+      },
+    ];
+  }, [selectedText, isProjectPage]);
+
   // Search context items on query change or when picker opens
   React.useEffect(() => {
     if (!contextPickerOpen) return;
@@ -243,6 +407,12 @@ export function AiChatSidebar({
       clearTimeout(debounce);
     };
   }, [contextPickerOpen, contextSearchQuery]);
+
+  // Filtered context search results
+  const filteredSearchResults = React.useMemo(() => {
+    if (contextFilterTab === "all") return contextSearchResults;
+    return contextSearchResults.filter((item) => item.type === contextFilterTab);
+  }, [contextSearchResults, contextFilterTab]);
 
   // Load thread messages when activeThreadId changes
   const handleSelectThread = React.useCallback(async (threadId: string) => {
@@ -367,7 +537,25 @@ export function AiChatSidebar({
         let uncertaintyNote: string | undefined;
         let returnedThreadId: string | undefined;
 
-        if (presetId === "gently-polish") {
+        if (presetId === "check-typos") {
+          const res = await checkTyposAction({
+            noteId: activeNoteId,
+            noteTitle: activeNoteTitle,
+            noteContent: activeNoteContent,
+            selectedText: currentSelection ?? undefined,
+            threadId: activeThreadId ?? undefined,
+          });
+          returnedThreadId = res.threadId;
+          if (res.ok) {
+            isSuccess = true;
+            resultOutput = res.output;
+            citations = res.citations;
+            transformType = "Typo & Grammar Check";
+            uncertaintyNote = res.uncertaintyNote;
+          } else {
+            errorMessage = res.error;
+          }
+        } else if (presetId === "gently-polish") {
           const res = await gentlyEditNoteAction({
             noteId: activeNoteId,
             noteTitle: activeNoteTitle,
@@ -419,7 +607,7 @@ export function AiChatSidebar({
           } else {
             errorMessage = res.error;
           }
-        } else if (presetId === "extract-tasks") {
+        } else if (presetId === "extract-tasks" || presetId === "project-tasks") {
           const res = await extractTasksAction({
             noteId: activeNoteId,
             noteTitle: activeNoteTitle,
@@ -434,7 +622,40 @@ export function AiChatSidebar({
               .map((t) => `- [ ] ${t.title}${t.description ? `: ${t.description}` : ""}`)
               .join("\n");
             citations = res.citations;
-            transformType = "Task Extraction";
+            transformType = "Project Tasks";
+          } else {
+            errorMessage = res.error;
+          }
+        } else if (presetId === "project-plan") {
+          const res = await createProjectPlanAction({
+            noteId: activeNoteId,
+            noteTitle: activeNoteTitle,
+            noteContent: activeNoteContent,
+            threadId: activeThreadId ?? undefined,
+          });
+          returnedThreadId = res.threadId;
+          if (res.ok) {
+            isSuccess = true;
+            resultOutput = res.output;
+            citations = res.citations;
+            transformType = "Project Roadmap";
+          } else {
+            errorMessage = res.error;
+          }
+        } else if (presetId === "clarify-gaps") {
+          const res = await clarifyAndFindGapsAction({
+            noteId: activeNoteId,
+            noteTitle: activeNoteTitle,
+            noteContent: activeNoteContent,
+            selectedText: currentSelection ?? undefined,
+            threadId: activeThreadId ?? undefined,
+          });
+          returnedThreadId = res.threadId;
+          if (res.ok) {
+            isSuccess = true;
+            resultOutput = res.output;
+            citations = res.citations;
+            transformType = "Clarification & Gap Analysis";
           } else {
             errorMessage = res.error;
           }
@@ -645,36 +866,94 @@ export function AiChatSidebar({
     }
   };
 
+  const handleSuggestionClick = (suggestion: string) => {
+    setInput(suggestion);
+    textareaRef.current?.focus();
+  };
+
   return (
     <div
       className="flex h-full min-h-0 flex-col bg-background"
       onKeyDown={handleKeyDown}
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex size-7 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500">
+      <div className="flex items-center justify-between border-b px-3.5 py-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex size-7 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500 shrink-0">
             <Sparkles className="size-4" />
           </div>
-          <div>
-            <h2 className="text-sm font-semibold leading-none">AI Assistant</h2>
-            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
-                <FileCode2 className="size-3 text-muted-foreground" />
-                {selectedText ? "Selected text context" : "Full note context"}
-              </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-xs font-semibold leading-none truncate text-foreground">AI Assistant</h2>
+              {isProjectPage && (
+                <Badge variant="outline" className="text-[9px] px-1 py-0 border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400 font-normal">
+                  Project
+                </Badge>
+              )}
+            </div>
+            <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground truncate">
+              {selectedText ? (
+                <span className="inline-flex items-center gap-1 text-violet-600 dark:text-violet-400 font-medium">
+                  <FileCode2 className="size-2.5" />
+                  Selected text context
+                </span>
+              ) : isProjectPage ? (
+                <span className="truncate">
+                  {activeNoteTitle}
+                </span>
+              ) : (
+                <span className="truncate">
+                  {activeNoteTitle || "Workspace context"}
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 shrink-0">
+          {/* Quick Actions Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="inline-flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+              title="Quick Actions"
+            >
+              <Lightbulb className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 text-xs">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span>Quick Actions</span>
+                {isProjectPage && (
+                  <span className="text-[10px] font-normal text-blue-500">Project mode</span>
+                )}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {quickActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <DropdownMenuItem
+                    key={action.id}
+                    onClick={() => void handleSendPrompt(action.prompt, action.id)}
+                    className="gap-2 text-xs cursor-pointer py-1.5"
+                  >
+                    <Icon className="size-3.5 text-violet-500 shrink-0" />
+                    <div className="truncate">
+                      <p className="font-medium text-foreground truncate">{action.label}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{action.description}</p>
+                    </div>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             variant="ghost"
             size="icon-sm"
             onClick={handleNewChat}
             title="Start new chat"
+            className="size-7"
           >
-            <Plus className="size-4 text-muted-foreground" />
+            <Plus className="size-3.5 text-muted-foreground" />
           </Button>
 
           <Button
@@ -682,8 +961,9 @@ export function AiChatSidebar({
             size="icon-sm"
             onClick={() => setHistoryOpen(true)}
             title="View chat history"
+            className="size-7"
           >
-            <History className="size-4 text-muted-foreground" />
+            <History className="size-3.5 text-muted-foreground" />
           </Button>
 
           {messages.length > 0 && (
@@ -692,53 +972,83 @@ export function AiChatSidebar({
               size="icon-sm"
               onClick={() => void handleDeleteCurrentThread()}
               title="Clear / delete chat thread"
+              className="size-7"
             >
               <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
             </Button>
           )}
 
           {onClose && (
-            <Button variant="ghost" size="icon-sm" onClick={onClose} title="Close AI Assistant">
-              <X className="size-4" />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onClose}
+              title="Close AI Assistant"
+              className="size-7"
+            >
+              <X className="size-3.5" />
             </Button>
           )}
         </div>
       </div>
 
-      {/* Message History */}
+      {/* Message History Area */}
       <div className="relative flex-1 min-h-0">
-        <ScrollArea ref={containerRef} className="h-full px-4 py-3">
+        <ScrollArea ref={containerRef} className="h-full px-3.5 py-3">
           {isLoadingMessages ? (
             <div className="flex flex-col items-center justify-center py-10 text-xs text-muted-foreground gap-2">
               <Loader2 className="size-4 animate-spin text-violet-500" />
               <span>Loading conversation...</span>
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6 text-center">
-              <div className="flex size-10 items-center justify-center rounded-full bg-violet-500/10 text-violet-500">
+            <div className="flex flex-col items-center justify-center py-4 text-center">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-500/10 text-violet-500 shadow-xs ring-1 ring-violet-500/20">
                 <Sparkles className="size-5" />
               </div>
-              <h3 className="mt-3 text-sm font-medium text-foreground">How can I help with this note?</h3>
-              <p className="mt-1 max-w-[240px] text-xs text-muted-foreground">
-                Ask questions across your workspace, replace or add text, or choose a quick preset action below.
+              <h3 className="mt-3 text-xs font-semibold text-foreground">
+                {isProjectPage
+                  ? "How can I help with this project?"
+                  : selectedText
+                    ? "Working with selected text"
+                    : "How can I assist your thinking?"}
+              </h3>
+              <p className="mt-1 max-w-[260px] text-[11px] text-muted-foreground leading-relaxed">
+                {isProjectPage
+                  ? "Generate roadmaps, break down tasks, find missing requirements, or ask workspace questions."
+                  : "Gently polish writing, generate diagrams, extract tasks, or ask clarifying questions."}
               </p>
 
-              <div className="mt-5 w-full space-y-1.5">
-                <p className="text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-                  Quick Actions
-                </p>
+              {/* Quick Action Cards in Empty State */}
+              <div className="mt-4 w-full space-y-1.5">
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Recommended Actions
+                  </p>
+                  <span className="text-[10px] text-muted-foreground/60">
+                    {isProjectPage ? "Project context" : "Note context"}
+                  </span>
+                </div>
                 <div className="grid grid-cols-1 gap-1.5">
-                  {PRESET_PROMPTS.map((preset) => {
-                    const Icon = preset.icon;
+                  {quickActions.map((action) => {
+                    const Icon = action.icon;
                     return (
                       <button
-                        key={preset.id}
+                        key={action.id}
                         type="button"
-                        onClick={() => handleSendPrompt(preset.prompt, preset.id)}
-                        className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-left text-xs font-medium text-foreground transition-colors hover:border-foreground/20 hover:bg-muted/50"
+                        onClick={() => void handleSendPrompt(action.prompt, action.id)}
+                        className="group flex items-start gap-2.5 rounded-xl border border-border/70 bg-card/60 p-2.5 text-left transition-all hover:border-violet-500/40 hover:bg-violet-500/5 hover:shadow-xs cursor-pointer"
                       >
-                        <Icon className="size-3.5 text-violet-500 shrink-0" />
-                        <span className="truncate">{preset.label}</span>
+                        <div className="mt-0.5 flex size-6 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500 shrink-0 group-hover:bg-violet-500 group-hover:text-white transition-colors">
+                          <Icon className="size-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-foreground leading-tight">
+                            {action.label}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground leading-tight mt-0.5 line-clamp-1">
+                            {action.description}
+                          </p>
+                        </div>
                       </button>
                     );
                   })}
@@ -746,154 +1056,171 @@ export function AiChatSidebar({
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={cn(
-                    "flex flex-col gap-1.5 text-xs",
-                    msg.role === "user" ? "items-end" : "items-start",
-                  )}
-                >
-                  <span className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider">
-                    {msg.role === "user" ? "You" : "AI Assistant"}
-                  </span>
+            <div className="space-y-3.5 pb-2">
+              {messages.map((msg) => {
+                const clarificationSuggestions =
+                  msg.role === "assistant" && !msg.isError
+                    ? extractClarificationSuggestions(msg.content)
+                    : [];
 
+                return (
                   <div
+                    key={msg.id}
                     className={cn(
-                      "rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed max-w-[95%]",
-                      msg.role === "user"
-                        ? "bg-primary text-primary-foreground rounded-tr-xs"
-                        : msg.isError
-                          ? "bg-destructive/10 border border-destructive/20 text-destructive rounded-tl-xs"
-                          : "bg-muted/40 border border-border/60 text-foreground rounded-tl-xs w-full",
+                      "flex flex-col gap-1 text-xs",
+                      msg.role === "user" ? "items-end" : "items-start",
                     )}
                   >
-                    {msg.role === "user" ? (
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
-                    ) : msg.isError ? (
-                      <p>{msg.content}</p>
-                    ) : (
-                      <div className="space-y-2.5">
-                        {/* Citations from workspace */}
-                        {msg.citations && msg.citations.length > 0 && (
-                          <AiCitationList
-                            citations={msg.citations}
-                            transformType={msg.transformType}
-                            uncertaintyNote={msg.uncertaintyNote}
-                          />
-                        )}
+                    <span className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider px-1">
+                      {msg.role === "user" ? "You" : "AI Assistant"}
+                    </span>
 
-                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                          <MarkdownPreview content={msg.content} />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Complete 3-Way Action Bar (Replace / Add / Gently Edit) */}
-                    {msg.role === "assistant" && !msg.isError && (
-                      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-2.5">
-                        {/* Gently Edit / Diff Review */}
-                        <Button
-                          variant="secondary"
-                          size="xs"
-                          onClick={() => handleOpenDiffReview(msg)}
-                          className="h-6.5 gap-1 rounded-lg px-2 text-[11px] font-medium text-violet-700 bg-violet-500/10 hover:bg-violet-500/20 dark:text-violet-300"
-                          title="Review diff and gently apply edits"
-                        >
-                          <Split className="size-3" />
-                          Gently Edit
-                        </Button>
-
-                        {/* Replace Dropdown */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="xs"
-                                className="h-6.5 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                              />
-                            }
-                          >
-                            <Replace className="size-3" />
-                            Replace
-                            <ChevronDown className="size-2.5 opacity-60" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="w-44 text-xs">
-                            <DropdownMenuLabel>Replace options</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {selectedText && (
-                              <DropdownMenuItem onClick={() => handleReplaceSelection(msg.content)}>
-                                <Replace className="size-3.5 mr-1.5" />
-                                Replace selection
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem onClick={() => handleReplaceEntireNote(msg.content)}>
-                              <FileText className="size-3.5 mr-1.5" />
-                              Replace entire note
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        {/* Add Dropdown */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="xs"
-                                className="h-6.5 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                              />
-                            }
-                          >
-                            <Plus className="size-3" />
-                            Add
-                            <ChevronDown className="size-2.5 opacity-60" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="w-44 text-xs">
-                            <DropdownMenuLabel>Add options</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleInsertAtCursor(msg.content)}>
-                              <Plus className="size-3.5 mr-1.5" />
-                              Insert at cursor
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleAppendToNote(msg.content)}>
-                              <ArrowDown className="size-3.5 mr-1.5" />
-                              Append to bottom
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handlePrependToNote(msg.content)}>
-                              <ArrowUp className="size-3.5 mr-1.5" />
-                              Prepend to top
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        {/* Copy */}
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => handleCopy(msg.id, msg.content)}
-                          className="ml-auto h-6.5 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                          title="Copy to clipboard"
-                        >
-                          {copiedId === msg.id ? (
-                            <Check className="size-3 text-emerald-500" />
-                          ) : (
-                            <Copy className="size-3" />
+                    <div
+                      className={cn(
+                        "rounded-2xl px-3 py-2.5 text-xs leading-relaxed max-w-[96%]",
+                        msg.role === "user"
+                          ? "bg-primary text-primary-foreground rounded-tr-xs shadow-xs"
+                          : msg.isError
+                            ? "bg-destructive/10 border border-destructive/20 text-destructive rounded-tl-xs"
+                            : "bg-muted/30 border border-border/70 text-foreground rounded-tl-xs w-full shadow-xs",
+                      )}
+                    >
+                      {msg.role === "user" ? (
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                      ) : msg.isError ? (
+                        <p>{msg.content}</p>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {/* Refined Citations */}
+                          {msg.citations && msg.citations.length > 0 && (
+                            <AiCitationList
+                              citations={msg.citations}
+                              transformType={msg.transformType}
+                              uncertaintyNote={msg.uncertaintyNote}
+                            />
                           )}
-                          {copiedId === msg.id ? "Copied" : "Copy"}
-                        </Button>
-                      </div>
-                    )}
+
+                          <div className="prose prose-xs dark:prose-invert max-w-none text-foreground leading-relaxed font-sans">
+                            <MarkdownPreview content={msg.content} />
+                          </div>
+
+                          {/* Interactive Clarification Suggestion Chips */}
+                          {clarificationSuggestions.length > 0 && (
+                            <div className="mt-2.5 rounded-xl border border-amber-500/25 bg-amber-500/5 p-2.5 space-y-1.5">
+                              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                                <HelpCircle className="size-3 shrink-0" />
+                                <span>Suggested Clarification Replies:</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {clarificationSuggestions.map((suggestion, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => handleSuggestionClick(suggestion)}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-background/80 px-2 py-1 text-[10px] font-medium text-foreground hover:bg-amber-500/10 hover:border-amber-500 transition-all text-left cursor-pointer"
+                                  >
+                                    <MessageSquarePlus className="size-2.5 text-amber-500 shrink-0" />
+                                    <span className="truncate max-w-[200px]">{suggestion}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Action Bar (Gently Edit / Replace / Add / Copy) */}
+                      {msg.role === "assistant" && !msg.isError && (
+                        <div className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-border/40 pt-2">
+                          <Button
+                            variant="secondary"
+                            size="xs"
+                            onClick={() => handleOpenDiffReview(msg)}
+                            className="h-6 gap-1 rounded-lg px-2 text-[10px] font-medium text-violet-700 bg-violet-500/10 hover:bg-violet-500/20 dark:text-violet-300"
+                            title="Review diff and gently apply edits"
+                          >
+                            <Split className="size-2.5" />
+                            Gently Edit
+                          </Button>
+
+                          {/* Replace Dropdown */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              className="inline-flex items-center h-6 gap-1 px-2 text-[10px] text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
+                            >
+                              <Replace className="size-2.5" />
+                              Replace
+                              <ChevronDown className="size-2 opacity-60" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-44 text-xs">
+                              <DropdownMenuLabel>Replace options</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {selectedText && (
+                                <DropdownMenuItem onClick={() => handleReplaceSelection(msg.content)}>
+                                  <Replace className="size-3.5 mr-1.5" />
+                                  Replace selection
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => handleReplaceEntireNote(msg.content)}>
+                                <FileText className="size-3.5 mr-1.5" />
+                                Replace entire note
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
+                          {/* Add Dropdown */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              className="inline-flex items-center h-6 gap-1 px-2 text-[10px] text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
+                            >
+                              <Plus className="size-2.5" />
+                              Add
+                              <ChevronDown className="size-2 opacity-60" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-44 text-xs">
+                              <DropdownMenuLabel>Add options</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleInsertAtCursor(msg.content)}>
+                                <Plus className="size-3.5 mr-1.5" />
+                                Insert at cursor
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleAppendToNote(msg.content)}>
+                                <ArrowDown className="size-3.5 mr-1.5" />
+                                Append to bottom
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handlePrependToNote(msg.content)}>
+                                <ArrowUp className="size-3.5 mr-1.5" />
+                                Prepend to top
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
+                          {/* Copy Button */}
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => handleCopy(msg.id, msg.content)}
+                            className="ml-auto h-6 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+                            title="Copy to clipboard"
+                          >
+                            {copiedId === msg.id ? (
+                              <Check className="size-2.5 text-emerald-500" />
+                            ) : (
+                              <Copy className="size-2.5" />
+                            )}
+                            {copiedId === msg.id ? "Copied" : "Copy"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {isGenerating && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="size-3.5 animate-spin text-violet-500" />
-                  <span>Generating response with workspace context...</span>
+                <div className="flex items-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/5 p-2.5 text-xs text-muted-foreground">
+                  <Loader2 className="size-3.5 animate-spin text-violet-500 shrink-0" />
+                  <span className="text-[11px]">Reasoning with workspace context...</span>
                 </div>
               )}
             </div>
@@ -907,17 +1234,27 @@ export function AiChatSidebar({
         />
       </div>
 
-      {/* Context Tags Bar */}
+      {/* Refined Context Tags Bar */}
       {(isPageContextAttached || attachedContexts.length > 0) && (
-        <div className="flex flex-wrap items-center gap-1.5 px-3 py-1.5 border-t bg-muted/20">
+        <div className="flex flex-wrap items-center gap-1.5 px-3 py-1.5 border-t bg-muted/25">
           {isPageContextAttached && activeNoteTitle && (
             <Badge
               variant="outline"
-              className="gap-1 pr-1 text-[11px] font-normal transition-colors bg-violet-500/10 border-violet-500/30 text-violet-600 dark:text-violet-400"
+              className={cn(
+                "gap-1 pr-1 text-[10px] font-normal transition-all shadow-2xs",
+                isProjectPage
+                  ? "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400"
+                  : "bg-violet-500/10 border-violet-500/30 text-violet-700 dark:text-violet-400",
+              )}
             >
-              <FileText className="size-3 shrink-0" />
+              {isProjectPage ? (
+                <Folder className="size-2.5 shrink-0 text-blue-500" />
+              ) : (
+                <FileText className="size-2.5 shrink-0 text-violet-500" />
+              )}
               <span className="max-w-[130px] truncate">
-                Page: {activeNoteTitle}
+                {isProjectPage ? "Project: " : "Page: "}
+                {activeNoteTitle}
               </span>
               <button
                 type="button"
@@ -925,7 +1262,7 @@ export function AiChatSidebar({
                   setIsPageContextAttached(false);
                   toast.info("Current page context detached");
                 }}
-                className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 cursor-pointer"
                 title="Detach current page context"
               >
                 <X className="size-2.5" />
@@ -938,26 +1275,26 @@ export function AiChatSidebar({
               key={ctx.id}
               variant="outline"
               className={cn(
-                "gap-1 pr-1 text-[11px] font-normal transition-colors",
+                "gap-1 pr-1 text-[10px] font-normal transition-all shadow-2xs",
                 ctx.type === "vault"
-                  ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
+                  ? "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
                   : ctx.type === "project"
-                    ? "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400"
-                    : "bg-violet-500/10 border-violet-500/30 text-violet-600 dark:text-violet-400",
+                    ? "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400"
+                    : "bg-violet-500/10 border-violet-500/30 text-violet-700 dark:text-violet-400",
               )}
             >
               {ctx.type === "vault" ? (
-                <Lock className="size-3 shrink-0" />
+                <Lock className="size-2.5 shrink-0 text-amber-500" />
               ) : ctx.type === "project" ? (
-                <Folder className="size-3 shrink-0" />
+                <Folder className="size-2.5 shrink-0 text-blue-500" />
               ) : (
-                <FileText className="size-3 shrink-0" />
+                <FileText className="size-2.5 shrink-0 text-violet-500" />
               )}
               <span className="max-w-[120px] truncate">{ctx.title}</span>
               <button
                 type="button"
                 onClick={() => handleRemoveContextItem(ctx.id)}
-                className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 cursor-pointer"
                 title="Remove context"
               >
                 <X className="size-2.5" />
@@ -968,8 +1305,8 @@ export function AiChatSidebar({
       )}
 
       {/* Input Area */}
-      <div className="border-t p-3 bg-background">
-        <div className="relative flex flex-col rounded-2xl border border-border/70 bg-muted/20 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
+      <div className="border-t p-2.5 bg-background">
+        <div className="relative flex flex-col rounded-2xl border border-border/70 bg-muted/20 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring transition-all shadow-xs">
           <Textarea
             ref={textareaRef}
             value={input}
@@ -991,22 +1328,28 @@ export function AiChatSidebar({
             }}
             placeholder={
               selectedText
-                ? "Ask AI or instruct how to edit selected text..."
-                : "Ask AI or type @ to reference notes, projects, files, or vault... (Enter to send)"
+                ? "Instruct AI on selected text or ask questions..."
+                : isProjectPage
+                  ? "Ask AI, break down tasks, or type @ to reference workspace context..."
+                  : "Ask AI, clarify notes, or type @ to reference items... (Enter to send)"
             }
-            className="min-h-[64px] max-h-[160px] resize-none border-0 bg-transparent px-3 py-2.5 text-xs shadow-none focus-visible:ring-0"
+            className="min-h-[58px] max-h-[150px] resize-none border-0 bg-transparent px-3 py-2 text-xs shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/70"
           />
-          <div className="flex items-center justify-between px-2.5 pb-2">
+
+          <div className="flex items-center justify-between px-2 pb-2">
             <div className="flex items-center gap-1">
+              {/* Categorized Context Picker Popover */}
               <Popover open={contextPickerOpen} onOpenChange={setContextPickerOpen}>
                 <PopoverTrigger
-                  className="inline-flex items-center h-6 gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
-                  title="Attach reference context (@notes, @projects, @vault)"
+                  className="inline-flex items-center h-6 gap-1 px-2 text-[10px] font-medium text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
+                  title="Attach workspace context (@notes, @projects, @vault)"
                 >
                   <AtSign className="size-3 text-violet-500" />
-                  Attach Context
+                  <span>Attach</span>
                 </PopoverTrigger>
-                <PopoverContent side="top" align="start" className="w-[280px] p-2 space-y-2">
+
+                <PopoverContent side="top" align="start" className="w-[300px] p-2 space-y-2 text-xs shadow-lg">
+                  {/* Re-attach current page context button if detached */}
                   {!isPageContextAttached && activeNoteTitle && (
                     <button
                       type="button"
@@ -1015,41 +1358,71 @@ export function AiChatSidebar({
                         setContextPickerOpen(false);
                         toast.success(`Re-attached current page "${activeNoteTitle}"`);
                       }}
-                      className="flex w-full items-center gap-2 rounded-lg border border-violet-500/20 bg-violet-500/10 p-2 text-left text-xs font-medium text-violet-600 dark:text-violet-400 transition-colors hover:bg-violet-500/20"
+                      className="flex w-full items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/10 p-2 text-left text-xs font-medium text-violet-600 dark:text-violet-400 transition-colors hover:bg-violet-500/20 cursor-pointer"
                     >
                       <Plus className="size-3.5 shrink-0 text-violet-500" />
-                      <span className="truncate">Attach page: {activeNoteTitle}</span>
+                      <span className="truncate">Re-attach: {activeNoteTitle}</span>
                     </button>
                   )}
 
-                  <div className="flex items-center gap-2 border-b pb-2 px-1">
-                    <Search className="size-3.5 text-muted-foreground shrink-0" />
+                  {/* Filter Tabs */}
+                  <div className="flex items-center gap-1 border-b pb-1.5">
+                    {(["all", "note", "project", "vault"] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => setContextFilterTab(tab)}
+                        className={cn(
+                          "rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors capitalize cursor-pointer",
+                          contextFilterTab === tab
+                            ? "bg-violet-500/15 text-violet-700 dark:text-violet-300 font-semibold"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
+                      >
+                        {tab === "all" ? "All Items" : `${tab}s`}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Search Input */}
+                  <div className="flex items-center gap-2 border-b pb-1.5 px-1">
+                    <Search className="size-3 text-muted-foreground shrink-0" />
                     <Input
                       value={contextSearchQuery}
                       onChange={(e) => setContextSearchQuery(e.target.value)}
-                      placeholder="Search notes, projects, vault..."
-                      className="h-7 text-xs border-0 focus-visible:ring-0 p-0"
+                      placeholder="Search workspace..."
+                      className="h-6 text-xs border-0 focus-visible:ring-0 p-0"
                     />
+                    {contextSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setContextSearchQuery("")}
+                        className="text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    )}
                   </div>
 
-                  <ScrollArea className="max-h-[180px] pr-1">
+                  {/* Context Items List */}
+                  <ScrollArea className="max-h-[190px] pr-1">
                     {isSearchingContext ? (
                       <div className="flex items-center justify-center py-4 text-xs text-muted-foreground gap-1.5">
                         <Loader2 className="size-3.5 animate-spin text-violet-500" />
-                        <span>Searching...</span>
+                        <span>Searching workspace...</span>
                       </div>
-                    ) : contextSearchResults.length === 0 ? (
+                    ) : filteredSearchResults.length === 0 ? (
                       <div className="py-4 text-center text-xs text-muted-foreground">
-                        No notes, projects, or vault items found
+                        No matching items found
                       </div>
                     ) : (
                       <div className="space-y-1">
-                        {contextSearchResults.map((item) => (
+                        {filteredSearchResults.map((item) => (
                           <button
                             key={item.id}
                             type="button"
                             onClick={() => handleSelectContextItem(item)}
-                            className="flex w-full items-center justify-between rounded-lg p-2 text-left text-xs transition-colors hover:bg-muted/70 cursor-pointer"
+                            className="flex w-full items-center justify-between rounded-lg p-1.5 text-left text-xs transition-colors hover:bg-muted/70 cursor-pointer group"
                           >
                             <div className="flex items-center gap-2 min-w-0 pr-2">
                               {item.type === "vault" ? (
@@ -1059,16 +1432,16 @@ export function AiChatSidebar({
                               ) : (
                                 <FileText className="size-3.5 text-violet-500 shrink-0" />
                               )}
-                              <div className="truncate">
+                              <div className="truncate min-w-0">
                                 <p className="truncate text-xs font-medium text-foreground">
                                   {item.title}
                                 </p>
-                                <p className="text-[10px] text-muted-foreground">
-                                  {item.subtitle}
+                                <p className="text-[10px] text-muted-foreground truncate">
+                                  {item.subtitle || item.type}
                                 </p>
                               </div>
                             </div>
-                            <Plus className="size-3 text-muted-foreground shrink-0" />
+                            <Plus className="size-3 text-muted-foreground/60 group-hover:text-foreground shrink-0" />
                           </button>
                         ))}
                       </div>
@@ -1077,7 +1450,7 @@ export function AiChatSidebar({
                 </PopoverContent>
               </Popover>
 
-              <span className="text-[10px] text-muted-foreground/60 hidden sm:inline">
+              <span className="text-[10px] text-muted-foreground/50 hidden sm:inline">
                 Shift+Enter for newline
               </span>
             </div>
@@ -1086,12 +1459,12 @@ export function AiChatSidebar({
               size="icon-sm"
               disabled={!input.trim() || isGenerating}
               onClick={() => void handleSendPrompt()}
-              className="size-7 rounded-xl bg-primary text-primary-foreground shadow-xs"
+              className="size-6.5 rounded-xl bg-primary text-primary-foreground shadow-xs transition-transform active:scale-95"
             >
               {isGenerating ? (
-                <Loader2 className="size-3.5 animate-spin" />
+                <Loader2 className="size-3 animate-spin" />
               ) : (
-                <Send className="size-3.5" />
+                <Send className="size-3" />
               )}
             </Button>
           </div>

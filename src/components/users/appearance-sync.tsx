@@ -4,8 +4,25 @@ import * as React from "react";
 import { useTheme } from "next-themes";
 
 export type AppearanceTheme = "system" | "light" | "dark";
-export type AppearancePalette = "paper" | "forest" | "violet";
-export type AppearanceFont = "sans" | "serif" | "mono" | "persian";
+export type AppearancePalette =
+  | "paper"
+  | "forest"
+  | "violet"
+  | "amber"
+  | "nord"
+  | "rose"
+  | "terracotta"
+  | "midnight";
+export type AppearanceFont =
+  | "sans"
+  | "serif"
+  | "mono"
+  | "persian"
+  | "slab"
+  | "typewriter"
+  | "grotesk"
+  | "baskerville"
+  | "persian-serif";
 
 export function applyAppearance({ palette, font }: { palette: AppearancePalette; font: AppearanceFont }) {
   const root = document.documentElement;

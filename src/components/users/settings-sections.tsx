@@ -127,6 +127,46 @@ export function AppearanceSection({
       borderClass: "border-purple-700/20",
       accentClass: "bg-purple-600 dark:bg-purple-400",
     },
+    {
+      id: "amber",
+      name: "Amber",
+      desc: "Warm parchment & honey",
+      bgClass: "bg-[#fcf9f2] dark:bg-[#1f1b15]",
+      borderClass: "border-amber-700/20",
+      accentClass: "bg-amber-600 dark:bg-amber-400",
+    },
+    {
+      id: "nord",
+      name: "Nord",
+      desc: "Arctic frost & slate",
+      bgClass: "bg-[#f4f7f9] dark:bg-[#151c24]",
+      borderClass: "border-sky-700/20",
+      accentClass: "bg-sky-600 dark:bg-sky-400",
+    },
+    {
+      id: "rose",
+      name: "Rose",
+      desc: "Earthy blush & crimson",
+      bgClass: "bg-[#fcf6f7] dark:bg-[#221719]",
+      borderClass: "border-rose-700/20",
+      accentClass: "bg-rose-600 dark:bg-rose-400",
+    },
+    {
+      id: "terracotta",
+      name: "Terracotta",
+      desc: "Sun-baked clay & copper",
+      bgClass: "bg-[#faf6f2] dark:bg-[#201915]",
+      borderClass: "border-orange-700/20",
+      accentClass: "bg-orange-600 dark:bg-orange-400",
+    },
+    {
+      id: "midnight",
+      name: "Midnight",
+      desc: "Tokyo dusk & neon indigo",
+      bgClass: "bg-[#f6f6fc] dark:bg-[#11111e]",
+      borderClass: "border-indigo-700/20",
+      accentClass: "bg-indigo-600 dark:bg-indigo-400",
+    },
   ];
 
   const themes: { id: AppearanceTheme; label: string; icon: React.ReactNode }[] = [
@@ -186,7 +226,7 @@ export function AppearanceSection({
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Color Palette
           </Label>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {palettes.map((p) => {
               const active = selectedPalette === p.id;
               return (
@@ -240,6 +280,11 @@ export function AppearanceSection({
                 <SelectItem value="serif">Editorial Serif (Classic literary feel)</SelectItem>
                 <SelectItem value="mono">Code Mono (Technical & markdown focus)</SelectItem>
                 <SelectItem value="persian">Persian / RTL (Vazirmatn tuned)</SelectItem>
+                <SelectItem value="slab">Humanist Slab (Robust long-form reading)</SelectItem>
+                <SelectItem value="typewriter">Classic Typewriter (Mechanical nostalgia)</SelectItem>
+                <SelectItem value="grotesk">Modern Grotesk (Punchy geometric styling)</SelectItem>
+                <SelectItem value="baskerville">Academic Classic (Traditional publishing)</SelectItem>
+                <SelectItem value="persian-serif">Persian Traditional (Classic literary typography)</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -11,7 +11,7 @@ patterns before introducing a new color, shadow, radius, or transition.
 | Concern | Standard |
 | --- | --- |
 | Color | `background`, `foreground`, `card`, `muted`, `border`, `primary`, `destructive`, plus `success` and `warning` for feedback. All have light and dark values. |
-| Typography | Geist for interface text, Geist Mono for labels/metadata, Lora for editorial emphasis, and Vazirmatn fallback for RTL content. Users may select the bundled clean sans, editorial serif, or Persian-friendly writing font without changing type scale or spacing. |
+| Typography | Geist for interface text, Geist Mono for labels/metadata, Lora for editorial emphasis, and Vazirmatn fallback for RTL content. Users may select from 9 typography presets (Clean Sans, Editorial Serif, Code Mono, Persian/RTL, Humanist Slab, Classic Typewriter, Modern Grotesk, Academic Classic, and Persian Traditional) without changing type scale or spacing. |
 | Shape and elevation | Controls use the UI primitive radius; durable surfaces use `rounded-2xl` with the restrained `surface-card` shadow. |
 | Spacing | Routes use `app-page` or `app-page-wide`; cards use their primitive spacing or a `p-4`/`p-5` interior. |
 | Motion | Interaction transitions are short and limited to color, shadow, and small transforms. Every new motion treatment must honor `prefers-reduced-motion`. |
@@ -40,9 +40,10 @@ theme.
 
 ## Appearance choices
 
-Settings offers system/light/dark mode and the Paper, Forest, and Violet
-palettes. Palette overrides remain semantic-token based, so controls, focus
-states, editor/preview surfaces, and marketing routes retain their contrast
+Settings offers system/light/dark mode and 8 curated palettes: Paper, Forest,
+Violet, Amber (Sepia), Nord (Arctic), Rose (Crimson), Terracotta, and Midnight.
+Palette overrides remain semantic-token based, so controls, focus states,
+editor/preview surfaces, and marketing routes retain their contrast
 relationships. The preference is stored with the authenticated user's settings;
 the top-bar theme menu updates the same preference.
 
