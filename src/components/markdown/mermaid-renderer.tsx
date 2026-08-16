@@ -19,7 +19,6 @@ mermaid.initialize({
   theme: "default",
 });
 
-let idCounter = 0;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2.5;
 const ZOOM_STEP = 0.25;
@@ -28,24 +27,35 @@ type Props = {
   code: string;
 };
 
+import { mermaidCache } from "@/lib/document-engine/mermaid-cache";
+
 export function MermaidRenderer({ code }: Props) {
-  const [svg, setSvg] = React.useState<string | null>(null);
+  const [svg, setSvg] = React.useState<string | null>(() => mermaidCache.getSynchronous(code));
   const [error, setError] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(() => !mermaidCache.getSynchronous(code));
   const [zoom, setZoom] = React.useState(1);
   const [fullscreenOpen, setFullscreenOpen] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
-    const id = `mermaid-${++idCounter}`;
 
     (async () => {
+      // Check cache asynchronously
+      const cached = await mermaidCache.get(code);
+      if (cached && !cancelled) {
+        setSvg(cached);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
       setZoom(1);
       setLoading(true);
       setError(null);
+
       try {
-        const { svg: rendered } = await mermaid.render(id, code);
-        if (!cancelled) {
+        const cleanSvg = await mermaidCache.renderWithCache(code, "default", async (id, diagramCode) => {
+          const { svg: rendered } = await mermaid.render(id, diagramCode);
           const parser = new DOMParser();
           const doc = parser.parseFromString(rendered, "image/svg+xml");
           doc.querySelectorAll(".version, [class*='version']").forEach((el) => el.remove());
@@ -57,7 +67,10 @@ export function MermaidRenderer({ code }: Props) {
             "style",
             "display:block;width:100%;height:auto;max-width:none;",
           );
-          const cleanSvg = new XMLSerializer().serializeToString(doc.documentElement);
+          return new XMLSerializer().serializeToString(doc.documentElement);
+        });
+
+        if (!cancelled) {
           setSvg(cleanSvg);
           setLoading(false);
         }

@@ -22,6 +22,8 @@ import {
 } from "@/server/documents/annotations-actions";
 import { toast } from "sonner";
 
+import { VirtualizedMarkdownPreview } from "@/components/document-engine/virtualized-markdown-preview";
+
 export function DocumentReaderView({
   doc,
   content,
@@ -289,9 +291,9 @@ export function DocumentReaderView({
                 title={doc.title}
               />
             ) : (
-              <article className="prose dark:prose-invert max-w-none whitespace-pre-wrap selection:bg-amber-200 dark:selection:bg-amber-800">
-                {textContent}
-              </article>
+              <div className="prose dark:prose-invert max-w-none selection:bg-amber-200 dark:selection:bg-amber-800">
+                <VirtualizedMarkdownPreview content={textContent} />
+              </div>
             )}
           </div>
         </main>

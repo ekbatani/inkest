@@ -9,6 +9,7 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import type { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import { useMermaidCodeComponent } from "./use-mermaid-code-component";
+import { VirtualizedMarkdownPreview } from "@/components/document-engine/virtualized-markdown-preview";
 import {
   getHeadingAnchorId,
   resolveNoteHref,
@@ -24,6 +25,7 @@ type Props = {
   components?: Components;
   /** Notes available for `[[wiki]]` link resolution. */
   linkableNotes?: WikiLinkTarget[];
+  virtualizeThreshold?: number;
 };
 
 const sanitizeSchema = {
@@ -98,6 +100,7 @@ export function MarkdownPreview({
   className,
   components: extraComponents,
   linkableNotes,
+  virtualizeThreshold,
 }: Props) {
   const dir = direction === "auto" ? undefined : direction;
   const usesRtlFont =
@@ -263,6 +266,18 @@ export function MarkdownPreview({
       ),
     [content, linkableNotes],
   );
+
+  const threshold = virtualizeThreshold ?? 25000;
+  if (!extraComponents && content.length > threshold) {
+    return (
+      <VirtualizedMarkdownPreview
+        content={processedContent}
+        direction={direction}
+        className={className}
+        linkableNotes={linkableNotes}
+      />
+    );
+  }
 
   return (
     <div

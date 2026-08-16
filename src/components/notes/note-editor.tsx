@@ -50,6 +50,7 @@ import {
   applyMarkdownFormat,
   type MarkdownFormat,
 } from "@/components/editor/markdown-editor-utils";
+import { DocumentPersistenceManager } from "@/lib/document-engine/storage/persistence-manager";
 
 // Dynamically imported so CodeMirror and the react-markdown preview
 // stack (read mode, copy-preview) split into separate chunks instead of always loading
@@ -195,6 +196,8 @@ export function NoteEditor({
     document.dispatchEvent(new CustomEvent("inkest:toggle-ai-sidebar"));
   }, []);
 
+  const persistenceManagerRef = React.useRef<DocumentPersistenceManager | null>(null);
+
   // CodeMirror keeps the keystroke path local. Its debounced parent update still
   // drives autosave, history, preview, and metadata, but it must not make those
   // route-level renders compete with the next keystroke.
@@ -204,7 +207,15 @@ export function NoteEditor({
       content: nextContent,
     };
     setContent(nextContent);
-  }, [title]);
+    // Non-blocking micro-patch log to local IndexedDB
+    if (!persistenceManagerRef.current) {
+      persistenceManagerRef.current = new DocumentPersistenceManager(note.id);
+    }
+    void persistenceManagerRef.current.recordEdit(
+      { from: 0, to: content.length, text: nextContent },
+      nextContent,
+    );
+  }, [content.length, note.id, title]);
   const [historyState, setHistoryState] = React.useState<{
     past: NoteSnapshot[];
     future: NoteSnapshot[];
