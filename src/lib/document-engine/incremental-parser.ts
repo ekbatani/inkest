@@ -182,22 +182,49 @@ export function applyIncrementalEdit(
   let tableCount = 0;
   let codeCount = 0;
 
+  let currentSectionTitle: string | undefined;
+  let currentSectionAnchorId: string | undefined;
+  let currentSectionLevel: number | undefined;
+
   for (let i = 0; i < allBlocks.length; i++) {
-    const b = allBlocks[i];
-    blockIndex[b.id] = i;
-    totalHeight += b.metadata.estimatedHeight ?? 32;
-    totalChars += b.content.length;
-    totalWords += b.metadata.wordCount ?? (b.content.match(/\S+/g) || []).length;
+    let b = allBlocks[i];
 
     if (b.type === "heading" && b.metadata.level) {
+      currentSectionTitle = b.content.replace(/^#+\s*/, "").trim();
+      currentSectionAnchorId =
+        b.metadata.headingAnchorId || getHeadingAnchorId(currentSectionTitle);
+      currentSectionLevel = b.metadata.level;
+
       headings.push({
-        id: b.metadata.headingAnchorId || getHeadingAnchorId(b.content.replace(/^#+\s*/, "")),
-        title: b.content.replace(/^#+\s*/, "").trim(),
+        id: currentSectionAnchorId,
+        title: currentSectionTitle,
         level: b.metadata.level,
         blockId: b.id,
         line: b.sourceRange.startLine,
       });
     }
+
+    if (
+      b.metadata.sectionTitle !== currentSectionTitle ||
+      b.metadata.sectionAnchorId !== currentSectionAnchorId ||
+      b.metadata.sectionLevel !== currentSectionLevel
+    ) {
+      b = {
+        ...b,
+        metadata: {
+          ...b.metadata,
+          sectionTitle: currentSectionTitle,
+          sectionAnchorId: currentSectionAnchorId,
+          sectionLevel: currentSectionLevel,
+        },
+      };
+      allBlocks[i] = b;
+    }
+
+    blockIndex[b.id] = i;
+    totalHeight += b.metadata.estimatedHeight ?? 32;
+    totalChars += b.content.length;
+    totalWords += b.metadata.wordCount ?? (b.content.match(/\S+/g) || []).length;
 
     if (b.type === "mermaid") mermaidCount++;
     else if (b.type === "code") codeCount++;

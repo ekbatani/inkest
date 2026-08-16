@@ -197,13 +197,21 @@ function parse(raw: string | null): UserSettings | null {
   }
 }
 
-export async function getUserSettings(): Promise<UserSettings> {
-  const user = await getCurrentUser();
-  if (!user) return DEFAULTS;
+export async function getUserSettings(userId?: string): Promise<UserSettings> {
+  let targetUserId = userId;
+  if (!targetUserId) {
+    try {
+      const user = await getCurrentUser();
+      targetUserId = user?.id;
+    } catch {
+      return DEFAULTS;
+    }
+  }
+  if (!targetUserId) return DEFAULTS;
   const rows = await db
     .select({ settings: schema.users.settings })
     .from(schema.users)
-    .where(eq(schema.users.id, user.id))
+    .where(eq(schema.users.id, targetUserId))
     .limit(1);
   const storedSettings = mergeWithDefaults(parse(rows[0]?.settings ?? null));
   const settings = structuredClone(storedSettings);
@@ -258,7 +266,7 @@ export async function getUserSettings(): Promise<UserSettings> {
     await db
       .update(schema.users)
       .set({ settings: JSON.stringify(migrated), updatedAt: new Date() })
-      .where(eq(schema.users.id, user.id));
+      .where(eq(schema.users.id, targetUserId));
   }
   return settings;
 }

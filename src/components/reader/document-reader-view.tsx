@@ -292,7 +292,10 @@ export function DocumentReaderView({
               />
             ) : (
               <div className="prose dark:prose-invert max-w-none selection:bg-amber-200 dark:selection:bg-amber-800">
-                <VirtualizedMarkdownPreview content={textContent} />
+                <VirtualizedMarkdownPreview
+                  content={textContent}
+                  documentId={doc.id}
+                />
               </div>
             )}
           </div>

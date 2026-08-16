@@ -2,6 +2,9 @@ import {
   sqliteTable,
   text,
   integer,
+  real,
+  blob,
+  index,
   uniqueIndex,
   type AnySQLiteColumn,
 } from "drizzle-orm/sqlite-core";
@@ -492,6 +495,180 @@ export const chatMessages = sqliteTable("chat_messages", {
   createdAt: timestamp("created_at").notNull(),
 });
 
+// ── document_blocks ──────────────────────────────────────────────────────
+export const documentBlocks = sqliteTable(
+  "document_blocks",
+  {
+    id: idCol(), // stable block id, e.g. blk-0-a1b2c3d4
+    documentId: text("document_id")
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    documentVersion: integer("document_version").notNull().default(1),
+    blockIndex: integer("block_index").notNull(),
+    blockType: text("block_type").notNull(),
+    content: text("content").notNull(),
+    contentHash: text("content_hash").notNull(),
+    startOffset: integer("start_offset").notNull(),
+    endOffset: integer("end_offset").notNull(),
+    startLine: integer("start_line").notNull(),
+    endLine: integer("end_line").notNull(),
+    headingAnchor: text("heading_anchor"),
+    sectionTitle: text("section_title"),
+    metadataJson: text("metadata_json"),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    index("doc_blocks_doc_idx").on(table.documentId, table.blockIndex),
+    index("doc_blocks_ws_user_idx").on(table.workspaceId, table.userId),
+    index("doc_blocks_hash_idx").on(table.documentId, table.contentHash),
+  ],
+);
+
+// ── document_embeddings ──────────────────────────────────────────────────
+export const documentEmbeddings = sqliteTable(
+  "document_embeddings",
+  {
+    id: idCol(),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+    blockId: text("block_id").notNull(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    contentHash: text("content_hash").notNull(),
+    textHash: text("text_hash").notNull(),
+    embeddingModel: text("embedding_model").notNull(),
+    embeddingVersion: integer("embedding_version").notNull().default(1),
+    dimensions: integer("dimensions").notNull(),
+    embedding: blob("embedding"),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    index("doc_emb_doc_blk_idx").on(table.documentId, table.blockId),
+    index("doc_emb_ws_user_idx").on(table.workspaceId, table.userId),
+    index("doc_emb_hash_idx").on(table.contentHash),
+  ],
+);
+
+// ── document_links ───────────────────────────────────────────────────────
+export const documentLinks = sqliteTable(
+  "document_links",
+  {
+    id: idCol(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceDocumentId: text("source_document_id")
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+    targetDocumentId: text("target_document_id")
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+    targetAnchor: text("target_anchor"),
+    linkType: text("link_type", {
+      enum: ["wiki", "markdown", "parent_child", "mention"],
+    })
+      .notNull()
+      .default("wiki"),
+    origin: text("origin", { enum: ["user", "parser", "ai"] })
+      .notNull()
+      .default("parser"),
+    confidence: real("confidence").default(1.0),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => [
+    index("doc_links_src_idx").on(table.sourceDocumentId),
+    index("doc_links_tgt_idx").on(table.targetDocumentId),
+    index("doc_links_ws_user_idx").on(table.workspaceId, table.userId),
+  ],
+);
+
+// ── block_relations ──────────────────────────────────────────────────────
+export const blockRelations = sqliteTable(
+  "block_relations",
+  {
+    id: idCol(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceBlockId: text("source_block_id").notNull(),
+    targetBlockId: text("target_block_id").notNull(),
+    relationType: text("relation_type", {
+      enum: [
+        "links_to",
+        "mentions",
+        "related_to",
+        "supports",
+        "contradicts",
+        "derived_from",
+        "references",
+      ],
+    })
+      .notNull()
+      .default("related_to"),
+    origin: text("origin", { enum: ["user", "parser", "ai"] })
+      .notNull()
+      .default("parser"),
+    confidence: real("confidence").default(1.0),
+    metadataJson: text("metadata_json"),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => [
+    index("blk_rel_src_idx").on(table.sourceBlockId),
+    index("blk_rel_tgt_idx").on(table.targetBlockId),
+    index("blk_rel_ws_user_idx").on(table.workspaceId, table.userId),
+  ],
+);
+
+// ── document_index_state ─────────────────────────────────────────────────
+export const documentIndexState = sqliteTable("document_index_state", {
+  documentId: text("document_id")
+    .primaryKey()
+    .references(() => notes.id, { onDelete: "cascade" }),
+  workspaceId: text("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  contentVersion: integer("content_version").notNull().default(1),
+  ftsVersion: integer("fts_version").notNull().default(0),
+  embeddingVersion: integer("embedding_version").notNull().default(0),
+  relationshipVersion: integer("relationship_version").notNull().default(0),
+  status: text("status", {
+    enum: ["pending", "processing", "ready", "failed", "stale"],
+  })
+    .notNull()
+    .default("pending"),
+  lastIndexedAt: integer("last_indexed_at", { mode: "timestamp" }),
+  error: text("error"),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .default(sql`(unixepoch())`),
+});
+
 // ── Type exports ─────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -519,4 +696,15 @@ export type ChatThread = typeof chatThreads.$inferSelect;
 export type NewChatThread = typeof chatThreads.$inferInsert;
 export type ChatMessageEntity = typeof chatMessages.$inferSelect;
 export type NewChatMessage = typeof chatMessages.$inferInsert;
+export type DocumentBlockEntity = typeof documentBlocks.$inferSelect;
+export type NewDocumentBlock = typeof documentBlocks.$inferInsert;
+export type DocumentEmbeddingEntity = typeof documentEmbeddings.$inferSelect;
+export type NewDocumentEmbedding = typeof documentEmbeddings.$inferInsert;
+export type DocumentLinkEntity = typeof documentLinks.$inferSelect;
+export type NewDocumentLink = typeof documentLinks.$inferInsert;
+export type BlockRelationEntity = typeof blockRelations.$inferSelect;
+export type NewBlockRelation = typeof blockRelations.$inferInsert;
+export type DocumentIndexStateEntity = typeof documentIndexState.$inferSelect;
+export type NewDocumentIndexState = typeof documentIndexState.$inferInsert;
+
 

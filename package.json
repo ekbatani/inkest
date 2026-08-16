@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "test:engine": "bun test src/lib/document-engine/__tests__/",
     "benchmark:engine": "bun scripts/benchmark-document-engine.ts",
+    "benchmark:knowledge": "bun scripts/benchmark-knowledge-layer.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",

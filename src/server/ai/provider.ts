@@ -9,8 +9,10 @@ import { getUserSettings } from "@/server/users/settings-service";
 export type AiProvider = {
   id: AiProviderId;
   model: string;
+  embeddingModel?: string;
   complete: (prompt: string, systemPrompt: string) => Promise<string>;
   completeJson: (prompt: string, systemPrompt: string) => Promise<string>;
+  embed: (texts: string[]) => Promise<number[][]>;
 };
 
 export type AiConfigurationStatus = {
@@ -95,8 +97,8 @@ export function getAiConfigurationStatus(
   };
 }
 
-export async function getAiProvider(): Promise<AiProvider | null> {
-  const settings = await getUserSettings();
+export async function getAiProvider(userId?: string): Promise<AiProvider | null> {
+  const settings = await getUserSettings(userId);
   const providerId = settings.ai?.provider ?? resolveEnvProviderId();
   const providerDef = getAiProviderDefinition(providerId);
 
@@ -179,5 +181,78 @@ export async function getAiProvider(): Promise<AiProvider | null> {
       });
       return response.choices[0]?.message?.content ?? "";
     },
+    embed: async (texts: string[]): Promise<number[][]> => {
+      if (texts.length === 0) return [];
+      const embeddingModel =
+        process.env.EMBEDDING_MODEL || "text-embedding-3-small";
+      try {
+        const res = await client.embeddings.create({
+          model: embeddingModel,
+          input: texts,
+        });
+        return res.data.map((d) => d.embedding);
+      } catch {
+        // Transparent fallback to deterministic offline embedding
+        return texts.map((t) => generateDeterministicEmbedding(t, 384));
+      }
+    },
   };
 }
+
+/**
+ * Deterministic, normalized pseudo-semantic embedding for offline and fallback operation.
+ * Utilizes feature hashing with sub-word n-grams and L2 normalization.
+ */
+export function generateDeterministicEmbedding(
+  text: string,
+  dimensions = 384,
+): number[] {
+  const vector = new Float64Array(dimensions);
+  const normalized = text.toLowerCase().trim();
+  if (!normalized) return Array.from(vector);
+
+  const tokens = normalized.match(/[\p{L}\p{N}_-]+/gu) || [normalized];
+
+  for (const token of tokens) {
+    // Word hash
+    let h1 = 0x811c9dc5;
+    for (let i = 0; i < token.length; i++) {
+      h1 ^= token.charCodeAt(i);
+      h1 = Math.imul(h1, 0x01000193);
+    }
+    const idx1 = Math.abs(h1) % dimensions;
+    const sign1 = h1 & 1 ? 1 : -1;
+    vector[idx1] += sign1 * 1.5;
+
+    // Character 3-grams
+    if (token.length >= 3) {
+      for (let i = 0; i <= token.length - 3; i++) {
+        const gram = token.slice(i, i + 3);
+        let h2 = 0x27d4eb2f;
+        for (let j = 0; j < gram.length; j++) {
+          h2 ^= gram.charCodeAt(j);
+          h2 = Math.imul(h2, 0x5bd1e995);
+        }
+        const idx2 = Math.abs(h2) % dimensions;
+        const sign2 = h2 & 1 ? 1 : -1;
+        vector[idx2] += sign2 * 0.8;
+      }
+    }
+  }
+
+  // Compute L2 norm
+  let norm = 0;
+  for (let i = 0; i < dimensions; i++) {
+    norm += vector[i] * vector[i];
+  }
+  norm = Math.sqrt(norm);
+
+  if (norm > 0) {
+    for (let i = 0; i < dimensions; i++) {
+      vector[i] /= norm;
+    }
+  }
+
+  return Array.from(vector);
+}
+

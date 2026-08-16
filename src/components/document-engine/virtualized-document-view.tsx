@@ -12,6 +12,8 @@ export interface VirtualizedDocumentViewRef {
 
 interface Props {
   blocks: DocumentBlock[];
+  documentId?: string;
+  highlightedBlockId?: string;
   direction?: "ltr" | "rtl" | "auto";
   linkableNotes?: WikiLinkTarget[];
   className?: string;
@@ -25,6 +27,8 @@ export const VirtualizedDocumentView = React.forwardRef<
 >(function VirtualizedDocumentView(
   {
     blocks,
+    documentId,
+    highlightedBlockId,
     direction = "auto",
     linkableNotes = [],
     className,
@@ -173,10 +177,13 @@ export const VirtualizedDocumentView = React.forwardRef<
       {offsetBefore > 0 && <div style={{ height: `${offsetBefore}px` }} aria-hidden="true" />}
 
       {/* Rendered Visible Blocks */}
-      {visibleBlocks.map((block) => (
+      {visibleBlocks.map((block, idx) => (
         <DocumentBlockView
           key={block.id}
           block={block}
+          documentId={documentId}
+          blockIndex={startIdx + idx}
+          isHighlighted={highlightedBlockId === block.id}
           direction={direction}
           linkableNotes={linkableNotes}
           onMeasuredHeight={handleMeasuredHeight}

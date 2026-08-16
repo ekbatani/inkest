@@ -350,6 +350,12 @@ function countWords(text: string): number {
   return match ? match.length : 0;
 }
 
+function extractLinks(text: string): string[] {
+  const matches = text.match(/\[\[([^\]]+)\]\]/g);
+  if (!matches) return [];
+  return matches.map((m) => m.slice(2, -2).trim().split("#")[0]).filter(Boolean);
+}
+
 /**
  * Parses full Markdown string into a complete DocumentModel.
  */
@@ -365,6 +371,10 @@ export function parseDocument(source: string, documentId = "doc", version = 1): 
   let mermaidCount = 0;
   let tableCount = 0;
   let codeCount = 0;
+
+  let currentSectionTitle: string | undefined;
+  let currentSectionAnchorId: string | undefined;
+  let currentSectionLevel: number | undefined;
 
   const blockCount = rawBlocks.length;
   for (let i = 0; i < blockCount; i++) {
@@ -382,28 +392,43 @@ export function parseDocument(source: string, documentId = "doc", version = 1): 
       endLine: raw.endLine,
     };
 
+    const links = extractLinks(content);
+
+    if (raw.type === "heading" && raw.metadata.level) {
+      currentSectionTitle = content.replace(/^#+\s*/, "").trim();
+      currentSectionAnchorId =
+        raw.metadata.headingAnchorId || getHeadingAnchorId(currentSectionTitle);
+      currentSectionLevel = raw.metadata.level;
+
+      headings.push({
+        id: currentSectionAnchorId,
+        title: currentSectionTitle,
+        level: raw.metadata.level,
+        blockId: id,
+        line: raw.startLine,
+      });
+    }
+
+    const metadata: BlockMetadata = {
+      ...raw.metadata,
+      sectionTitle: currentSectionTitle,
+      sectionAnchorId: currentSectionAnchorId,
+      sectionLevel: currentSectionLevel,
+      links: links.length > 0 ? links : undefined,
+    };
+
     const block: DocumentBlock = {
       id,
       type: raw.type,
       sourceRange,
       content,
       hash,
-      metadata: raw.metadata,
+      metadata,
     };
 
     blocks.push(block);
     blockIndex[id] = i;
     totalHeight += block.metadata.estimatedHeight ?? 32;
-
-    if (raw.type === "heading" && raw.metadata.level) {
-      headings.push({
-        id: raw.metadata.headingAnchorId || getHeadingAnchorId(content.replace(/^#+\s*/, "")),
-        title: content.replace(/^#+\s*/, "").trim(),
-        level: raw.metadata.level,
-        blockId: id,
-        line: raw.startLine,
-      });
-    }
 
     if (raw.type === "mermaid") mermaidCount++;
     else if (raw.type === "code") codeCount++;

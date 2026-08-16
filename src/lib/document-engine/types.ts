@@ -26,6 +26,10 @@ export interface SourceRange {
 export interface BlockMetadata {
   level?: number; // 1-6 for headings
   headingAnchorId?: string; // id for TOC and deep linking
+  sectionTitle?: string; // parent section title for hierarchical chunking
+  sectionAnchorId?: string; // parent section anchor id
+  sectionLevel?: number; // parent section heading level
+  links?: string[]; // wiki links / target slugs extracted from this block
   language?: string; // for fenced code blocks
   isMermaid?: boolean; // true if language === "mermaid"
   checked?: boolean; // for task list items
@@ -154,3 +158,40 @@ export interface WorkerMessageResponse {
   error?: string;
   durationMs?: number;
 }
+
+export type ContextSourceType =
+  | "current-selection"
+  | "current-block"
+  | "document"
+  | "fts"
+  | "vector"
+  | "link"
+  | "entity"
+  | "related";
+
+export interface ContextSource {
+  documentId: string;
+  documentTitle?: string;
+  blockId?: string;
+  blockIndex?: number;
+  type: ContextSourceType;
+  score?: number;
+  content: string;
+  sectionTitle?: string;
+  startLine?: number;
+  endLine?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ContextPack {
+  query?: string;
+  currentDocument?: {
+    id: string;
+    title: string;
+  };
+  currentBlockIds: string[];
+  sources: ContextSource[];
+  totalTokensEstimate: number;
+  generatedAt: number;
+}
+

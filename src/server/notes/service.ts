@@ -7,6 +7,7 @@ import { createNoteSchema, updateNoteSchema } from "./validation";
 import { slugify, randomId } from "@/lib/slug";
 import { getNoteIdsForTags } from "@/server/tags/service";
 import { snapshotNoteIfChanged } from "@/server/notes/versions-service";
+import { indexDocument, purgeDocumentIndex } from "@/server/knowledge/indexing-service";
 import type { Note } from "@/server/db/schema";
 
 // Light English/Persian search normalisation: lowercase + unify Persian/Arabic
@@ -227,6 +228,15 @@ export async function createNote(
     pinned: parsed.pinned,
   });
 
+  // Asynchronously index newly created note in Turso knowledge layer
+  void indexDocument({
+    documentId: id,
+    workspaceId: workspace.id,
+    userId: user.id,
+    title,
+    content: parsed.contentMd,
+  });
+
   return getNoteById(id) as Promise<Note>;
 }
 
@@ -401,6 +411,18 @@ export async function updateNote(
       ),
     );
 
+  // Trigger background knowledge index sync if content or title changed
+  if (parsed.contentMd !== undefined || parsed.title !== undefined) {
+    const { workspace } = await getContext();
+    void indexDocument({
+      documentId: id,
+      workspaceId: workspace.id,
+      userId: user.id,
+      title: parsed.title ?? current[0]?.title ?? "Untitled",
+      content: parsed.contentMd ?? current[0]?.contentMd ?? "",
+    });
+  }
+
   return getNoteById(id);
 }
 
@@ -442,6 +464,8 @@ export async function deleteNoteSoft(id: string): Promise<void> {
         eq(schema.notes.userId, user.id),
       ),
     );
+
+  void purgeDocumentIndex(id);
 }
 
 export async function togglePinned(id: string): Promise<void> {

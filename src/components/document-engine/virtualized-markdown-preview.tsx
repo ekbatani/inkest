@@ -14,6 +14,8 @@ const VIRTUALIZE_BLOCK_THRESHOLD = 35;
 
 interface Props {
   content: string;
+  documentId?: string;
+  highlightedBlockId?: string;
   direction?: "ltr" | "rtl" | "auto";
   className?: string;
   linkableNotes?: WikiLinkTarget[];
@@ -22,14 +24,16 @@ interface Props {
 
 export function VirtualizedMarkdownPreview({
   content,
+  documentId,
+  highlightedBlockId,
   direction = "auto",
   className,
   linkableNotes = [],
   forceVirtualized = false,
 }: Props) {
   const model = React.useMemo(() => {
-    return parseDocument(content);
-  }, [content]);
+    return parseDocument(content, documentId ?? "doc");
+  }, [content, documentId]);
 
   const viewRef = React.useRef<VirtualizedDocumentViewRef>(null);
   const shouldVirtualize = forceVirtualized || model.blocks.length > VIRTUALIZE_BLOCK_THRESHOLD;
@@ -40,6 +44,8 @@ export function VirtualizedMarkdownPreview({
         <VirtualizedDocumentView
           ref={viewRef}
           blocks={model.blocks}
+          documentId={documentId}
+          highlightedBlockId={highlightedBlockId}
           direction={direction}
           linkableNotes={linkableNotes}
           className="h-full w-full"
@@ -50,10 +56,13 @@ export function VirtualizedMarkdownPreview({
 
   return (
     <div className={cn("inkest-prose", className)}>
-      {model.blocks.map((block) => (
+      {model.blocks.map((block, idx) => (
         <DocumentBlockView
           key={block.id}
           block={block}
+          documentId={documentId}
+          blockIndex={idx}
+          isHighlighted={highlightedBlockId === block.id}
           direction={direction}
           linkableNotes={linkableNotes}
         />
@@ -61,3 +70,4 @@ export function VirtualizedMarkdownPreview({
     </div>
   );
 }
+

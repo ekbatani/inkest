@@ -14,8 +14,11 @@ import type { DocumentBlock } from "@/lib/document-engine/types";
 
 interface Props {
   block: DocumentBlock;
+  documentId?: string;
+  blockIndex?: number;
   direction?: "ltr" | "rtl" | "auto";
   linkableNotes?: WikiLinkTarget[];
+  isHighlighted?: boolean;
   onMeasuredHeight?: (blockId: string, height: number) => void;
   onToggleTask?: (blockId: string, checked: boolean) => void;
 }
@@ -23,8 +26,11 @@ interface Props {
 export const DocumentBlockView = React.memo(
   function DocumentBlockView({
     block,
+    documentId,
+    blockIndex,
     direction = "auto",
     linkableNotes = [],
+    isHighlighted = false,
     onMeasuredHeight,
     onToggleTask,
   }: Props) {
@@ -218,10 +224,17 @@ export const DocumentBlockView = React.memo(
     return (
       <div
         ref={blockRef}
+        data-document-id={documentId}
         data-block-id={block.id}
+        data-block-index={blockIndex}
         data-block-type={block.type}
+        data-section-title={block.metadata.sectionTitle}
         dir={isRtl ? "rtl" : "ltr"}
-        className={cn("inkest-block", isRtl && "rtl-vazir")}
+        className={cn(
+          "inkest-block transition-colors duration-200",
+          isRtl && "rtl-vazir",
+          isHighlighted && "ring-2 ring-primary/60 bg-primary/5 rounded-md px-1",
+        )}
       >
         {renderContent()}
       </div>
@@ -231,6 +244,9 @@ export const DocumentBlockView = React.memo(
     prev.block.id === next.block.id &&
     prev.block.hash === next.block.hash &&
     prev.direction === next.direction &&
+    prev.documentId === next.documentId &&
+    prev.blockIndex === next.blockIndex &&
+    prev.isHighlighted === next.isHighlighted &&
     prev.linkableNotes?.length === next.linkableNotes?.length,
 );
 
