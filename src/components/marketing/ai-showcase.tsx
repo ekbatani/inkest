@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LogoMark } from "@/components/brand/logo-mark";
 
 const AI_ACTIONS = ["Shape the idea", "Extract next steps", "Polish the writing"];
 
@@ -41,7 +42,12 @@ export function AiShowcase() {
 
       <div className="product-window-body">
         <aside className="product-sidebar" aria-hidden="true">
-          <div className="product-brand"><span>in</span> Inkest</div>
+          <div className="product-brand">
+            <span className="p-0.5 overflow-hidden bg-background/80 border border-border/80">
+              <LogoMark className="size-full" />
+            </span>
+            Inkest
+          </div>
           <div className="product-nav-item"><Home /> Home</div>
           <div className="product-nav-item product-nav-item--active"><FileText /> Notes</div>
           <div className="product-nav-item"><CalendarDays /> Daily</div>

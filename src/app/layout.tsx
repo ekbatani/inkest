@@ -14,7 +14,7 @@ const lora = { variable: "font-serif" };
 const vazirmatn = { variable: "font-rtl-fallback" };
 
 export const viewport: Viewport = {
-  themeColor: "#18181b",
+  themeColor: "#0c0a1f",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -31,6 +31,17 @@ export const metadata: Metadata = {
   description:
     "A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and AI actions — self-hosted or cloud.",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icon", sizes: "32x32", type: "image/png" },
+      { url: "/app-icon.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-icon", sizes: "180x180", type: "image/png" },
+      { url: "/logo-square.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/icon",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -42,12 +53,21 @@ export const metadata: Metadata = {
       "A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and AI actions — self-hosted or cloud.",
     siteName: "Inkest",
     type: "website",
+    images: [
+      {
+        url: "/banner.png",
+        width: 1200,
+        height: 630,
+        alt: "Inkest — Markdown workspace",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Inkest",
     description:
       "A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and AI actions — self-hosted or cloud.",
+    images: ["/banner.png"],
   },
 };
 

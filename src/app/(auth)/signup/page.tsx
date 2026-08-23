@@ -8,8 +8,8 @@ export default function SignUpPage() {
   return (
     <div className="surface-card p-6 shadow-sm border border-border/80 rounded-2xl">
       <div className="mb-6 flex flex-col items-center gap-2 text-center">
-        <span className="flex size-10 items-center justify-center rounded-xl bg-foreground text-background shadow-sm">
-          <LogoMark className="size-5" />
+        <span className="flex size-12 items-center justify-center rounded-2xl bg-card border border-border/80 p-1.5 shadow-sm">
+          <LogoMark className="size-full" />
         </span>
         <h1 className="text-xl font-semibold tracking-tight">Create workspace</h1>
         <p className="text-xs text-muted-foreground max-w-xs">

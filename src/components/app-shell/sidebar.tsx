@@ -67,8 +67,8 @@ export function Sidebar({
         onClick={onNavigate}
         className="flex items-center gap-3 rounded-xl px-5 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
       >
-        <span className="flex size-9 items-center justify-center rounded-xl bg-foreground text-background shadow-sm">
-          <LogoMark className="size-[1.1rem]" />
+        <span className="flex size-9 items-center justify-center rounded-xl bg-card border border-border/80 p-1 shadow-xs shrink-0">
+          <LogoMark className="size-full" />
         </span>
         <span className="min-w-0">
           <span className="block text-sm font-semibold tracking-tight">inkest</span>
