@@ -1,10 +1,34 @@
 import { eq, and, desc } from "drizzle-orm";
+import { z } from "zod";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
 import { getWorkspaceForUser } from "@/server/auth/users";
 import { randomId } from "@/lib/slug";
 
-export type VaultCategory = "password" | "key" | "token" | "secret_note";
+export const MAX_VAULT_FILENAME_LENGTH = 255;
+export const MAX_VAULT_CONTENT_LENGTH = 50_000;
+// AES-GCM ciphertext hex for 50,000 UTF-8 bytes is ~100KB-120KB hex characters
+export const MAX_VAULT_CIPHERTEXT_LENGTH = 200_000;
+
+export const vaultCategoryEnum = ["password", "key", "token", "secret_note"] as const;
+export type VaultCategory = (typeof vaultCategoryEnum)[number];
+
+export const createVaultItemSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "File name is required")
+    .max(MAX_VAULT_FILENAME_LENGTH, `File name must be under ${MAX_VAULT_FILENAME_LENGTH} characters`),
+  category: z.enum(vaultCategoryEnum).default("secret_note"),
+  ciphertext: z
+    .string()
+    .min(1, "Ciphertext is required")
+    .max(MAX_VAULT_CIPHERTEXT_LENGTH, `Secret payload exceeds maximum size limit (${MAX_VAULT_CONTENT_LENGTH} chars)`),
+  iv: z.string().min(1, "IV is required").max(100),
+  salt: z.string().min(1, "Salt is required").max(100),
+});
+
+export type CreateVaultItemInput = z.infer<typeof createVaultItemSchema>;
 
 export async function listVaultItems() {
   const user = await getCurrentUser();
@@ -19,13 +43,9 @@ export async function listVaultItems() {
   return items;
 }
 
-export async function createVaultItem(args: {
-  title: string;
-  category: VaultCategory;
-  ciphertext: string;
-  iv: string;
-  salt: string;
-}) {
+export async function createVaultItem(rawArgs: CreateVaultItemInput) {
+  const args = createVaultItemSchema.parse(rawArgs);
+
   const user = await getCurrentUser();
   if (!user) throw new Error("UNAUTHORIZED");
   const workspace = await getWorkspaceForUser(user.id);
@@ -60,6 +80,10 @@ export async function createVaultItem(args: {
 }
 
 export async function deleteVaultItem(id: string) {
+  if (!id || typeof id !== "string") {
+    throw new Error("INVALID_ID");
+  }
+
   const user = await getCurrentUser();
   if (!user) throw new Error("UNAUTHORIZED");
   const workspace = await getWorkspaceForUser(user.id);

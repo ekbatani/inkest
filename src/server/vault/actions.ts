@@ -1,16 +1,16 @@
 "use server";
 
-import { createVaultItem, deleteVaultItem, type VaultCategory } from "./vault-service";
+import {
+  createVaultItem,
+  deleteVaultItem,
+  createVaultItemSchema,
+  type CreateVaultItemInput,
+} from "./vault-service";
 import { revalidatePath } from "next/cache";
 
-export async function createVaultItemAction(args: {
-  title: string;
-  category: VaultCategory;
-  ciphertext: string;
-  iv: string;
-  salt: string;
-}) {
-  const res = await createVaultItem(args);
+export async function createVaultItemAction(args: CreateVaultItemInput) {
+  const validated = createVaultItemSchema.parse(args);
+  const res = await createVaultItem(validated);
   revalidatePath("/vault");
   return res;
 }

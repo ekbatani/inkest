@@ -4,6 +4,9 @@
  * and stores opaque ciphertext blobs, initialization vectors (IVs), and salts.
  */
 
+export const MAX_VAULT_FILENAME_LENGTH = 255;
+export const MAX_VAULT_CONTENT_LENGTH = 50_000;
+
 async function getPBKDF2Key(masterPassword: string): Promise<CryptoKey> {
   const enc = new TextEncoder();
   return window.crypto.subtle.importKey(
