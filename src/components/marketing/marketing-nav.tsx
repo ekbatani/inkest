@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo-mark";
-import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 
 const LINKS = [
   { label: "Product", href: "/#product" },
-  { label: "Philosophy", href: "/#workflow" },
+  { label: "AI", href: "/#ai" },
+  { label: "Philosophy", href: "/#philosophy" },
   { label: "Open source", href: "/#open-source" },
   { label: "Docs", href: "/docs" },
   { label: "Pricing", href: "/#pricing" },
@@ -35,9 +35,8 @@ export function MarketingNav() {
         </nav>
 
         <div className="flex items-center gap-1 sm:gap-2">
-          <ThemeToggle />
           <Link href="/signin" className="marketing-signin">Sign in</Link>
-          <Link href="/signup" className="marketing-nav-cta">
+          <Link href="/signup" className="marketing-nav-cta btn-sheen">
             Get started
             <ArrowUpRight className="size-3.5" aria-hidden="true" />
           </Link>

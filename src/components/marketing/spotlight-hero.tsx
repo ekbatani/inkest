@@ -50,6 +50,8 @@ export function SpotlightHero({ children, className }: SpotlightHeroProps) {
       className={cn("spotlight-hero", autoPan && "spotlight-hero--auto", className)}
       onPointerMove={handlePointerMove}
     >
+      <div className="spotlight-hero__aurora spotlight-hero__aurora--a" aria-hidden="true" />
+      <div className="spotlight-hero__aurora spotlight-hero__aurora--b" aria-hidden="true" />
       <div ref={glowRef} className="spotlight-hero__glow" aria-hidden="true" />
       <div className="relative z-10">{children}</div>
     </div>

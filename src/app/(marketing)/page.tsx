@@ -6,7 +6,9 @@ import { getCurrentUser } from "@/server/auth";
 import { SpotlightHero } from "@/components/marketing/spotlight-hero";
 import { AiShowcase } from "@/components/marketing/ai-showcase";
 import { BentoFeatures } from "@/components/marketing/bento-features";
-import { TestimonialsSection } from "@/components/marketing/testimonials-section";
+import { AiCapabilitiesSection } from "@/components/marketing/ai-capabilities-section";
+import { PhilosophySection } from "@/components/marketing/philosophy-section";
+import { WorkflowSection } from "@/components/marketing/workflow-section";
 import { SelfHostSection } from "@/components/marketing/self-host-section";
 import { PricingSection } from "@/components/marketing/pricing-section";
 import { CtaSection } from "@/components/marketing/cta-section";
@@ -14,12 +16,13 @@ import { CtaSection } from "@/components/marketing/cta-section";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export const metadata: Metadata = {
-  title: "Inkest — Markdown notes, AI writing & project planning",
+  title: "Inkest — a calm, Markdown-first workspace with a citing AI",
   description:
-    "Build your private digital brain with Markdown notes, daily journaling, AI writing tools, projects and tasks. Self-host Inkest free or choose managed cloud.",
+    "Build your private digital brain with Markdown notes, daily journaling, a citing AI assistant, projects and tasks. Self-host Inkest free or choose managed cloud.",
   keywords: [
     "Markdown notes app",
     "AI writing workspace",
+    "AI knowledge base",
     "self-hosted knowledge base",
     "personal digital brain",
     "private journal app",
@@ -31,7 +34,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Inkest — Your private space to think in Markdown",
     description:
-      "Notes, daily journaling, AI writing and project planning in one calm, open-source workspace.",
+      "Notes, daily journaling, a citing AI, and project planning in one calm, open-source workspace.",
     url: "/",
     type: "website",
   },
@@ -64,7 +67,7 @@ const JSON_LD = {
       ],
       featureList: [
         "Markdown-native notes and wiki links",
-        "AI-assisted writing and task extraction",
+        "AI assistant with citations over a private knowledge layer",
         "Projects and task management",
         "Daily notes and journaling",
         "Private self-hosting with Docker",
@@ -96,24 +99,24 @@ export default async function LandingPage() {
       <SpotlightHero>
         <div className="mx-auto grid min-h-[calc(100svh-4.5rem)] max-w-[90rem] items-center gap-14 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[0.88fr_1.12fr] lg:gap-16 lg:px-12 xl:px-16">
           <div className="hero-copy max-w-2xl">
-            <a className="marketing-kicker" href="#open-source">
+            <a className="marketing-kicker" href="#philosophy">
               <span className="marketing-kicker-dot" />
-              Open source, private by design
+              Capture · Organize · Think
               <ArrowUpRight className="size-3.5" aria-hidden="true" />
             </a>
             <h1 className="marketing-display mt-7 text-[clamp(3.15rem,7vw,6.8rem)] leading-[0.92] tracking-[-0.065em]">
               Make space
-              <span className="block font-serif italic text-[var(--marketing-accent)]">
-                for thought.
+              <span className="block">
+                <em>for thought.</em>
               </span>
             </h1>
-            <p className="mt-7 max-w-xl text-lg leading-8 text-[var(--marketing-muted)] sm:text-xl">
-              A private, Markdown-native home for your notes, diary, projects, and ideas—with
-              thoughtful AI when you want a hand.
+            <p className="mt-7 max-w-xl text-lg leading-8 text-[var(--mk-muted)] sm:text-xl">
+              A private, Markdown-native home for your notes, diary, projects, and ideas—with an
+              AI that answers from your knowledge and shows its sources.
             </p>
 
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link className="marketing-button marketing-button--primary" href="/signup">
+              <Link className="marketing-button marketing-button--primary btn-sheen" href="/signup">
                 Start your workspace
                 <ArrowUpRight className="size-4" aria-hidden="true" />
               </Link>
@@ -125,8 +128,8 @@ export default async function LandingPage() {
 
             <ul className="mt-8 flex flex-wrap gap-x-5 gap-y-2" aria-label="Product promises">
               {TRUST_POINTS.map((point) => (
-                <li key={point} className="flex items-center gap-1.5 text-xs font-medium text-[var(--marketing-muted)]">
-                  <Check className="size-3.5 text-[var(--marketing-accent)]" aria-hidden="true" />
+                <li key={point} className="flex items-center gap-1.5 text-xs font-medium text-[var(--mk-muted)]">
+                  <Check className="size-3.5 text-[var(--mk-indigo-bright)]" aria-hidden="true" />
                   {point}
                 </li>
               ))}
@@ -150,12 +153,14 @@ export default async function LandingPage() {
       <section className="marketing-intro" aria-labelledby="intro-title">
         <p className="marketing-eyebrow">One workspace · every kind of thought</p>
         <h2 id="intro-title" className="marketing-section-title max-w-5xl">
-          Your notes should grow with your thinking—not get in its way.
+          Your notes should grow with your thinking—<span className="mk-grad-text">not get in its way.</span>
         </h2>
       </section>
 
       <BentoFeatures />
-      <TestimonialsSection />
+      <AiCapabilitiesSection />
+      <PhilosophySection />
+      <WorkflowSection />
       <SelfHostSection />
       <PricingSection />
       <CtaSection />

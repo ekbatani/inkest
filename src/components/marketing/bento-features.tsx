@@ -3,6 +3,8 @@ import {
   BrainCircuit,
   CalendarDays,
   CheckCircle2,
+  Circle,
+  Clock3,
   FileText,
   FolderKanban,
   Link2,
@@ -67,13 +69,13 @@ export function BentoFeatures() {
           </div>
           <div className="kanban-demo" aria-hidden="true">
             {[
-              ["TO DO", "Write the brief", "Shape the visual system"],
-              ["IN PROGRESS", "Prototype the new flow"],
-              ["DONE", "Collect research", "Define the goal"],
-            ].map(([title, ...cards]) => (
+              { title: "TO DO", icon: Circle, cards: ["Write the brief", "Shape the visual system"] },
+              { title: "IN PROGRESS", icon: Clock3, cards: ["Prototype the new flow"] },
+              { title: "DONE", icon: CheckCircle2, cards: ["Collect research", "Define the goal"] },
+            ].map(({ title, icon: Icon, cards }) => (
               <div key={title} className="kanban-column">
                 <small>{title}</small>
-                {cards.map((card) => <span key={card}><CheckCircle2 />{card}</span>)}
+                {cards.map((card) => <span key={card}><Icon />{card}</span>)}
               </div>
             ))}
           </div>

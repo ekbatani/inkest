@@ -12,7 +12,7 @@ export function SelfHostSection() {
       <div className="ownership-copy reveal">
         <p className="marketing-eyebrow">Your vault · your rules</p>
         <h2 className="marketing-section-title">Own the place<br />where you think.</h2>
-        <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--marketing-muted)]">
+        <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--mk-muted)]">
           Inkest is open source because your private knowledge should never depend on a
           company&apos;s permission. Keep it on your server, inspect every line, and leave any time.
         </p>
@@ -38,7 +38,7 @@ export function SelfHostSection() {
         <div className="flex justify-end pt-1">
           <a
             href="/docs/self-hosting"
-            className="text-xs font-medium text-[var(--marketing-accent)] hover:underline flex items-center gap-1"
+            className="text-xs font-medium text-[var(--mk-indigo-bright)] hover:underline flex items-center gap-1"
           >
             Read self-hosting documentation →
           </a>

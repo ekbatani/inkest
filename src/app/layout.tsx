@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono, Lora, Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppearanceSync } from "@/components/users/appearance-sync";
@@ -8,13 +9,30 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
-const geistSans = { variable: "font-sans" };
-const geistMono = { variable: "font-mono" };
-const lora = { variable: "font-serif" };
-const vazirmatn = { variable: "font-rtl-fallback" };
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+  display: "swap",
+});
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+  display: "swap",
+});
+const lora = Lora({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  variable: "--font-lora",
+  display: "swap",
+});
+const vazirmatn = Vazirmatn({
+  subsets: ["arabic", "latin"],
+  variable: "--font-vazirmatn",
+  display: "swap",
+});
 
 export const viewport: Viewport = {
-  themeColor: "#0c0a1f",
+  themeColor: "#0b0d16",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

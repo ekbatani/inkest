@@ -2,10 +2,9 @@
 
 import * as React from "react";
 import {
-  Bot,
+  ArrowUp,
   CalendarDays,
   Check,
-  ChevronDown,
   FileText,
   FolderKanban,
   Hash,
@@ -13,25 +12,45 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { LogoMark } from "@/components/brand/logo-mark";
 
-const AI_ACTIONS = ["Shape the idea", "Extract next steps", "Polish the writing"];
+const EXCHANGES = [
+  {
+    q: "What did I decide about the website refresh?",
+    a: "You chose the calmer route: ship the writing flow first, defer the visual system.",
+    cites: ["Sunday reflection", "Website refresh"],
+    tools: ["search_notes", "read_note"],
+  },
+  {
+    q: "Turn this reflection into next steps",
+    a: "Created 4 tasks in “Website refresh”. The review is set for Friday.",
+    cites: ["Daily note · Jul 14"],
+    tools: ["extract_tasks", "create_task"],
+  },
+  {
+    q: "Polish the opening paragraph",
+    a: "Here is a gentler edit — review the diff and apply it if it reads right.",
+    cites: ["Designing a life with more room"],
+    tools: ["read_note", "gently_edit"],
+  },
+] as const;
 
 export function AiShowcase() {
-  const [activeAction, setActiveAction] = React.useState(0);
+  const [active, setActive] = React.useState(0);
 
   React.useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = window.setInterval(
-      () => setActiveAction((current) => (current + 1) % AI_ACTIONS.length),
-      2400,
+      () => setActive((current) => (current + 1) % EXCHANGES.length),
+      5200,
     );
     return () => window.clearInterval(timer);
   }, []);
 
+  const exchange = EXCHANGES[active];
+
   return (
-    <div className="product-window" aria-label="Preview of the Inkest writing workspace">
+    <div className="product-window" aria-label="Preview of the Inkest workspace with the AI companion">
       <div className="product-window-bar">
         <div className="flex gap-1.5" aria-hidden="true">
           <span /><span /><span />
@@ -43,7 +62,7 @@ export function AiShowcase() {
       <div className="product-window-body">
         <aside className="product-sidebar" aria-hidden="true">
           <div className="product-brand">
-            <span className="p-0.5 overflow-hidden bg-background/80 border border-border/80">
+            <span>
               <LogoMark className="size-full" />
             </span>
             Inkest
@@ -67,7 +86,7 @@ export function AiShowcase() {
           <div className="product-rule" />
           <h3>The question I keep returning to</h3>
           <p>
-            What would change if I treated attention as a place I can design, rather
+            What would change if I treated <mark>attention</mark> as a place I can design, rather
             than a resource I am always losing?
           </p>
           <blockquote>
@@ -76,24 +95,46 @@ export function AiShowcase() {
           <h3>Small experiments</h3>
           <label><input type="checkbox" defaultChecked tabIndex={-1} /> Protect the first quiet hour</label>
           <label><input type="checkbox" tabIndex={-1} /> Move open loops into the project board</label>
-
-          <div className="product-ai-popover">
-            <div className="product-ai-heading">
-              <span><Sparkles /> Inkest AI</span>
-              <ChevronDown className="size-3.5" />
-            </div>
-            {AI_ACTIONS.map((action, index) => (
-              <div
-                key={action}
-                className={cn("product-ai-action", activeAction === index && "is-active")}
-              >
-                {index === 0 ? <Bot /> : index === 1 ? <Check /> : <Sparkles />}
-                {action}
-                {activeAction === index && <span>↵</span>}
-              </div>
-            ))}
-          </div>
         </article>
+
+        <aside className="product-ai-panel" aria-label="AI companion preview">
+          <div className="product-ai-heading">
+            <span className="mk-ai-tile"><Sparkles /></span>
+            Inkest AI
+            <small>PERSONAL VAULT</small>
+          </div>
+
+          <div className="product-ai-thread" key={active}>
+            <p className="product-ai-q product-ai-step product-ai-step--0">{exchange.q}</p>
+            <p className="product-ai-a product-ai-step product-ai-step--1">
+              {exchange.a}
+              <span className="marketing-caret" aria-hidden="true" />
+            </p>
+            <div className="product-ai-cites product-ai-step product-ai-step--2">
+              {exchange.cites.map((cite, index) => (
+                <span
+                  className="product-ai-cite"
+                  key={cite}
+                  style={{ animationDelay: `${1.05 + index * 0.18}s` }}
+                >
+                  <FileText />
+                  {cite}
+                </span>
+              ))}
+            </div>
+            <div className="product-ai-tools product-ai-step product-ai-step--3">
+              {exchange.tools.map((tool) => (
+                <span key={tool}><Check />{tool}</span>
+              ))}
+            </div>
+          </div>
+
+          <div className="product-ai-input">
+            <Sparkles className="size-3" aria-hidden="true" />
+            Ask your notes…
+            <span className="send" aria-hidden="true"><ArrowUp /></span>
+          </div>
+        </aside>
       </div>
 
       <div className="product-floating-card product-floating-card--project" aria-hidden="true">
