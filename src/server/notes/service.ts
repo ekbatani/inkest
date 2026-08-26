@@ -1,4 +1,4 @@
-import { eq, and, isNull, desc, ne, asc, sql, or, gte, lt } from "drizzle-orm";
+import { eq, and, isNull, desc, ne, asc, sql, or, gte, lt, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
@@ -8,6 +8,7 @@ import { slugify, randomId } from "@/lib/slug";
 import { getNoteIdsForTags } from "@/server/tags/service";
 import { snapshotNoteIfChanged } from "@/server/notes/versions-service";
 import { indexDocument, purgeDocumentIndex } from "@/server/knowledge/indexing-service";
+import { listSharedProjectIds, resolveProjectAccess } from "@/server/projects/access";
 import type { Note } from "@/server/db/schema";
 
 // Light English/Persian search normalisation: lowercase + unify Persian/Arabic
@@ -202,19 +203,33 @@ export async function createNote(
   const title = parsed.title;
   const slug = slugify(title) || `note-${id.slice(0, 8)}`;
   const parentId = input.parentId ?? null;
+
+  // Notes created inside another note's tree are stamped with that tree's
+  // owner scope, so shared project subtrees stay homogeneous and visible to
+  // the owner's existing workspace-scoped queries.
+  let treeUserId = user.id;
+  let treeWorkspaceId = workspace.id;
+  if (parentId) {
+    const parentAccess = await resolveProjectAccess(parentId, user.id);
+    if (!parentAccess || parentAccess.role === "viewer") {
+      throw new Error("INVALID_PARENT");
+    }
+    treeUserId = parentAccess.note.userId;
+    treeWorkspaceId = parentAccess.note.workspaceId;
+  }
   await assertValidParentAssignment({
     noteId: id,
     noteType: parsed.type,
     parentId,
-    userId: user.id,
-    workspaceId: workspace.id,
+    userId: treeUserId,
+    workspaceId: treeWorkspaceId,
   });
-  const sortOrder = await getNextSortOrder(parentId, user.id, workspace.id);
+  const sortOrder = await getNextSortOrder(parentId, treeUserId, treeWorkspaceId);
 
   await db.insert(schema.notes).values({
     id,
-    userId: user.id,
-    workspaceId: workspace.id,
+    userId: treeUserId,
+    workspaceId: treeWorkspaceId,
     parentId,
     title,
     slug,
@@ -231,8 +246,8 @@ export async function createNote(
   // Asynchronously index newly created note in Turso knowledge layer
   void indexDocument({
     documentId: id,
-    workspaceId: workspace.id,
-    userId: user.id,
+    workspaceId: treeWorkspaceId,
+    userId: treeUserId,
     title,
     content: parsed.contentMd,
   });
@@ -243,19 +258,8 @@ export async function createNote(
 export async function getNoteById(id: string): Promise<Note | null> {
   const { user } = await getContext();
 
-  const rows = await db
-    .select()
-    .from(schema.notes)
-    .where(
-      and(
-        eq(schema.notes.id, id),
-        eq(schema.notes.userId, user.id),
-        isNull(schema.notes.deletedAt),
-      ),
-    )
-    .limit(1);
-
-  return rows[0] ?? null;
+  const access = await resolveProjectAccess(id, user.id);
+  return access?.note ?? null;
 }
 
 export async function listNotes(options: {
@@ -282,11 +286,34 @@ export async function listNotes(options: {
   } = options;
 
   const conditions = [
-    eq(schema.notes.userId, user.id),
-    eq(schema.notes.workspaceId, workspace.id),
     isNull(schema.notes.deletedAt),
     eq(schema.notes.archived, archived),
   ];
+
+  // Ownership scoping: shared project trees are visible to their members.
+  // - Listing children scopes to the tree owner's ids (subtrees are
+  //   homogeneous), so members and owner see the same rows.
+  // - Listing projects widens the user's own scope with shared project ids.
+  // - Everything else (sidebar, search, daily) stays strictly owner-only.
+  const ownerScope = and(
+    eq(schema.notes.userId, user.id),
+    eq(schema.notes.workspaceId, workspace.id),
+  )!;
+  let scopeCondition = ownerScope;
+  if (parentId != null) {
+    const parentAccess = await resolveProjectAccess(parentId, user.id);
+    if (!parentAccess) return [];
+    scopeCondition = and(
+      eq(schema.notes.userId, parentAccess.note.userId),
+      eq(schema.notes.workspaceId, parentAccess.note.workspaceId),
+    )!;
+  } else if (type === "project") {
+    const sharedIds = await listSharedProjectIds(user.id);
+    if (sharedIds.length > 0) {
+      scopeCondition = or(ownerScope, inArray(schema.notes.id, sharedIds))!;
+    }
+  }
+  conditions.push(scopeCondition);
 
   if (pinnedOnly) {
     conditions.push(eq(schema.notes.pinned, true));
@@ -343,16 +370,23 @@ export async function updateNote(
   const { user } = await getContext();
 
   const parsed = updateNoteSchema.parse(input);
-  const current = await db
-    .select({
-      title: schema.notes.title,
-      contentMd: schema.notes.contentMd,
-      type: schema.notes.type,
-      parentId: schema.notes.parentId,
-    })
-    .from(schema.notes)
-    .where(and(eq(schema.notes.id, id), eq(schema.notes.userId, user.id)))
-    .limit(1);
+  const access = await resolveProjectAccess(id, user.id);
+  if (!access) return null;
+
+  // Viewers never write; reshaping a shared tree (type/parent moves) is
+  // reserved for the owner.
+  if (access.role === "viewer") return null;
+  const structuralChange =
+    (parsed.type !== undefined && parsed.type !== access.note.type) ||
+    (parsed.parentId !== undefined && parsed.parentId !== access.note.parentId);
+  if (structuralChange && access.role !== "owner") return null;
+
+  const current = {
+    title: access.note.title,
+    contentMd: access.note.contentMd,
+    type: access.note.type,
+    parentId: access.note.parentId,
+  };
 
   // Snapshot the current note state before overwriting, when content or title
   // are about to change. Failure is swallowed — version history is best-effort
@@ -362,26 +396,23 @@ export async function updateNote(
     Object.keys(parsed).length > 0
   ) {
     try {
-      if (current[0]) {
-        await snapshotNoteIfChanged(id, current[0].contentMd, current[0].title);
-      }
+      await snapshotNoteIfChanged(id, current.contentMd, current.title);
     } catch {
       // best-effort snapshot
     }
   }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
-  const nextType = parsed.type ?? current[0]?.type;
+  const nextType = parsed.type ?? current.type;
   const nextParentId =
-    parsed.parentId === undefined ? current[0]?.parentId ?? null : parsed.parentId;
-  if (nextType && current[0]) {
-    const { workspace } = await getContext();
+    parsed.parentId === undefined ? current.parentId ?? null : parsed.parentId;
+  if (nextType) {
     await assertValidParentAssignment({
       noteId: id,
       noteType: nextType,
       parentId: nextParentId,
-      userId: user.id,
-      workspaceId: workspace.id,
+      userId: access.note.userId,
+      workspaceId: access.note.workspaceId,
     });
   }
   if (parsed.title !== undefined) {
@@ -406,20 +437,20 @@ export async function updateNote(
     .where(
       and(
         eq(schema.notes.id, id),
-        eq(schema.notes.userId, user.id),
         isNull(schema.notes.deletedAt),
       ),
     );
 
-  // Trigger background knowledge index sync if content or title changed
+  // Trigger background knowledge index sync if content or title changed.
+  // Index under the note's real owner scope, which differs from the acting
+  // user when a project member edits a shared note.
   if (parsed.contentMd !== undefined || parsed.title !== undefined) {
-    const { workspace } = await getContext();
     void indexDocument({
       documentId: id,
-      workspaceId: workspace.id,
-      userId: user.id,
-      title: parsed.title ?? current[0]?.title ?? "Untitled",
-      content: parsed.contentMd ?? current[0]?.contentMd ?? "",
+      workspaceId: access.note.workspaceId,
+      userId: access.note.userId,
+      title: parsed.title ?? current.title,
+      content: parsed.contentMd ?? current.contentMd,
     });
   }
 
@@ -428,13 +459,16 @@ export async function updateNote(
 
 export async function archiveNote(id: string): Promise<void> {
   const { user } = await getContext();
+  const access = await resolveProjectAccess(id, user.id);
+  if (!access || access.role === "viewer") return;
+  // Archiving the shared root hides it for every member: owner only.
+  if (access.projectId === id && access.role !== "owner") return;
   await db
     .update(schema.notes)
     .set({ archived: true, updatedAt: new Date() })
     .where(
       and(
         eq(schema.notes.id, id),
-        eq(schema.notes.userId, user.id),
         isNull(schema.notes.deletedAt),
       ),
     );
@@ -442,45 +476,37 @@ export async function archiveNote(id: string): Promise<void> {
 
 export async function unarchiveNote(id: string): Promise<void> {
   const { user } = await getContext();
+  const access = await resolveProjectAccess(id, user.id);
+  if (!access || access.role === "viewer") return;
+  if (access.projectId === id && access.role !== "owner") return;
   await db
     .update(schema.notes)
     .set({ archived: false, updatedAt: new Date() })
-    .where(
-      and(
-        eq(schema.notes.id, id),
-        eq(schema.notes.userId, user.id),
-      ),
-    );
+    .where(eq(schema.notes.id, id));
 }
 
 export async function deleteNoteSoft(id: string): Promise<void> {
   const { user } = await getContext();
+  const access = await resolveProjectAccess(id, user.id);
+  if (!access || access.role === "viewer") return;
+  // Deleting the shared root removes it for every member: owner only.
+  if (access.projectId === id && access.role !== "owner") return;
   await db
     .update(schema.notes)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(
-      and(
-        eq(schema.notes.id, id),
-        eq(schema.notes.userId, user.id),
-      ),
-    );
+    .where(eq(schema.notes.id, id));
 
   void purgeDocumentIndex(id);
 }
 
 export async function togglePinned(id: string): Promise<void> {
   const { user } = await getContext();
-  const note = await getNoteById(id);
-  if (!note) return;
+  const access = await resolveProjectAccess(id, user.id);
+  if (!access || access.role !== "owner") return;
   await db
     .update(schema.notes)
-    .set({ pinned: !note.pinned, updatedAt: new Date() })
-    .where(
-      and(
-        eq(schema.notes.id, id),
-        eq(schema.notes.userId, user.id),
-      ),
-    );
+    .set({ pinned: !access.note.pinned, updatedAt: new Date() })
+    .where(eq(schema.notes.id, id));
 }
 
 export type NoteListItem = Note;
@@ -810,56 +836,43 @@ export async function moveNoteInTree(
   targetParentId: string | null,
   beforeId: string | null = null,
 ): Promise<Note | null> {
-  const { user, workspace } = await getContext();
+  const { user } = await getContext();
 
-  const noteRows = await db
-    .select()
-    .from(schema.notes)
-    .where(
-      and(
-        eq(schema.notes.id, noteId),
-        eq(schema.notes.userId, user.id),
-        eq(schema.notes.workspaceId, workspace.id),
-        isNull(schema.notes.deletedAt),
-        eq(schema.notes.archived, false),
-      ),
-    )
-    .limit(1);
-
-  const note = noteRows[0];
-  if (!note) return null;
+  const access = await resolveProjectAccess(noteId, user.id);
+  if (!access || access.role === "viewer") return null;
+  const note = access.note;
 
   if (targetParentId === noteId) {
     throw new Error("INVALID_PARENT");
   }
 
-  if (targetParentId !== null) {
-    const parentRows = await db
-      .select({
-        id: schema.notes.id,
-        parentId: schema.notes.parentId,
-      })
-      .from(schema.notes)
-      .where(
-        and(
-          eq(schema.notes.id, targetParentId),
-          eq(schema.notes.userId, user.id),
-          eq(schema.notes.workspaceId, workspace.id),
-          isNull(schema.notes.deletedAt),
-          eq(schema.notes.archived, false),
-        ),
-      )
-      .limit(1);
+  // Sibling order and parent validation operate on the tree owner's scope,
+  // which is the acting user for own notes and the project owner for shared
+  // subtrees.
+  const scopeUserId = note.userId;
+  const scopeWorkspaceId = note.workspaceId;
 
-    const parent = parentRows[0];
-    if (!parent) throw new Error("INVALID_PARENT");
+  if (targetParentId !== null) {
+    const parentAccess = await resolveProjectAccess(targetParentId, user.id);
+    if (
+      !parentAccess ||
+      parentAccess.role === "viewer" ||
+      parentAccess.note.archived ||
+      parentAccess.note.userId !== scopeUserId
+    ) {
+      throw new Error("INVALID_PARENT");
+    }
     await assertValidParentAssignment({
       noteId,
       noteType: note.type,
-      parentId: parent.id,
-      userId: user.id,
-      workspaceId: workspace.id,
+      parentId: parentAccess.note.id,
+      userId: scopeUserId,
+      workspaceId: scopeWorkspaceId,
     });
+  } else if (access.role !== "owner") {
+    // Members cannot detach a note from the shared tree into someone's
+    // top level.
+    throw new Error("INVALID_PARENT");
   }
 
   const sourceParentId = note.parentId ?? null;
@@ -867,8 +880,8 @@ export async function moveNoteInTree(
 
   const sourceIds = await fetchSiblingIds(
     sourceParentId,
-    user.id,
-    workspace.id,
+    scopeUserId,
+    scopeWorkspaceId,
   );
   const movingIndex = sourceIds.indexOf(noteId);
   if (movingIndex === -1) {
@@ -881,7 +894,7 @@ export async function moveNoteInTree(
     : sourceIds.filter((id) => id !== noteId);
   const destinationIds = sameGroup
     ? sourceIds.slice()
-    : await fetchSiblingIds(destinationParentId, user.id, workspace.id);
+    : await fetchSiblingIds(destinationParentId, scopeUserId, scopeWorkspaceId);
   const destIdsWithoutActive = destinationIds.filter((id) => id !== noteId);
 
   const insertAt = beforeId ? destIdsWithoutActive.indexOf(beforeId) : -1;
@@ -896,23 +909,23 @@ export async function moveNoteInTree(
     await resequenceSiblingGroup(
       sourceParentId,
       nextDestinationIds,
-      user.id,
-      workspace.id,
+      scopeUserId,
+      scopeWorkspaceId,
     );
   } else {
     await db.transaction(async (tx) => {
       await resequenceSiblingGroup(
         sourceParentId,
         finalSourceIds,
-        user.id,
-        workspace.id,
+        scopeUserId,
+        scopeWorkspaceId,
         tx,
       );
       await resequenceSiblingGroup(
         destinationParentId,
         nextDestinationIds,
-        user.id,
-        workspace.id,
+        scopeUserId,
+        scopeWorkspaceId,
         tx,
       );
       await tx
@@ -925,8 +938,8 @@ export async function moveNoteInTree(
         .where(
           and(
             eq(schema.notes.id, noteId),
-            eq(schema.notes.userId, user.id),
-            eq(schema.notes.workspaceId, workspace.id),
+            eq(schema.notes.userId, scopeUserId),
+            eq(schema.notes.workspaceId, scopeWorkspaceId),
             isNull(schema.notes.deletedAt),
             eq(schema.notes.archived, false),
           ),

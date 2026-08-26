@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { FolderKanban, Plus } from "lucide-react";
+import { FolderKanban, Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { listNotes } from "@/server/notes/service";
+import { getCurrentUser } from "@/server/auth";
 import { createProjectAction } from "@/server/notes/actions";
 import { formatRelativeDate } from "@/lib/dates";
 import { NoteStatusBadge } from "@/components/notes/note-status-badge";
@@ -19,7 +20,10 @@ const STATUS_GROUPS: Record<
 };
 
 export default async function ProjectsPage() {
-  const projects = await listNotes({ type: "project", limit: 200 });
+  const [projects, user] = await Promise.all([
+    listNotes({ type: "project", limit: 200 }),
+    getCurrentUser(),
+  ]);
 
   return (
     <div className="app-page gap-6">
@@ -82,6 +86,11 @@ export default async function ProjectsPage() {
                     </p>
                     <div className="mt-3 flex items-center gap-2">
                       <NoteStatusBadge status={p.status} />
+                      {user && p.userId !== user.id && (
+                        <Badge variant="secondary" className="gap-1 text-xs">
+                          <Users className="size-3" /> Shared
+                        </Badge>
+                      )}
                       {p.dueDate && (
                         <Badge variant="outline" className="text-xs">
                           Due {formatRelativeDate(p.dueDate)}

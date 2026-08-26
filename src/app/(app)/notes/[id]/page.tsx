@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft, Eye } from "lucide-react";
 import {
   getNoteById,
   listParentCandidates,
@@ -6,6 +8,7 @@ import {
   getBacklinks,
   listProjectTaskNotes,
 } from "@/server/notes/service";
+import { resolveProjectAccess } from "@/server/projects/access";
 import {
   getGoogleCalendarStatus,
   listCalendarEventsForDay,
@@ -14,6 +17,10 @@ import {
 import { listTags, listTagsForNote } from "@/server/tags/service";
 import { getUserSettings } from "@/server/users/settings-service";
 import { NoteEditor } from "@/components/notes/note-editor";
+import { getCurrentUser } from "@/server/auth";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -32,6 +39,42 @@ export default async function NoteDetailPage({
   const note = await getNoteById(id);
 
   if (!note) notFound();
+
+  // Viewers of a shared project get a read-only page instead of the editor.
+  // The editor's autosave would otherwise surface permission errors on every
+  // keystroke.
+  const user = await getCurrentUser();
+  const access = user ? await resolveProjectAccess(id, user.id) : null;
+  if (access?.role === "viewer") {
+    return (
+      <div className="app-page gap-6">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            nativeButton={false}
+            render={
+              <Link
+                href={access.projectId ? `/projects/${access.projectId}` : "/notes"}
+                aria-label="Back"
+              />
+            }
+          >
+            <ArrowLeft className="size-4" />
+          </Button>
+          <h1 className="truncate text-lg font-semibold">{note.title}</h1>
+          <Badge variant="outline" className="gap-1 text-xs">
+            <Eye className="size-3" /> Read-only · shared project
+          </Badge>
+        </div>
+        <MarkdownPreview
+          content={note.contentMd}
+          direction={note.direction}
+          className="max-w-3xl font-sans text-[0.98rem] leading-8 tracking-[-0.01em] text-foreground/90 sm:text-[1.02rem]"
+        />
+      </div>
+    );
+  }
 
   const dailyDate = note.type === "daily" ? parseDateKey(note.slug) : null;
 

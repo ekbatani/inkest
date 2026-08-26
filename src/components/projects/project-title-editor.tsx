@@ -12,9 +12,11 @@ import { useRouter } from "next/navigation";
 export function ProjectTitleEditor({
   id,
   title,
+  readOnly = false,
 }: {
   id: string;
   title: string;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [isEditing, setIsEditing] = React.useState(false);
@@ -97,6 +99,14 @@ export function ProjectTitleEditor({
           <X className="size-4" />
         </Button>
       </div>
+    );
+  }
+
+  if (readOnly) {
+    return (
+      <span className="inline-flex min-w-0 flex-1 items-center px-1 py-0.5 text-sm font-medium">
+        <span className="truncate">{title}</span>
+      </span>
     );
   }
 

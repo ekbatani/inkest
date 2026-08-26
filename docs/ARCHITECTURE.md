@@ -23,7 +23,7 @@ components, and database schema/migrations in `src/server/db` and `drizzle`.
 | --- | --- |
 | Auth and users | Credentials authentication, sessions, profiles, preferences |
 | Notes | Markdown content, hierarchy, search, archive, daily notes, versions, wiki links |
-| Projects and tasks | Project-note metadata, task lifecycle, checkbox synchronization, kanban |
+| Projects and tasks | Project-note metadata, task lifecycle, checkbox synchronization, kanban, per-project sharing |
 | Tags | Workspace-scoped classification and OR-based filtering |
 | Attachments | Validated private upload, metadata, and authenticated retrieval |
 | AI | Provider configuration, action specifications, structured parsing, action history |
@@ -33,11 +33,20 @@ components, and database schema/migrations in `src/server/db` and `drizzle`.
 ## Data model
 
 The primary records are `users`, `workspaces`, `notes`, `tags`, `note_tags`,
-`tasks`, `attachments`, `note_versions`, `ai_events`, and `notifications`.
+`tasks`, `attachments`, `note_versions`, `ai_events`, `notifications`, and
+`project_members`.
 Calendar connections and synced events are stored separately. A note belongs to
 one user and workspace and may be a regular, project, or daily note. Tasks
 belong to both a note and user; attachments, AI events, and notifications are
 user-owned. Notification dedupe keys make scheduler retries safe.
+
+A project can be shared with other accounts through `project_members` rows
+(viewer or editor). Sharing attaches to the outermost project in a parent
+chain and covers its whole subtree: members reach the project from their own
+Projects list, and notes created inside the tree are stamped with the project
+owner's user and workspace so the subtree stays homogeneous. The owner is the
+note's `userId` and is implicit (no membership row); only the owner manages
+sharing, or archives/deletes the shared root.
 
 The schema is the source of truth: [schema.ts](../src/server/db/schema.ts).
 Apply schema changes through Drizzle migrations; do not hand-edit a deployed
@@ -47,9 +56,14 @@ database.
 
 - Every server action and API route authenticates the session before work.
 - Reads and mutations must scope records by the current user (and relevant
-  workspace); an identifier alone is never authorization.
+  workspace); an identifier alone is never authorization. Project sharing is
+  the one cross-user path: note access resolves by walking to the outermost
+  project ancestor and checking ownership or membership, and write access
+  additionally requires the editor role (structural changes stay owner-only).
 - Attachments are not public static files. Upload validates type and size;
-  retrieval verifies ownership.
+  retrieval verifies ownership, or membership of a project whose notes embed
+  the attachment. References in a requester's own notes never grant access to
+  someone else's file.
 - Markdown is rendered with sanitization. Mermaid runs with a restrictive
   security configuration and failures render an error state rather than
   executing user content.

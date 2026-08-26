@@ -39,6 +39,9 @@ It is designed to be self-hosted, portable, and pleasant to use every day.
 ### Projects and planning
 
 - Project notes with status, priority, due dates, and a linked task list.
+- Per-project sharing: the owner adds other accounts by email as read-only
+  viewers or editors. Sharing covers the project's whole subtree, including
+  attached files; members see the project in their own Projects list.
 - Markdown-checkbox synchronization, manual tasks, and a kanban view.
 - Dashboard views for recent notes, projects, and upcoming tasks.
 - Calendar page and optional Google Calendar connection.
@@ -58,7 +61,8 @@ Inkest is primarily for technical knowledge workers, independent makers,
 writers, and self-hosters who value Markdown, ownership, and a focused web
 experience. The intended model is free self-hosting with a future paid cloud
 offering for convenience features such as managed hosting, backup, sync,
-storage, and AI usage. Team collaboration and billing are not current scope.
+storage, and AI usage. Team workspaces, billing, and real-time co-editing are not current scope;
+project sharing stays deliberate and owner-managed.
 
 ## Roadmap
 

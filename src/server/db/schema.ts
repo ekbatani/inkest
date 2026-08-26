@@ -119,6 +119,38 @@ export const noteTags = sqliteTable("note_tags", {
     .references(() => tags.id, { onDelete: "cascade" }),
 });
 
+// ── project_members ──────────────────────────────────────────────────────
+// Sharing attaches to the outermost project note in a parent chain; a member
+// gains access to that project's whole subtree. The project owner (the note's
+// userId) is implicit and never has a row here.
+export const projectMembers = sqliteTable(
+  "project_members",
+  {
+    id: idCol(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["viewer", "editor"] })
+      .notNull()
+      .default("viewer"),
+    addedByUserId: text("added_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("project_members_project_user_uq").on(
+      table.projectId,
+      table.userId,
+    ),
+    index("project_members_user_idx").on(table.userId),
+    index("project_members_project_idx").on(table.projectId),
+  ],
+);
+
 // ── tasks ────────────────────────────────────────────────────────────────
 export const tasks = sqliteTable("tasks", {
   id: idCol(),

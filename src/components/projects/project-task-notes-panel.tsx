@@ -53,9 +53,11 @@ const PRIORITY_COLORS: Record<Note["priority"], string> = {
 export function ProjectTaskNotesPanel({
   projectId,
   initialTaskNotes,
+  canEdit = true,
 }: {
   projectId: string;
   initialTaskNotes: TaskNote[];
+  canEdit?: boolean;
 }) {
   const [taskNotes, setTaskNotes] = React.useState<TaskNote[]>(initialTaskNotes);
   const [view, setView] = React.useState<"list" | "kanban">("kanban");
@@ -125,36 +127,40 @@ export function ProjectTaskNotesPanel({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Input
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              if (!creating) void createTaskNote();
-            }
-          }}
-          placeholder="Create a task note..."
-          className="h-8"
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => void createTaskNote()}
-          disabled={creating || !newTitle.trim()}
-          className="gap-1.5"
-        >
-          <Plus className="size-4" /> Add
-        </Button>
-      </div>
+      {canEdit && (
+        <div className="flex items-center gap-2">
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (!creating) void createTaskNote();
+              }
+            }}
+            placeholder="Create a task note..."
+            className="h-8"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void createTaskNote()}
+            disabled={creating || !newTitle.trim()}
+            className="gap-1.5"
+          >
+            <Plus className="size-4" /> Add
+          </Button>
+        </div>
+      )}
 
       {taskNotes.length === 0 ? (
         <div className="surface-card-dashed p-8 text-center text-sm text-muted-foreground">
-          No task notes yet. Create one above, then open it like any other note.
+          {canEdit
+            ? "No task notes yet. Create one above, then open it like any other note."
+            : "No task notes yet."}
         </div>
-      ) : view === "list" ? (
-        <TaskNotesList taskNotes={taskNotes} onUpdate={updateTaskNote} />
+      ) : view === "list" || !canEdit ? (
+        <TaskNotesList taskNotes={taskNotes} onUpdate={updateTaskNote} canEdit={canEdit} />
       ) : (
         <TaskNotesKanban taskNotes={taskNotes} onUpdate={updateTaskNote} />
       )}
@@ -165,12 +171,14 @@ export function ProjectTaskNotesPanel({
 function TaskNotesList({
   taskNotes,
   onUpdate,
+  canEdit = true,
 }: {
   taskNotes: TaskNote[];
   onUpdate: (
     id: string,
     patch: Partial<Pick<TaskNote, "status" | "priority" | "title">>,
   ) => void;
+  canEdit?: boolean;
 }) {
   return (
     <ul className="flex flex-col gap-2">
@@ -202,23 +210,25 @@ function TaskNotesList({
                 </span>
               </div>
             </div>
-            <Select
-              value={taskNote.status}
-              onValueChange={(value) =>
-                onUpdate(taskNote.id, { status: value as TaskStatus })
-              }
-            >
-              <SelectTrigger size="sm" className="w-[9rem]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_COLUMNS.map((column) => (
-                  <SelectItem key={column.id} value={column.id}>
-                    {column.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {canEdit && (
+              <Select
+                value={taskNote.status}
+                onValueChange={(value) =>
+                  onUpdate(taskNote.id, { status: value as TaskStatus })
+                }
+              >
+                <SelectTrigger size="sm" className="w-[9rem]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_COLUMNS.map((column) => (
+                    <SelectItem key={column.id} value={column.id}>
+                      {column.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </li>
       ))}

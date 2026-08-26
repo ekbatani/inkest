@@ -71,6 +71,13 @@
       "when": 1786878055929,
       "tag": "0009_neat_preak",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1787744908097,
+      "tag": "0010_windy_the_anarchist",
+      "breakpoints": true
     }
   ]
 }

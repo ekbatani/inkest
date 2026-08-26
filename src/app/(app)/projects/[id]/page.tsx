@@ -15,10 +15,18 @@ import {
   listNotes,
   listProjectTaskNotes,
 } from "@/server/notes/service";
+import { getProjectShareInfo } from "@/server/projects/service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarImage,
+} from "@/components/ui/avatar";
 import { ProjectTitleEditor } from "@/components/projects/project-title-editor";
+import { ProjectShareMenu } from "@/components/projects/project-share-dialog";
 import { NoteStatusBadge } from "@/components/notes/note-status-badge";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import { ProjectTaskNotesPanel } from "@/components/projects/project-task-notes-panel";
@@ -47,6 +55,13 @@ export default async function ProjectDetailPage({
   const note = await getNoteById(id);
 
   if (!note) notFound();
+  // Sharing applies to the outermost project in a parent chain; only that
+  // root exposes the share UI. Non-projects opened here stay owner-managed.
+  const shareInfo =
+    note.type === "project" ? await getProjectShareInfo(id) : null;
+  const myRole = shareInfo?.myRole ?? "owner";
+  const canEdit = myRole !== "viewer";
+  const isOwner = myRole === "owner";
   // Project view works for any note, but the UI is project-oriented.
   const tab: Tab = (["overview", "tasks", "notes", "timeline"] as Tab[]).includes(
     rawTab as Tab,
@@ -82,7 +97,7 @@ export default async function ProjectDetailPage({
         >
           <ChevronLeft className="size-4" />
         </Button>
-        <ProjectTitleEditor id={note.id} title={note.title} />
+        <ProjectTitleEditor id={note.id} title={note.title} readOnly={!canEdit} />
         <div className="ml-2 flex items-center gap-2">
           <NoteStatusBadge status={note.status} />
           {note.priority !== "none" && (
@@ -97,24 +112,56 @@ export default async function ProjectDetailPage({
           )}
         </div>
         <div className="ml-auto flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            nativeButton={false}
-            render={<Link href={`/notes/new?parent=${note.id}&as=project`} aria-label="Create subproject" />}
-          >
-            <FolderPlus className="size-4" /> Subproject
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            nativeButton={false}
-            render={<Link href={`/notes/${note.id}`} aria-label="Edit as note" />}
-          >
-            <Pencil className="size-4" /> Edit
-          </Button>
+          {shareInfo && shareInfo.members.length > 0 && (
+            <AvatarGroup className="me-1" aria-label="Shared with">
+              {shareInfo.members.slice(0, 4).map((member) => (
+                <Avatar key={member.userId} size="sm" title={member.name ?? member.email}>
+                  {member.image ? (
+                    <AvatarImage
+                      src={member.image}
+                      alt={member.name ?? member.email}
+                    />
+                  ) : null}
+                  <AvatarFallback>
+                    {(member.name ?? member.email).slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+            </AvatarGroup>
+          )}
+          {shareInfo?.isShareRoot && isOwner ? (
+            <ProjectShareMenu
+              projectId={note.id}
+              owner={shareInfo.owner}
+              members={shareInfo.members}
+            />
+          ) : shareInfo ? (
+            <Badge variant="outline" className="text-xs" title="Shared project">
+              {canEdit ? "Editor" : "Viewer"}
+            </Badge>
+          ) : null}
+          {canEdit && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                nativeButton={false}
+                render={<Link href={`/notes/new?parent=${note.id}&as=project`} aria-label="Create subproject" />}
+              >
+                <FolderPlus className="size-4" /> Subproject
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                nativeButton={false}
+                render={<Link href={`/notes/${note.id}`} aria-label="Edit as note" />}
+              >
+                <Pencil className="size-4" /> Edit
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -158,9 +205,10 @@ export default async function ProjectDetailPage({
             <ProjectTaskNotesPanel
               projectId={note.id}
               initialTaskNotes={taskNotes}
+              canEdit={canEdit}
             />
           )}
-          {tab === "notes" && <NotesTab childNotes={referenceNotes} projectId={id} />}
+          {tab === "notes" && <NotesTab childNotes={referenceNotes} projectId={id} canEdit={canEdit} />}
           {tab === "timeline" && (
             <TimelineTab notes={childNotes} taskNotes={taskNotes} />
           )}
@@ -230,9 +278,11 @@ function OverviewTab({
 function NotesTab({
   childNotes,
   projectId,
+  canEdit = true,
 }: {
   childNotes: { id: string; title: string; updatedAt: Date; type: string }[];
   projectId: string;
+  canEdit?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -240,15 +290,17 @@ function NotesTab({
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Linked notes
         </h2>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          nativeButton={false}
-          render={<Link href={`/notes/new?parent=${projectId}`} aria-label="Add linked note" />}
-        >
-          Add note
-        </Button>
+        {canEdit && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            nativeButton={false}
+            render={<Link href={`/notes/new?parent=${projectId}`} aria-label="Add linked note" />}
+          >
+            Add note
+          </Button>
+        )}
       </div>
       {childNotes.length === 0 ? (
         <div className="surface-card-dashed p-8 text-center text-sm text-muted-foreground">

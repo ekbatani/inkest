@@ -1,10 +1,11 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull, like } from "drizzle-orm";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
 import { randomId } from "@/lib/slug";
 import type { Attachment } from "@/server/db/schema";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { resolveProjectAccess } from "@/server/projects/access";
 import {
   deleteAttachmentData,
   readAttachmentData,
@@ -187,14 +188,61 @@ export async function getAttachmentForUser(
   return rows[0] ?? null;
 }
 
+/**
+ * Attachments are linked to notes only through the `/api/attachments/{id}`
+ * URL embedded in note Markdown (attachments.noteId is not maintained). A
+ * non-owner may read a file when a note they can access — through project
+ * membership, never merely their own authorship — references it. References in
+ * the requester's own notes never grant access to someone else's file.
+ */
+async function canReadViaSharedNoteReference(
+  attachmentId: string,
+  userId: string,
+): Promise<boolean> {
+  const referencing = await db
+    .select({ id: schema.notes.id, userId: schema.notes.userId })
+    .from(schema.notes)
+    .where(
+      and(
+        isNull(schema.notes.deletedAt),
+        like(schema.notes.contentMd, `%/api/attachments/${attachmentId}%`),
+      ),
+    )
+    .limit(20);
+
+  for (const row of referencing) {
+    if (row.userId === userId) continue;
+    const access = await resolveProjectAccess(row.id, userId);
+    if (access) return true;
+  }
+  return false;
+}
+
 export async function serveAttachment(
   id: string,
 ): Promise<
   | { data: Buffer; mimeType: string; fileName: string; originalName: string }
   | { error: string; status: number }
 > {
-  const attachment = await getAttachmentForUser(id);
-  if (!attachment) {
+  const user = await getCurrentUser();
+
+  const rows = user
+    ? await db
+        .select()
+        .from(schema.attachments)
+        .where(eq(schema.attachments.id, id))
+        .limit(1)
+    : [];
+  const attachment = rows[0];
+  // 404 (not 403) for every miss so attachment existence stays private.
+  if (!user || !attachment) {
+    return { error: "Not found", status: 404 };
+  }
+
+  if (
+    attachment.userId !== user.id &&
+    !(await canReadViaSharedNoteReference(attachment.id, user.id))
+  ) {
     return { error: "Not found", status: 404 };
   }
 

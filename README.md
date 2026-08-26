@@ -9,7 +9,8 @@ self-hosted, portable, and comfortable for daily writing.
 - Markdown notes with safe GFM preview, Mermaid diagrams, wiki links,
   backlinks, version history, and Markdown/workspace export.
 - Projects, note-backed tasks, checklists, due dates, kanban, tags, folders,
-  archive, daily notes, and calendar views.
+  archive, daily notes, and calendar views. Projects can be shared with other
+  accounts as read-only viewers or editors.
 - Private image and document attachments; browser speech-to-text; and a
   focus reader with text-to-speech, RTL, and dark-mode reading support.
 - Explicit AI actions for writing, summaries, task extraction, project plans,
