@@ -15,7 +15,10 @@ export async function createUserWithWorkspace(
     .limit(1);
 
   if (existing.length > 0) {
-    return { error: "An account with this email already exists." } as const;
+    return {
+      error: "An account with this email already exists. Try signing in instead.",
+      code: "email-exists",
+    } as const;
   }
 
   const passwordHash = await hashPassword(password);
@@ -53,6 +56,16 @@ export async function verifyCredentials(email: string, password: string) {
   if (!ok) return null;
 
   return user;
+}
+
+export async function hasAccountWithEmail(email: string) {
+  const rows = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(eq(schema.users.email, email.trim().toLowerCase()))
+    .limit(1);
+
+  return rows.length > 0;
 }
 
 export async function getWorkspaceForUser(userId: string) {
