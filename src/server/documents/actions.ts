@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import {
   importDocument,
   listDocuments,
@@ -18,6 +19,7 @@ export async function uploadDocumentAction(formData: FormData) {
     throw new Error(result.error);
   }
 
+  revalidatePath("/", "layout");
   return result.document;
 }
 
@@ -26,5 +28,7 @@ export async function getDocumentsAction() {
 }
 
 export async function deleteDocumentAction(docId: string) {
-  return deleteDocument(docId);
+  const result = await deleteDocument(docId);
+  revalidatePath("/", "layout");
+  return result;
 }

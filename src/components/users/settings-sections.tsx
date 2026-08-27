@@ -27,6 +27,11 @@ import {
   BookOpen,
   Keyboard,
   ArrowRight,
+  Type,
+  FileText,
+  LayoutGrid,
+  Languages,
+  Eye,
 } from "lucide-react";
 import { CopyCodeBlock } from "@/components/marketing/copy-code-block";
 import {
@@ -58,8 +63,422 @@ import {
   type AppearanceFont,
   type AppearancePalette,
   type AppearanceTheme,
+  PALETTES,
+  FONTS,
 } from "@/components/users/appearance-sync";
 import { cn } from "@/lib/utils";
+
+// ---------------------------------------------------------------------------
+// Appearance Live Preview Studio
+// ---------------------------------------------------------------------------
+
+export function AppearanceLivePreview({
+  palette,
+  font,
+  theme,
+}: {
+  palette: AppearancePalette;
+  font: AppearanceFont;
+  theme: AppearanceTheme;
+}) {
+  const { resolvedTheme } = useTheme();
+  const [userTab, setUserTab] = React.useState<"persian" | "english" | "ui" | null>(null);
+  const [fontSize, setFontSize] = React.useState<"sm" | "base" | "lg">("base");
+  const [forceDark, setForceDark] = React.useState<boolean | null>(null);
+
+  const activeTab = userTab ?? (font.startsWith("persian") ? "persian" : "english");
+
+  const fontDef = React.useMemo(
+    () => FONTS.find((f) => f.id === font) ?? FONTS[0],
+    [font],
+  );
+  const paletteDef = React.useMemo(
+    () => PALETTES.find((p) => p.id === palette) ?? PALETTES[0],
+    [palette],
+  );
+
+  const isDark = forceDark !== null
+    ? forceDark
+    : theme === "dark" || (theme === "system" && resolvedTheme === "dark");
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Eye className="size-4 text-primary" />
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Live Appearance Studio · پیش‌نمایش زنده استایل
+          </Label>
+          <Badge variant="outline" className="text-[10px] font-normal py-0 h-5">
+            {paletteDef.name} • {fontDef.nativeName || fontDef.name}
+          </Badge>
+        </div>
+
+        {/* Preview quick tools */}
+        <div className="flex items-center gap-2">
+          {/* Zoom controls */}
+          <div className="flex items-center rounded-lg border border-border/80 bg-muted/40 p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setFontSize("sm")}
+              className={cn(
+                "rounded px-2 py-0.5 text-[11px] font-medium transition-colors",
+                fontSize === "sm"
+                  ? "bg-background text-foreground shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              title="Small text"
+            >
+              A-
+            </button>
+            <button
+              type="button"
+              onClick={() => setFontSize("base")}
+              className={cn(
+                "rounded px-2 py-0.5 text-[11px] font-medium transition-colors",
+                fontSize === "base"
+                  ? "bg-background text-foreground shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              title="Normal text"
+            >
+              100%
+            </button>
+            <button
+              type="button"
+              onClick={() => setFontSize("lg")}
+              className={cn(
+                "rounded px-2 py-0.5 text-[11px] font-medium transition-colors",
+                fontSize === "lg"
+                  ? "bg-background text-foreground shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              title="Large text"
+            >
+              A+
+            </button>
+          </div>
+
+          {/* Quick theme toggle for preview */}
+          <button
+            type="button"
+            onClick={() => setForceDark(!isDark)}
+            className="flex h-7 items-center gap-1.5 rounded-lg border border-border/80 bg-muted/40 px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            title="Toggle preview light/dark mode"
+          >
+            {isDark ? (
+              <>
+                <Moon className="size-3 text-indigo-400" />
+                <span>Dark View</span>
+              </>
+            ) : (
+              <>
+                <Sun className="size-3 text-amber-500" />
+                <span>Light View</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* The preview canvas */}
+      <div
+        data-palette={palette}
+        data-font={font}
+        className={cn(
+          "relative overflow-hidden rounded-2xl border border-border/80 shadow-md transition-all duration-200",
+          isDark ? "dark bg-background text-foreground" : "bg-background text-foreground",
+        )}
+        style={{
+          fontFamily: fontDef.fontFamily,
+        }}
+      >
+        {/* Studio Window Header */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-muted/30 px-4 py-2.5 backdrop-blur-xs">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-red-500/80" />
+              <span className="size-2.5 rounded-full bg-amber-500/80" />
+              <span className="size-2.5 rounded-full bg-emerald-500/80" />
+            </div>
+            <span className="text-[11px] font-medium text-muted-foreground ps-2">
+              inkest-studio / {fontDef.id}.md
+            </span>
+          </div>
+
+          {/* Preview Document View Tabs */}
+          <div className="flex items-center gap-1 rounded-lg bg-muted/60 p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setUserTab("persian")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all",
+                activeTab === "persian"
+                  ? "bg-background text-primary shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Languages className="size-3" />
+              <span>فارسی (Persian)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setUserTab("english")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all",
+                activeTab === "english"
+                  ? "bg-background text-primary shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <FileText className="size-3" />
+              <span>English</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setUserTab("ui")}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all",
+                activeTab === "ui"
+                  ? "bg-background text-primary shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <LayoutGrid className="size-3" />
+              <span>UI Studio</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Studio Content Body */}
+        <div
+          className={cn(
+            "p-5 sm:p-6 transition-all",
+            fontSize === "sm" && "text-sm leading-relaxed",
+            fontSize === "base" && "text-[15px] leading-relaxed",
+            fontSize === "lg" && "text-base leading-loose",
+          )}
+        >
+          {/* Persian Sample Document */}
+          {activeTab === "persian" && (
+            <article dir="rtl" className="flex flex-col gap-4 text-start font-normal animate-in fade-in duration-200">
+              {/* Document Header */}
+              <div className="border-b border-border/60 pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    آخرین ویرایش: ۲ دقیقه پیش · ۴۲۵ کلمه
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                      #معماری_فکر
+                    </span>
+                    <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      #تایپوگرافی_آرام
+                    </span>
+                  </div>
+                </div>
+                <h1 className="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                  معماری تفکر — یادداشت‌های روزانه و آرامش ذهنی
+                </h1>
+              </div>
+
+              {/* Prose Content */}
+              <p className="text-foreground/90">
+                نوشتن در محیطی آرام و بدون حواس‌پرتی، به ذهن اجازه می‌دهد افکار پراکنده را به بینش‌های ارزشمند و ساختاریافته تبدیل کند. با انتخاب قلم و پالت رنگی هماهنگ، تجربه مطالعه و نگارش متون طولانی لذت‌بخش و پایدار می‌شود.
+              </p>
+
+              {/* Literary Callout Quote */}
+              <blockquote className="rounded-xl border-s-4 border-primary bg-primary/5 p-4 text-foreground/90 shadow-2xs">
+                <p className="text-sm font-medium italic">
+                  «درخت دوستی بنشان که کام دل به بار آرد / نهال دشمنی برکن که رنج بی‌شمار آرد»
+                </p>
+                <footer className="mt-1 text-xs text-primary font-semibold">
+                  — دیوان حافظ شیرازی
+                </footer>
+              </blockquote>
+
+              <div className="flex flex-col gap-2 pt-1">
+                <h3 className="text-base font-semibold text-foreground">
+                  برنامه‌ها و اقدامات کلیدی امروز:
+                </h3>
+                <ul className="flex flex-col gap-1.5 text-sm text-foreground/85">
+                  <li className="flex items-center gap-2">
+                    <span className="flex size-4 items-center justify-center rounded bg-primary text-primary-foreground">
+                      <Check className="size-3" />
+                    </span>
+                    <span className="line-through text-muted-foreground">
+                      پیکربندی قلم‌های اصیل فارسی و هماهنگی تایپوگرافی راست‌به‌چپ
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="flex size-4 items-center justify-center rounded bg-primary text-primary-foreground">
+                      <Check className="size-3" />
+                    </span>
+                    <span className="line-through text-muted-foreground">
+                      تست استایل پالت‌های رنگی در حالت‌های روشن و تاریک
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="size-4 rounded border border-muted-foreground/60" />
+                    <span>بازبینی ساختار یادداشت‌ها و مستندسازی ایده‌های نو</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Code block in Persian note */}
+              <div className="mt-2 rounded-xl border border-border/70 bg-card/80 p-3 font-mono text-xs text-foreground/90">
+                <span className="text-primary font-semibold">const</span> workspace = inkest.<span className="text-amber-500">create</span>({`{`} font: <span className="text-emerald-500">{`"${fontDef.id}"`}</span>, calm: <span className="text-blue-500">true</span> {`}`});
+              </div>
+            </article>
+          )}
+
+          {/* English Sample Document */}
+          {activeTab === "english" && (
+            <article dir="ltr" className="flex flex-col gap-4 text-start font-normal animate-in fade-in duration-200">
+              <div className="border-b border-border/60 pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    Last edited 2 min ago · 380 words · 2 min read
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                      #architecture
+                    </span>
+                    <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      #calm-software
+                    </span>
+                  </div>
+                </div>
+                <h1 className="mt-2 text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                  The Architecture of Mindful Writing
+                </h1>
+              </div>
+
+              <p className="text-foreground/90">
+                A calm, markdown-first workspace lets thinking breathe. When typography and color rhythm respect the flow of thought, ideas translate naturally into resilient knowledge graphs.
+              </p>
+
+              <blockquote className="rounded-xl border-s-4 border-primary bg-primary/5 p-4 text-foreground/90 shadow-2xs">
+                <p className="text-sm font-medium italic">
+                  “Simplicity is prerequisite for reliability. Complex systems always break down when you need them most.”
+                </p>
+                <footer className="mt-1 text-xs text-primary font-semibold">
+                  — Edsger W. Dijkstra
+                </footer>
+              </blockquote>
+
+              <div className="flex flex-col gap-2 pt-1">
+                <h3 className="text-base font-semibold text-foreground">
+                  Key Milestones & Focus Areas:
+                </h3>
+                <ul className="flex flex-col gap-1.5 text-sm text-foreground/85">
+                  <li className="flex items-center gap-2">
+                    <span className="flex size-4 items-center justify-center rounded bg-primary text-primary-foreground">
+                      <Check className="size-3" />
+                    </span>
+                    <span className="line-through text-muted-foreground">
+                      Fine-tune typography metrics and letter spacing
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="flex size-4 items-center justify-center rounded bg-primary text-primary-foreground">
+                      <Check className="size-3" />
+                    </span>
+                    <span className="line-through text-muted-foreground">
+                      Harmonize contrast across all 8 interface palettes
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="size-4 rounded border border-muted-foreground/60" />
+                    <span>Review daily reflections in quiet reader mode</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="mt-2 rounded-xl border border-border/70 bg-card/80 p-3 font-mono text-xs text-foreground/90">
+                <span className="text-primary font-semibold">import</span> {`{ renderNote }`} <span className="text-primary font-semibold">from</span> <span className="text-emerald-500">{`"@inkest/engine"`}</span>;
+              </div>
+            </article>
+          )}
+
+          {/* UI Studio Component Showcase */}
+          {activeTab === "ui" && (
+            <div className="flex flex-col gap-5 animate-in fade-in duration-200">
+              <div>
+                <h3 className="text-base font-semibold text-foreground">
+                  Interface Components & Token Harmony
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  See how primary accents, surfaces, badges, and controls adapt to this theme.
+                </p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-2.5 rounded-xl border border-border/70 bg-card/60 p-4">
+                  <span className="text-xs font-semibold text-muted-foreground">Button Styles</span>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" className="shadow-xs gap-1.5">
+                      <Sparkles className="size-3.5" /> Primary Action
+                    </Button>
+                    <Button size="sm" variant="secondary">
+                      Secondary
+                    </Button>
+                    <Button size="sm" variant="outline">
+                      Outline
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Badges & Status */}
+                <div className="flex flex-col gap-2.5 rounded-xl border border-border/70 bg-card/60 p-4">
+                  <span className="text-xs font-semibold text-muted-foreground">Badges & Tags</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="default">Primary Badge</Badge>
+                    <Badge variant="secondary">Secondary</Badge>
+                    <Badge variant="outline">Outline</Badge>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      <span className="size-1.5 rounded-full bg-emerald-500" /> Active Sync
+                    </span>
+                  </div>
+                </div>
+
+                {/* Input & Form Control */}
+                <div className="flex flex-col gap-2.5 rounded-xl border border-border/70 bg-card/60 p-4">
+                  <span className="text-xs font-semibold text-muted-foreground">Interactive Input</span>
+                  <Input placeholder="Quick search notes, tags, commands..." className="h-9 text-xs" />
+                </div>
+
+                {/* Switches & Toggles */}
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card/60 p-4">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-semibold text-foreground">Distraction Free Writing</span>
+                    <span className="text-[11px] text-muted-foreground">Focus mode with dimmed chrome</span>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Studio Footer Metrics Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-3 font-mono">
+            <span>Font: <strong className="text-foreground font-sans">{fontDef.nativeName} ({fontDef.name})</strong></span>
+            <span>·</span>
+            <span>Palette: <strong className="text-foreground">{paletteDef.name}</strong></span>
+            <span>·</span>
+            <span>Mode: <strong className="text-foreground capitalize">{isDark ? "Dark" : "Light"}</strong></span>
+          </div>
+          <span className="hidden sm:inline font-mono text-[10px] text-muted-foreground/80">
+            {fontDef.tag}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Appearance Section
@@ -78,6 +497,7 @@ export function AppearanceSection({
   const [selectedTheme, setSelectedTheme] = React.useState(preference);
   const [selectedPalette, setSelectedPalette] = React.useState(palette);
   const [selectedFont, setSelectedFont] = React.useState(font);
+  const [fontFilter, setFontFilter] = React.useState<"all" | "persian" | "latin">("all");
   const [saving, setSaving] = React.useState(false);
 
   const save = async () => {
@@ -102,72 +522,7 @@ export function AppearanceSection({
     }
   };
 
-  const palettes: { id: AppearancePalette; name: string; desc: string; bgClass: string; borderClass: string; accentClass: string }[] = [
-    {
-      id: "paper",
-      name: "Paper",
-      desc: "Warm minimalist journal",
-      bgClass: "bg-[#fbfbf9] dark:bg-[#1a1b1e]",
-      borderClass: "border-border",
-      accentClass: "bg-blue-600 dark:bg-blue-400",
-    },
-    {
-      id: "forest",
-      name: "Forest",
-      desc: "Calming botanical moss",
-      bgClass: "bg-[#f5f8f5] dark:bg-[#16201a]",
-      borderClass: "border-emerald-700/20",
-      accentClass: "bg-emerald-600 dark:bg-emerald-400",
-    },
-    {
-      id: "violet",
-      name: "Violet",
-      desc: "Atmospheric violet dusk",
-      bgClass: "bg-[#f9f7fb] dark:bg-[#1d1825]",
-      borderClass: "border-purple-700/20",
-      accentClass: "bg-purple-600 dark:bg-purple-400",
-    },
-    {
-      id: "amber",
-      name: "Amber",
-      desc: "Warm parchment & honey",
-      bgClass: "bg-[#fcf9f2] dark:bg-[#1f1b15]",
-      borderClass: "border-amber-700/20",
-      accentClass: "bg-amber-600 dark:bg-amber-400",
-    },
-    {
-      id: "nord",
-      name: "Nord",
-      desc: "Arctic frost & slate",
-      bgClass: "bg-[#f4f7f9] dark:bg-[#151c24]",
-      borderClass: "border-sky-700/20",
-      accentClass: "bg-sky-600 dark:bg-sky-400",
-    },
-    {
-      id: "rose",
-      name: "Rose",
-      desc: "Earthy blush & crimson",
-      bgClass: "bg-[#fcf6f7] dark:bg-[#221719]",
-      borderClass: "border-rose-700/20",
-      accentClass: "bg-rose-600 dark:bg-rose-400",
-    },
-    {
-      id: "terracotta",
-      name: "Terracotta",
-      desc: "Sun-baked clay & copper",
-      bgClass: "bg-[#faf6f2] dark:bg-[#201915]",
-      borderClass: "border-orange-700/20",
-      accentClass: "bg-orange-600 dark:bg-orange-400",
-    },
-    {
-      id: "midnight",
-      name: "Midnight",
-      desc: "Tokyo dusk & neon indigo",
-      bgClass: "bg-[#f6f6fc] dark:bg-[#11111e]",
-      borderClass: "border-indigo-700/20",
-      accentClass: "bg-indigo-600 dark:bg-indigo-400",
-    },
-  ];
+  const palettes = PALETTES;
 
   const themes: { id: AppearanceTheme; label: string; icon: React.ReactNode }[] = [
     { id: "system", label: "System", icon: <Laptop className="size-4" /> },
@@ -175,8 +530,15 @@ export function AppearanceSection({
     { id: "dark", label: "Dark", icon: <Moon className="size-4" /> },
   ];
 
+  const filteredFonts = React.useMemo(() => {
+    if (fontFilter === "persian") return FONTS.filter((f) => f.category === "persian");
+    if (fontFilter === "latin") return FONTS.filter((f) => f.category === "latin");
+    return FONTS;
+  }, [fontFilter]);
+
   return (
-    <section className="surface-card flex flex-col gap-6 p-6">
+    <section className="surface-card flex flex-col gap-8 p-6">
+      {/* Header */}
       <div className="flex items-start justify-between gap-4 border-b pb-4">
         <div>
           <div className="flex items-center gap-2">
@@ -184,19 +546,26 @@ export function AppearanceSection({
             <h2 className="text-base font-semibold">Theme & Appearance</h2>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Customize interface theme, palette accents, and typography.
+            Customize interface theme, palette accents, Persian and Latin typography, with real-time live preview.
           </p>
         </div>
-        <Button size="sm" onClick={save} disabled={saving}>
+        <Button size="sm" onClick={save} disabled={saving} className="gap-1.5 shadow-xs">
           {saving ? "Saving..." : "Save appearance"}
         </Button>
       </div>
 
-      <div className="flex flex-col gap-6">
+      {/* Live Preview Studio */}
+      <AppearanceLivePreview
+        palette={selectedPalette}
+        font={selectedFont}
+        theme={selectedTheme}
+      />
+
+      <div className="flex flex-col gap-7 pt-2">
         {/* Color Mode */}
         <div className="flex flex-col gap-2.5">
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Color Mode
+            Color Mode · تم محیط کاربری
           </Label>
           <div className="grid grid-cols-3 gap-3">
             {themes.map((item) => {
@@ -224,7 +593,7 @@ export function AppearanceSection({
         {/* Color Palette Swatches */}
         <div className="flex flex-col gap-2.5">
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Color Palette
+            Color Palette · پالت رنگی و لهجه‌ها
           </Label>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {palettes.map((p) => {
@@ -262,31 +631,125 @@ export function AppearanceSection({
           </div>
         </div>
 
-        {/* Writing Font */}
-        <div className="flex flex-col gap-2.5">
-          <Label htmlFor="theme-font" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Writing & Editor Font
-          </Label>
-          <div className="max-w-md">
-            <Select
-              value={selectedFont}
-              onValueChange={(value) => setSelectedFont(value as AppearanceFont)}
-            >
-              <SelectTrigger id="theme-font" className="h-10 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sans">Clean Sans (Modern interface default)</SelectItem>
-                <SelectItem value="serif">Editorial Serif (Classic literary feel)</SelectItem>
-                <SelectItem value="mono">Code Mono (Technical & markdown focus)</SelectItem>
-                <SelectItem value="persian">Persian / RTL (Vazirmatn tuned)</SelectItem>
-                <SelectItem value="slab">Humanist Slab (Robust long-form reading)</SelectItem>
-                <SelectItem value="typewriter">Classic Typewriter (Mechanical nostalgia)</SelectItem>
-                <SelectItem value="grotesk">Modern Grotesk (Punchy geometric styling)</SelectItem>
-                <SelectItem value="baskerville">Academic Classic (Traditional publishing)</SelectItem>
-                <SelectItem value="persian-serif">Persian Traditional (Classic literary typography)</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* Writing & Typography Font */}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Typography & Font · قلم و تایپوگرافی
+              </Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                قلم مورد نظر خود را برای متون فارسی، مقالات لاتین و ویرایشگر انتخاب کنید.
+              </p>
+            </div>
+
+            {/* Font category filter tabs */}
+            <div className="flex items-center gap-1 rounded-lg border border-border/70 bg-muted/30 p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setFontFilter("all")}
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-[11px] font-medium transition-all",
+                  fontFilter === "all"
+                    ? "bg-background text-foreground shadow-2xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                همه ({FONTS.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFontFilter("persian")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all",
+                  fontFilter === "persian"
+                    ? "bg-background text-primary shadow-2xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span>فارسی (Persian)</span>
+                <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
+                  {FONTS.filter((f) => f.category === "persian").length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFontFilter("latin")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all",
+                  fontFilter === "latin"
+                    ? "bg-background text-primary shadow-2xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span>Latin / English</span>
+                <span className="rounded-full bg-muted px-1.5 text-[10px] text-muted-foreground">
+                  {FONTS.filter((f) => f.category === "latin").length}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Rich Font Grid */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredFonts.map((f) => {
+              const active = selectedFont === f.id;
+              const isPersian = f.category === "persian";
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setSelectedFont(f.id)}
+                  className={cn(
+                    "flex flex-col justify-between gap-3 rounded-xl border p-4 text-start transition-all hover:border-primary/50",
+                    active
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/30 shadow-xs"
+                      : "border-border/70 bg-card hover:bg-muted/30",
+                  )}
+                >
+                  <div className="flex w-full items-start justify-between gap-2">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5">
+                        <Type className="size-3.5 text-primary" />
+                        <span className="text-xs font-semibold text-foreground">
+                          {f.nativeName}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          ({f.name})
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                        {f.tag}
+                      </span>
+                    </div>
+                    {active && (
+                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xs">
+                        <Check className="size-3" />
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Sample glyph rendering in actual font */}
+                  <div
+                    className={cn(
+                      "rounded-lg border border-border/50 bg-muted/20 p-2.5 text-foreground/90 transition-colors",
+                      isPersian ? "text-right" : "text-left",
+                    )}
+                    dir={isPersian ? "rtl" : "ltr"}
+                    style={{ fontFamily: f.fontFamily }}
+                  >
+                    <p className="text-sm font-medium line-clamp-1">
+                      {f.sample}
+                    </p>
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-[11px] text-muted-foreground line-clamp-2 leading-tight">
+                    {f.description}
+                  </p>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1425,8 +1888,47 @@ export function AgentHarnessSection({
         </div>
       </div>
 
-      {/* Autonomous Permissions */}
+      {/* Autonomous Permissions & Harness Controls */}
       <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card/60 p-4">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold">Enable Agent Harness</span>
+            <span className="text-[11px] text-muted-foreground">
+              Allow external agent harnesses to connect to this workspace.
+            </span>
+          </div>
+          <Switch
+            checked={isEnabled}
+            disabled={saving}
+            onCheckedChange={(checked) => {
+              setIsEnabled(checked);
+              void savePreferences({ enabled: checked });
+            }}
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card/60 p-4">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold">Max Loop Steps</span>
+            <span className="text-[11px] text-muted-foreground">
+              Limit continuous automated tool execution cycles (default: {steps}).
+            </span>
+          </div>
+          <input
+            type="number"
+            min={1}
+            max={50}
+            value={steps}
+            disabled={saving}
+            onChange={(e) => {
+              const val = Number(e.target.value) || 10;
+              setSteps(val);
+              void savePreferences({ maxLoopSteps: val });
+            }}
+            className="w-16 rounded-lg border border-border bg-background px-2.5 py-1 text-xs text-right font-medium"
+          />
+        </div>
+
         <div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card/60 p-4">
           <div className="flex flex-col gap-0.5">
             <span className="text-xs font-semibold">Allow Note Modifications</span>

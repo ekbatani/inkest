@@ -1,3 +1,7 @@
+@import url("https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Lalezar&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap");
+@import url("https://cdn.jsdelivr.net/gh/rastikerdar/sahel-font@v3.4.0/dist/font-face.css");
+@import url("https://cdn.jsdelivr.net/gh/rastikerdar/shabnam-font@v5.6.1/dist/font-face.css");
+@import url("https://cdn.jsdelivr.net/gh/rastikerdar/samim-font@v4.0.5/dist/font-face.css");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -96,6 +100,13 @@
   --font-grotesk: "Space Grotesk", "Plus Jakarta Sans", "Trebuchet MS", "Arial", sans-serif;
   --font-baskerville: "Baskerville", "Baskerville Old Face", "Bookman Old Style", "Palatino Linotype", "Palatino", "Times New Roman", serif;
   --font-persian-serif: "B Nazanin", "Sahel", "Vazirmatn", "IranNastaliq", "Tahoma", serif;
+  --font-persian-sahel: "Sahel", var(--font-vazirmatn), "Vazirmatn", "Vazir", Tahoma, sans-serif;
+  --font-persian-shabnam: "Shabnam", var(--font-vazirmatn), "Vazirmatn", "Vazir", Tahoma, sans-serif;
+  --font-persian-samim: "Samim", var(--font-vazirmatn), "Vazirmatn", "Vazir", Tahoma, sans-serif;
+  --font-persian-amiri: "Amiri", "Amiri Quran", "Scheherazade New", Georgia, serif;
+  --font-persian-lalezar: "Lalezar", "B Titr", "Titr", sans-serif;
+  --font-persian-nastaliq: "IranNastaliq", "Iran Nastaliq", "Urdu Typesetting", "Amiri", cursive, serif;
+  --font-persian-noto: "Noto Naskh Arabic", "Amiri", serif;
   --inkest-font-body: var(--font-sans);
   --inkest-font-writing: var(--font-sans);
   --card: oklch(1 0 0);
@@ -192,6 +203,13 @@
 html[data-font="serif"] { --inkest-font-writing: var(--font-serif), Georgia, serif; }
 html[data-font="mono"] { --inkest-font-writing: var(--font-mono), ui-monospace, monospace; }
 html[data-font="persian"] { --inkest-font-body: var(--font-rtl-fallback), var(--font-sans), Tahoma, sans-serif; --inkest-font-writing: var(--font-rtl-fallback), var(--font-sans), Tahoma, sans-serif; }
+html[data-font="persian-sahel"] { --inkest-font-body: var(--font-persian-sahel), var(--font-rtl-fallback), Tahoma, sans-serif; --inkest-font-writing: var(--font-persian-sahel), var(--font-rtl-fallback), Tahoma, sans-serif; }
+html[data-font="persian-shabnam"] { --inkest-font-body: var(--font-persian-shabnam), var(--font-rtl-fallback), Tahoma, sans-serif; --inkest-font-writing: var(--font-persian-shabnam), var(--font-rtl-fallback), Tahoma, sans-serif; }
+html[data-font="persian-samim"] { --inkest-font-body: var(--font-persian-samim), var(--font-rtl-fallback), Tahoma, sans-serif; --inkest-font-writing: var(--font-persian-samim), var(--font-rtl-fallback), Tahoma, sans-serif; }
+html[data-font="persian-amiri"] { --inkest-font-body: var(--font-persian-amiri), var(--font-rtl-fallback), Tahoma, sans-serif; --inkest-font-writing: var(--font-persian-amiri), var(--font-rtl-fallback), Tahoma, sans-serif; }
+html[data-font="persian-lalezar"] { --inkest-font-body: var(--font-persian-lalezar), var(--font-rtl-fallback), Tahoma, sans-serif; --inkest-font-writing: var(--font-persian-lalezar), var(--font-rtl-fallback), Tahoma, sans-serif; }
+html[data-font="persian-nastaliq"] { --inkest-font-body: var(--font-persian-nastaliq), var(--font-rtl-fallback), Tahoma, sans-serif; --inkest-font-writing: var(--font-persian-nastaliq), var(--font-rtl-fallback), Tahoma, sans-serif; }
+html[data-font="persian-noto"] { --inkest-font-body: var(--font-persian-noto), var(--font-rtl-fallback), Tahoma, sans-serif; --inkest-font-writing: var(--font-persian-noto), var(--font-rtl-fallback), Tahoma, sans-serif; }
 html[data-font="slab"] { --inkest-font-writing: var(--font-slab), Georgia, serif; }
 html[data-font="typewriter"] { --inkest-font-writing: var(--font-typewriter), ui-monospace, monospace; }
 html[data-font="grotesk"] { --inkest-font-writing: var(--font-grotesk), sans-serif; }

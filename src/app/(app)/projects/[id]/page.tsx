@@ -15,7 +15,9 @@ import {
   listNotes,
   listProjectTaskNotes,
 } from "@/server/notes/service";
+import { listAttachmentsForUser } from "@/server/attachments/service";
 import { getProjectShareInfo } from "@/server/projects/service";
+import type { WikiLinkTarget } from "@/lib/markdown/wiki";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,9 +71,28 @@ export default async function ProjectDetailPage({
     ? (rawTab as Tab)
     : "overview";
 
-  const [taskNotes, childNotes] = await Promise.all([
+  const [taskNotes, childNotes, linkableTargets] = await Promise.all([
     listProjectTaskNotes(id),
     listNotes({ parentId: id, limit: 100 }),
+    Promise.all([
+      listNotes({ limit: 500 }),
+      listAttachmentsForUser(100),
+    ]).then(([notes, attachments]) => [
+      ...notes.map((x) => ({
+        id: x.id,
+        slug: x.slug,
+        title: x.title,
+        type: x.type as "note" | "daily" | "project",
+      })),
+      ...attachments.map((a) => ({
+        id: a.id,
+        slug: a.fileName,
+        title: a.originalName,
+        type: "asset" as const,
+        mimeType: a.mimeType,
+        url: `/api/attachments/${a.id}`,
+      })),
+    ]),
   ]);
   const referenceNotes = childNotes.filter((note) => !isTaskNote(note));
   const childProjects = childNotes.filter((childNote) => childNote.type === "project");
@@ -200,7 +221,13 @@ export default async function ProjectDetailPage({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-8">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-          {tab === "overview" && <OverviewTab note={note} childProjects={childProjects} />}
+          {tab === "overview" && (
+            <OverviewTab
+              note={note}
+              childProjects={childProjects}
+              linkableNotes={linkableTargets}
+            />
+          )}
           {tab === "tasks" && (
             <ProjectTaskNotesPanel
               projectId={note.id}
@@ -221,9 +248,11 @@ export default async function ProjectDetailPage({
 function OverviewTab({
   note,
   childProjects,
+  linkableNotes = [],
 }: {
   note: NonNullable<Awaited<ReturnType<typeof getNoteById>>>;
   childProjects: { id: string; title: string; status: string; updatedAt: Date }[];
+  linkableNotes?: WikiLinkTarget[];
 }) {
   const isEmpty = note.contentMd.trim().length === 0;
 
@@ -251,6 +280,7 @@ function OverviewTab({
           <MarkdownPreview
             content={note.contentMd}
             direction={note.direction}
+            linkableNotes={linkableNotes}
             className="max-w-none font-sans text-[0.98rem] leading-8 tracking-[-0.01em] text-foreground/90 sm:text-[1.02rem]"
           />
         </CardContent>

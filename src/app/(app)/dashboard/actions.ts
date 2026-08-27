@@ -9,8 +9,7 @@ export async function quickCaptureAction(content: string) {
   const title = firstLine.length > 80 ? firstLine.slice(0, 80) + "..." : firstLine;
 
   const note = await createNote({ title, contentMd: content });
-  revalidatePath("/dashboard");
-  revalidatePath("/notes");
+  revalidatePath("/", "layout");
   return { id: note.id };
 }
 
@@ -25,7 +24,6 @@ export async function generateQuickCaptureNoteAction(prompt: string) {
     contentMd: result.output.contentMd,
   });
 
-  revalidatePath("/dashboard");
-  revalidatePath("/notes");
+  revalidatePath("/", "layout");
   return { ok: true as const, id: note.id };
 }

@@ -14,6 +14,7 @@ import {
   MessageSquarePlus,
   Pilcrow,
   Quote,
+  Search,
   Sparkles,
   Strikethrough,
   Type,
@@ -36,6 +37,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   applyMarkdownFormat,
+  openFindAndReplace,
   type MarkdownFormat,
 } from "@/components/editor/markdown-editor-utils";
 import { cn } from "@/lib/utils";
@@ -136,6 +138,16 @@ export function MarkdownFormatToolbar({ editorRef, className, onAction }: Props)
       </ToolButton>
       <ToolButton label="Comment" onClick={addComment}>
         <MessageSquarePlus className="size-3.5" />
+      </ToolButton>
+
+      <ToolButton
+        label="Find and replace (⌘F)"
+        onClick={() => {
+          openFindAndReplace(editorRef);
+          onAction?.();
+        }}
+      >
+        <Search className="size-3.5" />
       </ToolButton>
 
       <div className="mx-0.5 h-4 w-px bg-border/60" />

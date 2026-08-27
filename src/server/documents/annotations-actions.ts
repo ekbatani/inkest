@@ -39,6 +39,6 @@ export async function extractAnnotationAction(input: {
   documentTitle: string;
 }) {
   const result = await extractAnnotationToNote(input);
-  revalidatePath("/notes");
+  revalidatePath("/", "layout");
   return result;
 }

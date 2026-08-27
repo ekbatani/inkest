@@ -1,4 +1,5 @@
 import { createNote } from "@/server/notes/service";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export default async function NewNotePage({
@@ -17,5 +18,7 @@ export default async function NewNotePage({
     type: isProject ? "project" : "note",
     status: isTask ? "todo" : "none",
   });
+  revalidatePath("/", "layout");
   redirect(isProject ? `/projects/${note.id}` : `/notes/${note.id}?focus=title`);
 }
+

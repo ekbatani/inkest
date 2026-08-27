@@ -5,10 +5,20 @@ import { Loader2, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { insertTextAtCursor } from "./markdown-editor-utils";
 
 type Props = {
   editorRef: React.RefObject<ReactCodeMirrorRef | null>;
+  iconOnly?: boolean;
+  variant?: Parameters<typeof Button>[0]["variant"];
+  size?: Parameters<typeof Button>[0]["size"];
+  className?: string;
 };
 
 const ACCEPTED_FILE_TYPES = [
@@ -27,7 +37,13 @@ const ACCEPTED_FILE_TYPES = [
   ".docx",
 ].join(",");
 
-export function AttachmentUploadButton({ editorRef }: Props) {
+export function AttachmentUploadButton({
+  editorRef,
+  iconOnly = false,
+  variant = "ghost",
+  size = iconOnly ? "icon-sm" : "sm",
+  className,
+}: Props) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
 
@@ -61,6 +77,25 @@ export function AttachmentUploadButton({ editorRef }: Props) {
     }
   };
 
+  const button = (
+    <Button
+      variant={variant}
+      size={size}
+      className={cn(iconOnly ? "" : "gap-1.5", className)}
+      onClick={() => inputRef.current?.click()}
+      disabled={uploading}
+      aria-label="Attach file or image"
+      title={iconOnly ? undefined : "Attach file"}
+    >
+      {uploading ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <Paperclip className="size-4" />
+      )}
+      {!iconOnly && <span className="hidden sm:inline">Attach</span>}
+    </Button>
+  );
+
   return (
     <>
       <input
@@ -70,20 +105,14 @@ export function AttachmentUploadButton({ editorRef }: Props) {
         className="hidden"
         onChange={onFileChange}
       />
-      <Button
-        variant="ghost"
-        size="sm"
-        className="gap-1.5"
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-      >
-        {uploading ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <Paperclip className="size-4" />
-        )}
-        <span className="hidden sm:inline">Attach</span>
-      </Button>
+      {iconOnly ? (
+        <Tooltip>
+          <TooltipTrigger render={button} />
+          <TooltipContent>Attach file or image</TooltipContent>
+        </Tooltip>
+      ) : (
+        button
+      )}
     </>
   );
 }

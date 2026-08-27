@@ -5,10 +5,20 @@ import { Mic, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { insertTextAtCursor } from "./markdown-editor-utils";
 
 type Props = {
   editorRef: React.RefObject<ReactCodeMirrorRef | null>;
+  iconOnly?: boolean;
+  variant?: Parameters<typeof Button>[0]["variant"];
+  size?: Parameters<typeof Button>[0]["size"];
+  className?: string;
 };
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
@@ -82,7 +92,13 @@ function getSpeechRecognitionErrorMessage(error: string) {
   }
 }
 
-export function SpeechToTextButton({ editorRef }: Props) {
+export function SpeechToTextButton({
+  editorRef,
+  iconOnly = false,
+  variant = "ghost",
+  size = iconOnly ? "icon-sm" : "sm",
+  className,
+}: Props) {
   const isSupported = React.useSyncExternalStore(
     subscribeToSpeechRecognitionSupport,
     getBrowserSpeechRecognitionSupport,
@@ -171,20 +187,36 @@ export function SpeechToTextButton({ editorRef }: Props) {
     return null;
   }
 
-  return (
+  const tooltipLabel = isListening ? "Stop speech to text" : "Voice typing / Speech to text";
+
+  const button = (
     <Button
-      variant="ghost"
-      size="sm"
-      className="gap-1.5"
+      variant={variant}
+      size={size}
+      className={cn(iconOnly ? "" : "gap-1.5", className)}
       onClick={onClick}
-      title={isListening ? "Stop speech to text" : "Start speech to text"}
+      aria-label={tooltipLabel}
+      title={iconOnly ? undefined : (isListening ? "Stop speech to text" : "Start speech to text")}
     >
       {isListening ? (
         <Square className="size-4 fill-current text-destructive" />
       ) : (
         <Mic className="size-4" />
       )}
-      <span className="hidden sm:inline">{isListening ? "Stop" : "Voice"}</span>
+      {!iconOnly && (
+        <span className="hidden sm:inline">{isListening ? "Stop" : "Voice"}</span>
+      )}
     </Button>
   );
+
+  if (iconOnly) {
+    return (
+      <Tooltip>
+        <TooltipTrigger render={button} />
+        <TooltipContent>{tooltipLabel}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return button;
 }

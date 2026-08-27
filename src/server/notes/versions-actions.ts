@@ -35,7 +35,6 @@ export async function restoreNoteVersionAction(
     title: version.title,
     contentMd: version.contentMd,
   });
-  revalidatePath("/notes");
-  revalidatePath(`/notes/${noteId}`);
+  revalidatePath("/", "layout");
   return { ok: true } as const;
 }

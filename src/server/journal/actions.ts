@@ -10,7 +10,6 @@ export async function createJournalEntryAction(args: {
 }) {
   const { createJournalEntry } = await import("./journal-service");
   const result = await createJournalEntry(args);
-  revalidatePath("/journal");
-  revalidatePath("/notes");
+  revalidatePath("/", "layout");
   return result;
 }

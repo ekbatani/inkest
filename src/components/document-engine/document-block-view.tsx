@@ -297,7 +297,7 @@ function renderInlineMarkdown(
   let remaining = text;
   let keyIdx = 0;
 
-  const TOKEN_RE = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[\[[^\]]+\]\]|\[[^\]]+\]\([^)]+\))/;
+  const TOKEN_RE = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|!?\[\[[^\]]+\]\]|\[[^\]]+\]\([^)]+\))/;
 
   while (remaining.length > 0) {
     const match = remaining.match(TOKEN_RE);
@@ -331,26 +331,69 @@ function renderInlineMarkdown(
           {token.slice(1, -1)}
         </em>,
       );
-    } else if (token.startsWith("[[") && token.endsWith("]]")) {
-      const target = token.slice(2, -2).trim();
+    } else if ((token.startsWith("[[") || token.startsWith("![[")) && token.endsWith("]]")) {
+      const isEmbed = token.startsWith("!");
+      const target = isEmbed ? token.slice(3, -2).trim() : token.slice(2, -2).trim();
       const href = resolveNoteHref(target, linkableNotes);
       const isUnresolved = !href || href === target;
       const targetUrl = isUnresolved ? `/notes/new?title=${encodeURIComponent(target)}` : href;
 
-      parts.push(
-        <Link
-          key={keyIdx}
-          href={targetUrl}
-          className={cn(
-            "underline underline-offset-3 font-medium transition-colors",
-            isUnresolved
-              ? "text-amber-500 hover:text-amber-600 decoration-dashed"
-              : "text-primary hover:text-primary/80",
-          )}
-        >
-          {target}
-        </Link>,
-      );
+      if (isEmbed && href?.startsWith("/api/attachments/") && /\.(png|jpe?g|webp|gif|svg|avif)$/i.test(target)) {
+        parts.push(
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            key={keyIdx}
+            src={href}
+            alt={target}
+            className="my-2 max-h-96 max-w-full rounded-xl border border-border/60 shadow-xs"
+            loading="lazy"
+          />,
+        );
+      } else if (href?.startsWith("/api/attachments/")) {
+        parts.push(
+          <a
+            key={keyIdx}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline underline-offset-3 hover:text-primary/80 inline-flex items-center gap-1 font-medium"
+          >
+            {isEmbed ? `📎 ${target}` : target}
+          </a>,
+        );
+      } else if (isUnresolved) {
+        parts.push(
+          <Link
+            key={keyIdx}
+            href={targetUrl}
+            className="text-amber-500 hover:text-amber-600 underline decoration-dashed underline-offset-3 font-medium transition-colors"
+          >
+            {target} ↗
+          </Link>,
+        );
+      } else if (href?.startsWith("/")) {
+        parts.push(
+          <Link
+            key={keyIdx}
+            href={href}
+            className="text-primary hover:text-primary/80 underline underline-offset-3 font-medium transition-colors"
+          >
+            {isEmbed && href.startsWith("/projects/") ? `📁 ${target}` : isEmbed ? `📝 ${target}` : target}
+          </Link>,
+        );
+      } else {
+        parts.push(
+          <a
+            key={keyIdx}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline underline-offset-3 hover:text-primary/80"
+          >
+            {target}
+          </a>,
+        );
+      }
     } else if (token.startsWith("[") && token.includes("](")) {
       const linkMatch = token.match(/^\[(.*?)\]\((.*?)\)$/);
       if (linkMatch) {
@@ -358,7 +401,19 @@ function renderInlineMarkdown(
         const linkHref = linkMatch[2];
         const resolved = resolveNoteHref(linkHref, linkableNotes) ?? linkHref;
 
-        if (resolved.startsWith("/")) {
+        if (resolved.startsWith("/api/attachments/")) {
+          parts.push(
+            <a
+              key={keyIdx}
+              href={resolved}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline underline-offset-3 hover:text-primary/80"
+            >
+              {linkText}
+            </a>,
+          );
+        } else if (resolved.startsWith("/")) {
           parts.push(
             <Link key={keyIdx} href={resolved} className="text-primary underline underline-offset-3 hover:text-primary/80">
               {linkText}

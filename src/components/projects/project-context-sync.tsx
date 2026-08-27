@@ -37,9 +37,7 @@ export function ProjectContextSync({
       },
     });
 
-    return () => {
-      clearPageContext();
-    };
+    return () => {};
   }, [
     projectId,
     title,
@@ -49,8 +47,13 @@ export function ProjectContextSync({
     childNotesCount,
     subprojectsCount,
     setPageContext,
-    clearPageContext,
   ]);
+
+  React.useEffect(() => {
+    return () => {
+      clearPageContext();
+    };
+  }, [clearPageContext]);
 
   return null;
 }

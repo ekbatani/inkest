@@ -49,7 +49,7 @@ type NoteDetailsPopoverProps = {
   allTags: Tag[];
   noteTagIds: string[];
   parentCandidates: Pick<Note, "id" | "title" | "type">[];
-  backlinks: { id: string; title: string; snippet?: string }[];
+  backlinks: { id: string; title: string; snippet?: string; type?: string }[];
   dailyAgenda?: {
     dateKey: string;
     events: GoogleCalendarEvent[];
@@ -234,10 +234,10 @@ export function NoteDetailsPopover({
                   {backlinks.map((b) => (
                     <li key={b.id} className="group">
                       <Link
-                        href={`/notes/${b.id}`}
+                        href={b.type === "project" ? `/projects/${b.id}` : `/notes/${b.id}`}
                         className="block truncate font-medium text-foreground/90 hover:text-primary transition-colors"
                       >
-                        ← {b.title || "Untitled"}
+                        ← {b.type === "project" ? `📁 ${b.title || "Untitled"}` : b.title || "Untitled"}
                       </Link>
                       {b.snippet && (
                         <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground/80 italic font-mono bg-muted/30 p-1.5 rounded-lg border border-border/40">

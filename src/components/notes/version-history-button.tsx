@@ -46,6 +46,9 @@ export function VersionHistoryButton({
   onUndo,
   onRedo,
   onRestoreVersion,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  hideTrigger = false,
 }: {
   noteId: string;
   iconOnly?: boolean;
@@ -55,14 +58,30 @@ export function VersionHistoryButton({
   onUndo?: () => void;
   onRedo?: () => void;
   onRestoreVersion?: (version: DraftSnapshot) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }) {
-  const [open, setOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+
+  const setOpen = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!isControlled) {
+        setUncontrolledOpen(nextOpen);
+      }
+      controlledOnOpenChange?.(nextOpen);
+    },
+    [controlledOnOpenChange, isControlled],
+  );
+
   const [loading, setLoading] = React.useState(false);
   const [versions, setVersions] = React.useState<NoteVersion[]>([]);
   const [restoring, setRestoring] = React.useState<string | null>(null);
   const [activeId, setActiveId] = React.useState<string | "draft" | null>(null);
 
-  const openHistory = async () => {
+  const openHistory = React.useCallback(async () => {
     setOpen(true);
     setLoading(true);
     try {
@@ -74,7 +93,7 @@ export function VersionHistoryButton({
     } finally {
       setLoading(false);
     }
-  };
+  }, [draft, noteId, setOpen]);
 
   const restore = async (versionId: string) => {
     if (
@@ -119,20 +138,28 @@ export function VersionHistoryButton({
 
   return (
     <>
-      <Button
-        variant="outline"
-        size={iconOnly ? "icon-sm" : "sm"}
-        className={iconOnly ? "rounded-full" : "w-full justify-start gap-2"}
-        aria-label="Open version history"
-        title="Version history"
-        onClick={() => void openHistory()}
-      >
-        <History className="size-4" />
-        {!iconOnly && "Version history"}
-      </Button>
+      {!hideTrigger && (
+        <Button
+          variant="outline"
+          size={iconOnly ? "icon-sm" : "sm"}
+          className={iconOnly ? "rounded-full" : "w-full justify-start gap-2"}
+          aria-label="Open version history"
+          title="Version history"
+          onClick={() => void openHistory()}
+        >
+          <History className="size-4" />
+          {!iconOnly && "Version history"}
+        </Button>
+      )}
       <Dialog
         open={open}
-        onOpenChange={(nextOpen) => (nextOpen ? void openHistory() : setOpen(false))}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            void openHistory();
+          } else {
+            setOpen(false);
+          }
+        }}
       >
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>

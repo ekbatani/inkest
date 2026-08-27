@@ -13,8 +13,7 @@ export async function openDailyNoteAction(date?: string) {
   target.setHours(0, 0, 0, 0);
 
   const note = await getOrCreateDailyNote(target);
-  revalidatePath("/notes");
-  revalidatePath(`/notes/${note.id}`);
+  revalidatePath("/", "layout");
 
   return note.id;
 }

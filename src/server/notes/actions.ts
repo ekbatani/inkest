@@ -9,20 +9,19 @@ import {
   unarchiveNote,
   deleteNoteSoft,
   togglePinned,
-  getNoteById,
   moveNoteInTree,
 } from "./service";
 import { syncMarkdownTasks } from "@/server/tasks/service";
 
 export async function createNoteAction() {
   const note = await createNote({ title: "Untitled" });
-  revalidatePath("/notes");
+  revalidatePath("/", "layout");
   redirect(`/notes/${note.id}`);
 }
 
 export async function createNoteWithTitleAction(title: string) {
   const note = await createNote({ title: title.trim() || "Untitled" });
-  revalidatePath("/notes");
+  revalidatePath("/", "layout");
   return note;
 }
 
@@ -32,8 +31,7 @@ export async function createProjectAction() {
     type: "project",
     status: "todo",
   });
-  revalidatePath("/projects");
-  revalidatePath("/notes");
+  revalidatePath("/", "layout");
   redirect(`/projects/${note.id}`);
 }
 
@@ -46,10 +44,7 @@ export async function createProjectTaskNoteAction(
     parentId: projectId,
     status: "todo",
   });
-  revalidatePath("/notes");
-  revalidatePath(`/notes/${note.id}`);
-  revalidatePath("/projects");
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/", "layout");
   return note;
 }
 
@@ -73,37 +68,30 @@ export async function updateNoteAction(
   input: Parameters<typeof updateNote>[1],
 ) {
   const updated = await autoSaveNoteAction(id, input);
-  revalidatePath("/notes");
-  revalidatePath(`/notes/${id}`);
-  revalidatePath(`/projects`);
-  revalidatePath(`/projects/${id}`);
+  revalidatePath("/", "layout");
   return updated;
 }
 
 export async function archiveNoteAction(id: string) {
   await archiveNote(id);
-  revalidatePath("/notes");
-  revalidatePath(`/notes/${id}`);
+  revalidatePath("/", "layout");
   redirect("/notes");
 }
 
 export async function unarchiveNoteAction(id: string) {
   await unarchiveNote(id);
-  revalidatePath("/notes");
-  revalidatePath("/archive");
+  revalidatePath("/", "layout");
 }
 
 export async function deleteNoteAction(id: string) {
   await deleteNoteSoft(id);
-  revalidatePath("/notes");
-  revalidatePath("/archive");
+  revalidatePath("/", "layout");
   redirect("/notes");
 }
 
 export async function togglePinnedAction(id: string) {
   await togglePinned(id);
-  revalidatePath("/notes");
-  revalidatePath(`/notes/${id}`);
+  revalidatePath("/", "layout");
 }
 
 export async function moveNoteInTreeAction(
@@ -111,24 +99,12 @@ export async function moveNoteInTreeAction(
   targetParentId: string | null,
   beforeId: string | null = null,
 ) {
-  const previous = await getNoteById(noteId);
   const note = await moveNoteInTree(noteId, targetParentId, beforeId);
   if (!note) {
     throw new Error("NOTE_NOT_FOUND");
   }
 
-  revalidatePath("/notes");
-  revalidatePath("/projects");
-  revalidatePath(`/notes/${noteId}`);
-  if (previous?.parentId) {
-    revalidatePath(`/projects/${previous.parentId}`);
-    revalidatePath(`/notes/${previous.parentId}`);
-  }
-  if (targetParentId) {
-    revalidatePath(`/projects/${targetParentId}`);
-    revalidatePath(`/notes/${targetParentId}`);
-  }
-
+  revalidatePath("/", "layout");
   return note;
 }
 

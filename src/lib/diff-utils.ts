@@ -12,8 +12,8 @@ export type DiffLine = {
  * between originalText and newText.
  */
 export function computeLineDiff(originalText: string, newText: string): DiffLine[] {
-  const origLines = originalText.split("\n");
-  const newLines = newText.split("\n");
+  const origLines = (originalText ?? "").split("\n");
+  const newLines = (newText ?? "").split("\n");
 
   const m = origLines.length;
   const n = newLines.length;

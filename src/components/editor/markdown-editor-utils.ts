@@ -178,9 +178,12 @@ export function applyMarkdownFormatToView(
 export function getSelectedEditorText(ref: React.RefObject<ReactCodeMirrorRef | null>) {
   const view = ref.current?.view;
   if (!view) return null;
+  const docLen = view.state.doc.length;
   const sel = view.state.selection.main;
-  if (sel.from === sel.to) return null;
-  return view.state.sliceDoc(sel.from, sel.to).trim() || null;
+  const from = Math.min(Math.max(0, sel.from), docLen);
+  const to = Math.min(Math.max(0, sel.to), docLen);
+  if (from === to) return null;
+  return view.state.sliceDoc(from, to).trim() || null;
 }
 
 export function replaceEntireEditorContent(
@@ -189,8 +192,9 @@ export function replaceEntireEditorContent(
 ) {
   const view = ref.current?.view;
   if (!view) return;
+  const docLen = view.state.doc.length;
   view.dispatch({
-    changes: { from: 0, to: view.state.doc.length, insert: text },
+    changes: { from: 0, to: docLen, insert: text },
     selection: { anchor: text.length },
   });
   view.focus();
@@ -202,10 +206,13 @@ export function replaceSelectedEditorText(
 ) {
   const view = ref.current?.view;
   if (!view) return;
+  const docLen = view.state.doc.length;
   const sel = view.state.selection.main;
+  const from = Math.min(Math.max(0, sel.from), docLen);
+  const to = Math.min(Math.max(0, sel.to), docLen);
   view.dispatch({
-    changes: { from: sel.from, to: sel.to, insert: text },
-    selection: { anchor: sel.from + text.length },
+    changes: { from, to, insert: text },
+    selection: { anchor: from + text.length },
   });
   view.focus();
 }
@@ -252,5 +259,25 @@ export function applyGentlePatch(
   } else {
     replaceEntireEditorContent(ref, patchedText);
   }
+}
+
+export function openFindAndReplace(
+  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  options?: { replace?: boolean },
+) {
+  const view = ref.current?.view;
+  if (!view) return;
+
+  // Import dynamically or execute command
+  import("@codemirror/search").then(({ openSearchPanel }) => {
+    openSearchPanel(view);
+    if (options?.replace) {
+      import("@/components/editor/find-replace-panel").then(
+        ({ openReplacePanelEffect }) => {
+          view.dispatch({ effects: openReplacePanelEffect.of(true) });
+        },
+      );
+    }
+  });
 }
 

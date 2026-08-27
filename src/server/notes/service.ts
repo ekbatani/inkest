@@ -516,8 +516,9 @@ export type NoteListItem = Note;
 export type BacklinkItem = Note & { snippet?: string };
 
 /**
- * Find notes whose content references this note via `[[slug]]` or
- * `[[title]]`. Matches are case-insensitive and stripped of section anchors.
+ * Find notes whose content references this note via `[[slug]]`, `[[title]]`,
+ * `![[embed]]`, or markdown links like `/notes/${id}` or `/projects/${id}`.
+ * Matches are case-insensitive and stripped of section anchors.
  */
 export async function getBacklinks(noteId: string): Promise<BacklinkItem[]> {
   const target = await getNoteById(noteId);
@@ -538,11 +539,19 @@ export async function getBacklinks(noteId: string): Promise<BacklinkItem[]> {
 
   const slugNeedle = normalizeSearch(target.slug);
   const titleNeedle = normalizeSearch(target.title);
+  const noteHrefNeedle = `/notes/${noteId}`;
+  const projectHrefNeedle = `/projects/${noteId}`;
 
   const results: BacklinkItem[] = [];
 
   for (const n of candidates) {
-    if (!n.contentMd.includes("[[")) continue;
+    const hasWiki = n.contentMd.includes("[[");
+    const hasPathLink =
+      n.contentMd.includes(noteHrefNeedle) ||
+      n.contentMd.includes(projectHrefNeedle);
+
+    if (!hasWiki && !hasPathLink) continue;
+
     const lines = n.contentMd.split("\n");
     let matchSnippet: string | null = null;
 
@@ -554,17 +563,27 @@ export async function getBacklinks(noteId: string): Promise<BacklinkItem[]> {
       }
       if (inFence) continue;
 
-      WIKI_TOKEN_RE.lastIndex = 0;
-      let match: RegExpExecArray | null;
-      while ((match = WIKI_TOKEN_RE.exec(line)) !== null) {
-        const name = match[1].split("#")[0]?.trim() ?? "";
-        if (!name) continue;
-        const norm = normalizeSearch(name);
-        if (norm === slugNeedle || norm === titleNeedle) {
-          matchSnippet = line.trim();
-          break;
+      if (hasWiki) {
+        WIKI_TOKEN_RE.lastIndex = 0;
+        let match: RegExpExecArray | null;
+        while ((match = WIKI_TOKEN_RE.exec(line)) !== null) {
+          const rawName = match[2] ?? match[1];
+          const name = rawName?.split("#")[0]?.trim() ?? "";
+          if (!name) continue;
+          const norm = normalizeSearch(name);
+          if (norm === slugNeedle || norm === titleNeedle) {
+            matchSnippet = line.trim();
+            break;
+          }
         }
       }
+
+      if (!matchSnippet && hasPathLink) {
+        if (line.includes(noteHrefNeedle) || line.includes(projectHrefNeedle)) {
+          matchSnippet = line.trim();
+        }
+      }
+
       if (matchSnippet) break;
     }
 
@@ -579,7 +598,7 @@ export async function getBacklinks(noteId: string): Promise<BacklinkItem[]> {
   return results;
 }
 
-const WIKI_TOKEN_RE = /\[\[([^\]\n]+?)\]\]/g;
+const WIKI_TOKEN_RE = /(!?)\[\[([^\]\n]+?)\]\]/g;
 export function extractWikiTokens(content: string): string[] {
   // Skip fenced code blocks where wiki syntax should stay literal.
   const lines = content.split("\n");
@@ -594,11 +613,13 @@ export function extractWikiTokens(content: string): string[] {
     let match: RegExpExecArray | null;
     WIKI_TOKEN_RE.lastIndex = 0;
     while ((match = WIKI_TOKEN_RE.exec(line)) !== null) {
-      tokens.push(match[1]);
+      const token = match[2] ?? match[1];
+      if (token) tokens.push(token);
     }
   }
   return tokens;
 }
+
 
 // ── Daily notes ────────────────────────────────────────────────────────────
 

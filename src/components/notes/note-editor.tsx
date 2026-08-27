@@ -16,7 +16,12 @@ import {
   Redo2,
   BookOpen,
   Headphones,
-  Sparkles,
+  Archive,
+  ArchiveRestore,
+  FileText,
+  MoreHorizontal,
+  History,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -25,15 +30,27 @@ import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { usePageContext } from "@/components/providers/page-context-provider";
 import { NoteDetailsPopover } from "@/components/notes/note-details-popover";
 import type { Note, Tag } from "@/server/db/schema";
-import { autoSaveNoteAction, updateNoteAction } from "@/server/notes/actions";
-import { deleteNoteAction, togglePinnedAction } from "@/server/notes/actions";
-import { ArchiveToggleButton } from "@/components/notes/archive-toggle-button";
+import {
+  autoSaveNoteAction,
+  updateNoteAction,
+  deleteNoteAction,
+  togglePinnedAction,
+  archiveNoteAction,
+  unarchiveNoteAction,
+} from "@/server/notes/actions";
 import { FloatingMarkdownFormatToolbar } from "@/components/editor/markdown-format-toolbar";
 import { AttachmentUploadButton } from "@/components/editor/image-upload-button";
 import { SpeechToTextButton } from "@/components/editor/speech-to-text-button";
@@ -48,6 +65,7 @@ import { containsArabicScript } from "@/lib/text/rtl";
 import type { GoogleCalendarEvent } from "@/server/db/schema";
 import {
   applyMarkdownFormat,
+  openFindAndReplace,
   type MarkdownFormat,
 } from "@/components/editor/markdown-editor-utils";
 import { DocumentPersistenceManager } from "@/lib/document-engine/storage/persistence-manager";
@@ -69,7 +87,6 @@ const SuperFocusReader = dynamic(
   () => import("@/components/notes/super-focus-reader").then((m) => m.SuperFocusReader),
   { ssr: false },
 );
-const CONTEXT_PANEL_STORAGE_KEY = "inkest:note-context-panel-open";
 
 type NoteSnapshot = {
   title: string;
@@ -99,7 +116,7 @@ export function NoteEditor({
   noteTagIds?: string[];
   parentCandidates?: Pick<Note, "id" | "title" | "type">[];
   linkableNotes?: WikiLinkTarget[];
-  backlinks?: { id: string; title: string; snippet?: string }[];
+  backlinks?: { id: string; title: string; snippet?: string; type?: string }[];
   selectTitleOnMount?: boolean;
   superFocusPrefs?: { trackingMode: SuperFocusTrackingMode; radius: number };
   ttsPrefs?: { rate: number; voiceURI: string | undefined };
@@ -124,10 +141,8 @@ export function NoteEditor({
   const router = useRouter();
   const [title, setTitle] = React.useState(note.title);
   const [content, setContent] = React.useState(note.contentMd);
-  const [showPanel, setShowPanel] = React.useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(CONTEXT_PANEL_STORAGE_KEY) === "true";
-  });
+  const [versionHistoryOpen, setVersionHistoryOpen] = React.useState(false);
+  const [isArchiving, setIsArchiving] = React.useState(false);
   const [showSuperFocus, setShowSuperFocus] = React.useState(false);
   const [trackingMode, setTrackingMode] = React.useState<SuperFocusTrackingMode>(
     superFocusPrefs?.trackingMode ?? "pointer",
@@ -187,14 +202,13 @@ export function NoteEditor({
       pageType: "note",
       editorRef,
     });
+  }, [note.id, title, content, editorRef, setPageContext]);
+
+  React.useEffect(() => {
     return () => {
       clearPageContext();
     };
-  }, [note.id, title, content, editorRef, setPageContext, clearPageContext]);
-
-  const toggleContextPanel = React.useCallback(() => {
-    document.dispatchEvent(new CustomEvent("inkest:toggle-ai-sidebar"));
-  }, []);
+  }, [clearPageContext]);
 
   const persistenceManagerRef = React.useRef<DocumentPersistenceManager | null>(null);
 
@@ -656,20 +670,38 @@ export function NoteEditor({
     });
   }, [openReader, pasteToPreview]);
 
-  const requestAiPanel = React.useCallback(() => {
-    setShowPanel(true);
-  }, []);
+  const onToggleArchive = React.useCallback(async () => {
+    if (isArchiving) return;
+    setIsArchiving(true);
+    try {
+      if (metadata.archived) {
+        await unarchiveNoteAction(note.id);
+        setMetadata((m) => ({ ...m, archived: false }));
+        toast.success("Note restored.");
+        router.refresh();
+      } else {
+        await archiveNoteAction(note.id);
+        setMetadata((m) => ({ ...m, archived: true }));
+        toast.success("Note archived.");
+        router.refresh();
+      }
+    } catch {
+      toast.error(metadata.archived ? "Failed to restore note." : "Failed to archive note.");
+    } finally {
+      setIsArchiving(false);
+    }
+  }, [isArchiving, metadata.archived, note.id, router]);
 
   React.useEffect(() => {
     const onAskAi = (event: Event) => {
       const detail = (event as CustomEvent<{ noteId?: string }>).detail;
       if (detail?.noteId !== note.id) return;
-      requestAiPanel();
+      document.dispatchEvent(new CustomEvent("inkest:toggle-ai-sidebar"));
     };
 
     window.addEventListener("inkest:ask-ai", onAskAi);
     return () => window.removeEventListener("inkest:ask-ai", onAskAi);
-  }, [note.id, requestAiPanel]);
+  }, [note.id]);
 
   React.useEffect(() => {
     const onFormatMarkdown = (event: Event) => {
@@ -688,98 +720,151 @@ export function NoteEditor({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3 sm:px-4">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={goBack}
-            aria-label="Back to notes"
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <div className="ml-1 flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => openReader()}
-              aria-label="Open focus reader"
-              title="Open focus reader (Ctrl+Shift+R)"
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/70 bg-background/80 px-3 backdrop-blur-md sm:px-4">
+        {/* Left Section: Navigation, Reading Modes, Insert Tools, History */}
+        <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={goBack}
+                  aria-label="Back to notes"
+                  className="text-muted-foreground hover:text-foreground"
+                />
+              }
             >
-              <BookOpen className="size-3.5" />
-              <span className="ml-1 hidden sm:inline">Focus</span>
-            </Button>
+              <ChevronLeft className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>Back to notes</TooltipContent>
+          </Tooltip>
+
+          <div className="h-4 w-px bg-border/60" />
+
+          {/* Focus & Listen Segment */}
+          <div className="flex items-center gap-0.5 rounded-lg bg-muted/40 p-0.5">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+                    onClick={() => openReader()}
+                    aria-label="Open focus reader"
+                  />
+                }
+              >
+                <BookOpen className="size-3.5" />
+                <span className="hidden sm:inline">Focus</span>
+              </TooltipTrigger>
+              <TooltipContent>Focus reader (Ctrl+Shift+R)</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="size-7 text-muted-foreground hover:text-foreground"
+                    onClick={() => openReader(true)}
+                    aria-label="Listen in focus reader"
+                  />
+                }
+              >
+                <Headphones className="size-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>Listen in focus reader</TooltipContent>
+            </Tooltip>
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => openReader(true)}
-            aria-label="Listen in the focus reader"
-            title="Listen in focus reader"
-          >
-            <Headphones className="size-4 text-muted-foreground" />
-          </Button>
+          <div className="h-4 w-px bg-border/60" />
 
-          <AttachmentUploadButton editorRef={editorRef} />
-          <SpeechToTextButton editorRef={editorRef} />
+          {/* Insert Tools */}
+          <div className="flex items-center gap-0.5">
+            <AttachmentUploadButton editorRef={editorRef} iconOnly />
+            <SpeechToTextButton editorRef={editorRef} iconOnly />
+          </div>
 
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={undo}
-            disabled={!canUndo}
-            aria-label="Undo"
-            title="Undo"
-          >
-            <Undo2 className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={redo}
-            disabled={!canRedo}
-            aria-label="Redo"
-            title="Redo"
-          >
-            <Redo2 className="size-4" />
-          </Button>
+          <div className="hidden h-4 w-px bg-border/60 sm:block" />
 
-          <DropdownMenu onOpenChange={(open) => open && setCopyMenuTouched(true)}>
-            <DropdownMenuTrigger
-              render={<Button variant="ghost" size="sm" className="gap-1.5" />}
+          {/* History Controls */}
+          <div className="hidden items-center gap-0.5 sm:flex">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={undo}
+                    disabled={!canUndo}
+                    aria-label="Undo"
+                    className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                  />
+                }
+              >
+                <Undo2 className="size-4" />
+              </TooltipTrigger>
+              <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={redo}
+                    disabled={!canRedo}
+                    aria-label="Redo"
+                    className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                  />
+                }
+              >
+                <Redo2 className="size-4" />
+              </TooltipTrigger>
+              <TooltipContent>Redo (Ctrl+Y)</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => openFindAndReplace(editorRef)}
+                    aria-label="Find and replace"
+                    className="text-muted-foreground hover:text-foreground"
+                  />
+                }
+              >
+                <Search className="size-4" />
+              </TooltipTrigger>
+              <TooltipContent>Find & Replace (⌘F / Ctrl+F)</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+
+        {/* Right Section: Save Status, Note Details, Pin, More Actions */}
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          {saveState !== "idle" && (
+            <span
+              key={saveState}
+              className="save-indicator flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-xs font-medium text-muted-foreground"
             >
-              <Copy className="size-4 text-muted-foreground" />
-              <span className="hidden sm:inline">Copy</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem onClick={() => void onCopyMarkdown()}>
-                Copy Markdown
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => void onCopyPreview()}>
-                Copy preview
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              {saveState === "saving" ? (
+                <Loader2 className="size-3 animate-spin text-primary" />
+              ) : (
+                <Check className="size-3 text-emerald-500" />
+              )}
+              <span className="hidden sm:inline">
+                {saveState === "saving" ? "Saving…" : "Saved"}
+              </span>
+            </span>
+          )}
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5"
-            nativeButton={false}
-            render={
-              <a
-                href={`/api/export/note/${note.id}`}
-                aria-label="Download this note as Markdown"
-                rel="noopener"
-              />
-            }
-          >
-            <Download className="size-4 text-muted-foreground" />
-            <span className="hidden sm:inline">Export</span>
-          </Button>
-
-          {/* Relocated Note Context Details Popover */}
           <NoteDetailsPopover
             note={note}
             metadata={metadata}
@@ -792,78 +877,126 @@ export function NoteEditor({
             projectTaskCount={projectTaskCount}
           />
 
-          <div className="ml-auto flex items-center gap-1">
-            {saveState !== "idle" && (
-              <span
-                key={saveState}
-                className="save-indicator flex items-center gap-1 text-xs text-muted-foreground"
-              >
-                {saveState === "saving" ? (
-                  <Loader2 className="size-3 animate-spin" />
-                ) : (
-                  <Check className="size-3" />
-                )}
-                {saveState === "saving" ? "Saving…" : "Saved"}
-              </span>
-            )}
-
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={onTogglePin}
-              aria-label={metadata.pinned ? "Unpin note" : "Pin note"}
-              title={metadata.pinned ? "Unpin note" : "Pin note"}
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant={metadata.pinned ? "secondary" : "ghost"}
+                  size="icon-sm"
+                  onClick={onTogglePin}
+                  aria-label={metadata.pinned ? "Unpin note" : "Pin note"}
+                  className={cn(
+                    "text-muted-foreground hover:text-foreground",
+                    metadata.pinned &&
+                      "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400",
+                  )}
+                />
+              }
             >
               {metadata.pinned ? (
                 <PinOff className="size-4" />
               ) : (
                 <Pin className="size-4" />
               )}
-            </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {metadata.pinned ? "Unpin note" : "Pin note"}
+            </TooltipContent>
+          </Tooltip>
 
-            <ArchiveToggleButton
-              noteId={note.id}
-              archived={note.archived}
-              variant="ghost"
-              size="icon-sm"
-            />
+          <DropdownMenu onOpenChange={(open) => open && setCopyMenuTouched(true)}>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="More actions"
+                        className="text-muted-foreground hover:text-foreground"
+                      />
+                    }
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </DropdownMenuTrigger>
+                }
+              />
+              <TooltipContent>More actions</TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuGroup>
+                <DropdownMenuItem onClick={() => void onCopyMarkdown()}>
+                  <Copy className="size-4 text-muted-foreground" />
+                  Copy Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => void onCopyPreview()}>
+                  <FileText className="size-4 text-muted-foreground" />
+                  Copy preview
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  render={
+                    <a
+                      href={`/api/export/note/${note.id}`}
+                      aria-label="Download this note as Markdown"
+                      rel="noopener"
+                      className="flex w-full items-center gap-2"
+                    />
+                  }
+                >
+                  <Download className="size-4 text-muted-foreground" />
+                  Export Markdown
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setVersionHistoryOpen(true)}>
+                  <History className="size-4 text-muted-foreground" />
+                  Version history
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem
+                  onClick={() => void onToggleArchive()}
+                  disabled={isArchiving}
+                >
+                  {metadata.archived ? (
+                    <>
+                      <ArchiveRestore className="size-4 text-muted-foreground" />
+                      Unarchive note
+                    </>
+                  ) : (
+                    <>
+                      <Archive className="size-4 text-muted-foreground" />
+                      Archive note
+                    </>
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="size-4" />
+                  Delete note
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-            <VersionHistoryButton
-              noteId={note.id}
-              iconOnly
-              draft={{ title, contentMd: content }}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onUndo={undo}
-              onRedo={redo}
-              onRestoreVersion={applyRestoredVersion}
-            />
-
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-destructive hover:text-destructive"
-              onClick={onDelete}
-              aria-label="Delete note"
-              title="Delete note"
-            >
-              <Trash2 className="size-4" />
-            </Button>
-
-            {/* AI Assistant Sidebar Toggle Button */}
-            <Button
-              variant={showPanel ? "secondary" : "ghost"}
-              size="sm"
-              className="gap-1.5 rounded-xl border border-border/40 ml-1"
-              onClick={toggleContextPanel}
-              aria-controls="note-context-panel"
-              aria-expanded={showPanel}
-              title={showPanel ? "Close AI Assistant" : "Open AI Assistant"}
-            >
-              <Sparkles className="size-4 text-violet-500" />
-              <span className="hidden sm:inline text-xs font-medium">AI Assistant</span>
-            </Button>
-          </div>
+          <VersionHistoryButton
+            noteId={note.id}
+            open={versionHistoryOpen}
+            onOpenChange={setVersionHistoryOpen}
+            hideTrigger
+            draft={{ title, contentMd: content }}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undo}
+            onRedo={redo}
+            onRestoreVersion={applyRestoredVersion}
+          />
+        </div>
       </div>
 
       <div className="relative flex min-h-0 flex-1">
@@ -882,9 +1015,7 @@ export function NoteEditor({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 onBlur={() => {
-                  if (saveSeqRef.current > lastSavedSeqRef.current) {
-                    void performSave({ forceRevalidate: false });
-                  }
+                  void performSave({ forceRevalidate: true });
                 }}
                 onKeyDown={(e) => {
                   if (e.key !== "Enter") return;

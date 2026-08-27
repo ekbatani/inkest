@@ -95,16 +95,17 @@ function extractNodeText(node: React.ReactNode): string {
 }
 
 export function MarkdownPreview({
-  content,
+  content = "",
   direction = "auto",
   className,
   components: extraComponents,
   linkableNotes,
   virtualizeThreshold,
 }: Props) {
+  const safeContent = content ?? "";
   const dir = direction === "auto" ? undefined : direction;
   const usesRtlFont =
-    direction === "rtl" || (direction === "auto" && containsArabicScript(content));
+    direction === "rtl" || (direction === "auto" && containsArabicScript(safeContent));
   const mermaidComponents = useMermaidCodeComponent();
 
   const components = React.useMemo(
@@ -225,6 +226,20 @@ export function MarkdownPreview({
             ? resolveNoteHref(href, linkableNotes) ?? href
             : href;
 
+        if (resolvedHref?.startsWith("/api/attachments/")) {
+          return (
+            <a
+              href={resolvedHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline underline-offset-3 hover:text-primary/80"
+              {...props}
+            >
+              {children}
+            </a>
+          );
+        }
+
         if (resolvedHref?.startsWith("/")) {
           return (
             <Link href={resolvedHref} {...props}>
@@ -234,7 +249,7 @@ export function MarkdownPreview({
         }
 
         return (
-          <a href={resolvedHref} {...props}>
+          <a href={resolvedHref} target="_blank" rel="noopener noreferrer" {...props}>
             {children}
           </a>
         );
@@ -261,14 +276,14 @@ export function MarkdownPreview({
     () =>
       normalizeMarkdownHeadings(
         linkableNotes && linkableNotes.length > 0
-          ? transformWikiLinks(content, linkableNotes)
-          : content,
+          ? transformWikiLinks(safeContent, linkableNotes)
+          : safeContent,
       ),
-    [content, linkableNotes],
+    [safeContent, linkableNotes],
   );
 
   const threshold = virtualizeThreshold ?? 25000;
-  if (!extraComponents && content.length > threshold) {
+  if (!extraComponents && safeContent.length > threshold) {
     return (
       <VirtualizedMarkdownPreview
         content={processedContent}

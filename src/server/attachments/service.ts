@@ -1,4 +1,4 @@
-import { eq, and, isNull, like } from "drizzle-orm";
+import { eq, and, isNull, like, desc } from "drizzle-orm";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
 import { randomId } from "@/lib/slug";
@@ -284,4 +284,18 @@ export async function deleteAttachment(id: string): Promise<void> {
         eq(schema.attachments.userId, user.id),
       ),
     );
+}
+
+export async function listAttachmentsForUser(
+  limit = 100,
+): Promise<Attachment[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  return db
+    .select()
+    .from(schema.attachments)
+    .where(eq(schema.attachments.userId, user.id))
+    .orderBy(desc(schema.attachments.createdAt))
+    .limit(limit);
 }

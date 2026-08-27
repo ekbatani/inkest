@@ -460,7 +460,6 @@ export function AiChatSidebar({
       return [...prev, item];
     });
     setContextPickerOpen(false);
-    toast.success(`Attached ${item.type} "${item.title}"`);
   };
 
   const handleRemoveContextItem = (id: string) => {
@@ -497,7 +496,6 @@ export function AiChatSidebar({
         decryptedItem,
       ]);
 
-      toast.success(`Vault secret "${pendingVaultItem.title}" decrypted & attached.`);
       setVaultModalOpen(false);
       setPendingVaultItem(null);
       setVaultMasterPassword("");
@@ -784,27 +782,47 @@ export function AiChatSidebar({
 
   // ADD actions
   const handleInsertAtCursor = (text: string) => {
-    if (!activeEditorRef.current) {
+    if (!activeEditorRef.current?.view) {
       toast.error("No active editor to insert text into");
       return;
     }
-    insertTextAtCursor(activeEditorRef, text);
-    toast.success("Inserted text into note");
+    try {
+      insertTextAtCursor(activeEditorRef, text);
+      toast.success("Inserted text into note");
+    } catch {
+      toast.error("Failed to insert text into note");
+    }
   };
 
   const handleAppendToNote = (text: string) => {
-    appendTextToEditor(activeEditorRef, text);
-    toast.success("Appended text to note");
+    if (!activeEditorRef.current?.view) {
+      toast.error("No active editor to append text to");
+      return;
+    }
+    try {
+      appendTextToEditor(activeEditorRef, text);
+      toast.success("Appended text to note");
+    } catch {
+      toast.error("Failed to append text to note");
+    }
   };
 
   const handlePrependToNote = (text: string) => {
-    prependTextToEditor(activeEditorRef, text);
-    toast.success("Prepended text to note");
+    if (!activeEditorRef.current?.view) {
+      toast.error("No active editor to prepend text to");
+      return;
+    }
+    try {
+      prependTextToEditor(activeEditorRef, text);
+      toast.success("Prepended text to note");
+    } catch {
+      toast.error("Failed to prepend text to note");
+    }
   };
 
   // REPLACE actions
   const handleReplaceSelection = (text: string) => {
-    if (!activeEditorRef.current) {
+    if (!activeEditorRef.current?.view) {
       toast.error("No active editor to replace text in");
       return;
     }
@@ -813,41 +831,57 @@ export function AiChatSidebar({
       toast.error("No text selected in editor to replace");
       return;
     }
-    replaceSelectedEditorText(activeEditorRef, text);
-    toast.success("Replaced selection in note");
+    try {
+      replaceSelectedEditorText(activeEditorRef, text);
+      toast.success("Replaced selection in note");
+    } catch {
+      toast.error("Failed to replace selected text");
+    }
   };
 
   const handleReplaceEntireNote = (text: string) => {
-    if (!activeEditorRef.current) {
+    if (!activeEditorRef.current?.view) {
       toast.error("No active editor to replace content in");
       return;
     }
-    replaceEntireEditorContent(activeEditorRef, text);
-    toast.success("Replaced entire note content");
+    try {
+      replaceEntireEditorContent(activeEditorRef, text);
+      toast.success("Replaced entire note content");
+    } catch {
+      toast.error("Failed to replace note content");
+    }
   };
 
   // GENTLE EDIT / DIFF actions
   const handleOpenDiffReview = (msg: ChatMessage) => {
     const currentSelection = getSelectedEditorText(activeEditorRef);
     const scope = msg.targetScope || (currentSelection ? "selection" : "note");
-    const original = (scope === "selection" ? currentSelection : activeNoteContent) || msg.originalSourceSnippet || activeNoteContent;
+    const original = (scope === "selection" ? currentSelection : activeNoteContent) || msg.originalSourceSnippet || activeNoteContent || "";
 
     setDiffModal({
       isOpen: true,
       original,
-      modified: msg.content,
+      modified: msg.content || "",
       targetScope: scope,
     });
   };
 
   const handleApplyGentleEdit = (text: string, targetScope: "selection" | "note") => {
-    applyGentlePatch(activeEditorRef, text, targetScope);
-    toast.success(
-      targetScope === "selection"
-        ? "Applied gentle edit to selection"
-        : "Applied gentle edit to note",
-    );
-    setDiffModal(null);
+    if (!activeEditorRef.current?.view) {
+      toast.error("No active editor to apply edit to");
+      return;
+    }
+    try {
+      applyGentlePatch(activeEditorRef, text, targetScope);
+      toast.success(
+        targetScope === "selection"
+          ? "Applied gentle edit to selection"
+          : "Applied gentle edit to note",
+      );
+      setDiffModal(null);
+    } catch {
+      toast.error("Failed to apply edits");
+    }
   };
 
   const handleDeleteCurrentThread = async () => {
@@ -1260,7 +1294,6 @@ export function AiChatSidebar({
                 type="button"
                 onClick={() => {
                   setIsPageContextAttached(false);
-                  toast.info("Current page context detached");
                 }}
                 className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 cursor-pointer"
                 title="Detach current page context"
@@ -1356,7 +1389,6 @@ export function AiChatSidebar({
                       onClick={() => {
                         setIsPageContextAttached(true);
                         setContextPickerOpen(false);
-                        toast.success(`Re-attached current page "${activeNoteTitle}"`);
                       }}
                       className="flex w-full items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/10 p-2 text-left text-xs font-medium text-violet-600 dark:text-violet-400 transition-colors hover:bg-violet-500/20 cursor-pointer"
                     >

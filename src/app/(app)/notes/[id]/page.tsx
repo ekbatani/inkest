@@ -8,6 +8,7 @@ import {
   getBacklinks,
   listProjectTaskNotes,
 } from "@/server/notes/service";
+import { listAttachmentsForUser } from "@/server/attachments/service";
 import { resolveProjectAccess } from "@/server/projects/access";
 import {
   getGoogleCalendarStatus,
@@ -40,11 +41,32 @@ export default async function NoteDetailPage({
 
   if (!note) notFound();
 
-  // Viewers of a shared project get a read-only page instead of the editor.
-  // The editor's autosave would otherwise surface permission errors on every
-  // keystroke.
+  // Load linkable notes, projects, and assets for wiki-link autocomplete and resolution
   const user = await getCurrentUser();
-  const access = user ? await resolveProjectAccess(id, user.id) : null;
+  const [access, linkableTargets] = await Promise.all([
+    user ? resolveProjectAccess(id, user.id) : Promise.resolve(null),
+    Promise.all([
+      listNotes({ limit: 500 }),
+      listAttachmentsForUser(100),
+    ]).then(([notes, attachments]) => [
+      ...notes.map((x) => ({
+        id: x.id,
+        slug: x.slug,
+        title: x.title,
+        type: x.type as "note" | "daily" | "project",
+      })),
+      ...attachments.map((a) => ({
+        id: a.id,
+        slug: a.fileName,
+        title: a.originalName,
+        type: "asset" as const,
+        mimeType: a.mimeType,
+        url: `/api/attachments/${a.id}`,
+      })),
+    ]),
+  ]);
+
+  // Viewers of a shared project get a read-only page instead of the editor.
   if (access?.role === "viewer") {
     return (
       <div className="app-page gap-6">
@@ -70,6 +92,7 @@ export default async function NoteDetailPage({
         <MarkdownPreview
           content={note.contentMd}
           direction={note.direction}
+          linkableNotes={linkableTargets}
           className="max-w-3xl font-sans text-[0.98rem] leading-8 tracking-[-0.01em] text-foreground/90 sm:text-[1.02rem]"
         />
       </div>
@@ -82,7 +105,6 @@ export default async function NoteDetailPage({
     allTags,
     noteTags,
     parentCandidates,
-    linkableNotes,
     backlinks,
     calendarStatus,
     dailyEvents,
@@ -93,9 +115,6 @@ export default async function NoteDetailPage({
       listTags(),
       listTagsForNote(id),
       listParentCandidates(id),
-      listNotes({ limit: 500 }).then((n) =>
-        n.map((x) => ({ id: x.id, slug: x.slug, title: x.title })),
-      ),
       getBacklinks(id),
       dailyDate ? getGoogleCalendarStatus() : Promise.resolve(null),
       dailyDate ? listCalendarEventsForDay(dailyDate) : Promise.resolve([]),
@@ -109,8 +128,9 @@ export default async function NoteDetailPage({
       allTags={allTags}
       noteTagIds={noteTags.map((t) => t.id)}
       parentCandidates={parentCandidates}
-      linkableNotes={linkableNotes}
-      backlinks={backlinks.map((b) => ({ id: b.id, title: b.title, snippet: b.snippet }))}
+      linkableNotes={linkableTargets}
+
+      backlinks={backlinks.map((b) => ({ id: b.id, title: b.title, snippet: b.snippet, type: b.type }))}
       projectTaskCount={projectTaskNotes.length}
       selectTitleOnMount={focus === "title"}
       superFocusPrefs={{

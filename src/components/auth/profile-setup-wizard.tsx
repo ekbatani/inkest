@@ -384,12 +384,19 @@ export function ProfileSetupWizard({
                   { id: "sans" as const, label: "Sans-Serif", sample: "Geist Clean" },
                   { id: "serif" as const, label: "Serif", sample: "Lora Editorial" },
                   { id: "mono" as const, label: "Monospace", sample: "Geist Mono" },
-                  { id: "persian" as const, label: "Persian / Vazir", sample: "Vazirmatn" },
+                  { id: "persian" as const, label: "وزیرمتن · Vazirmatn", sample: "Clean Persian Sans" },
+                  { id: "persian-sahel" as const, label: "ساحل · Sahel", sample: "Humanist Persian" },
+                  { id: "persian-shabnam" as const, label: "شبنم · Shabnam", sample: "Crisp Geometric" },
+                  { id: "persian-samim" as const, label: "صمیم · Samim", sample: "Friendly & Warm" },
+                  { id: "persian-amiri" as const, label: "امیری · Amiri", sample: "Classic Naskh" },
+                  { id: "persian-lalezar" as const, label: "لاله‌زار · Lalezar", sample: "Display Title" },
+                  { id: "persian-nastaliq" as const, label: "نستعلیق · Nastaliq", sample: "Persian Calligraphy" },
+                  { id: "persian-noto" as const, label: "نوتو نسخ · Noto Naskh", sample: "Formal Naskh" },
+                  { id: "persian-serif" as const, label: "بی‌نازنین · B Nazanin", sample: "Traditional Editorial" },
                   { id: "slab" as const, label: "Humanist Slab", sample: "Merriweather" },
                   { id: "typewriter" as const, label: "Typewriter", sample: "Courier Prime" },
                   { id: "grotesk" as const, label: "Modern Grotesk", sample: "Space Grotesk" },
                   { id: "baskerville" as const, label: "Academic Classic", sample: "Baskerville" },
-                  { id: "persian-serif" as const, label: "Persian Traditional", sample: "B Nazanin" },
                 ].map((f) => {
                   const active = themeFont === f.id;
                   return (
