@@ -14,18 +14,19 @@ import {
 } from "@/components/ui/sheet";
 import { Sidebar } from "@/components/app-shell/sidebar";
 import { CommandMenu } from "@/components/app-shell/command-menu";
-import { mainNav, settingsNav } from "@/components/app-shell/nav-items";
+import { mainNav, adminNav, settingsNav } from "@/components/app-shell/nav-items";
 import type { NoteTreeNode } from "@/server/notes/service";
 import type { InboxNotification } from "@/server/notifications/service";
 
 function getRouteLabel(pathname: string) {
-  const navItem = [...mainNav, ...settingsNav].find(
+  const navItem = [...mainNav, ...adminNav, ...settingsNav].find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
 
   if (pathname === "/notes/new") return "New note";
   if (pathname.startsWith("/notes/")) return "Note editor";
   if (pathname.startsWith("/projects/")) return "Project workspace";
+  if (pathname.startsWith("/admin/users")) return "User Management";
   return navItem?.label ?? "Workspace";
 }
 
@@ -39,7 +40,15 @@ function isEditableTarget(target: EventTarget | null) {
   );
 }
 
-export function Topbar({ notesTree = [], notifications = [] }: { notesTree?: NoteTreeNode[]; notifications?: InboxNotification[] }) {
+export function Topbar({
+  notesTree = [],
+  notifications = [],
+  isAdmin = false,
+}: {
+  notesTree?: NoteTreeNode[];
+  notifications?: InboxNotification[];
+  isAdmin?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [commandOpen, setCommandOpen] = React.useState(false);
@@ -94,6 +103,7 @@ export function Topbar({ notesTree = [], notifications = [] }: { notesTree?: Not
             <SheetTitle className="sr-only">Navigation</SheetTitle>
             <Sidebar
               notesTree={notesTree}
+              isAdmin={isAdmin}
               onNavigate={() => setMobileNavOpen(false)}
             />
           </SheetContent>

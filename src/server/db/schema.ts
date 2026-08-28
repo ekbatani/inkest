@@ -23,6 +23,12 @@ export const users = sqliteTable("users", {
   name: text("name"),
   passwordHash: text("password_hash"),
   image: text("image"),
+  role: text("role", { enum: ["admin", "user"] })
+    .notNull()
+    .default("user"),
+  status: text("status", { enum: ["active", "suspended"] })
+    .notNull()
+    .default("active"),
   // JSON-encoded user settings, parsed by the service: editor prefs, AI
   // provider overrides, etc. Stored as TEXT since SQLite has no native JSONB.
   settings: text("settings"),

@@ -178,12 +178,40 @@ function moveTreeItem(nodes: TreeItem[], noteId: string, target: DropTarget) {
   return insertNode(withoutNode, item, target);
 }
 
+function isDescendant(
+  nodes: TreeItem[],
+  rootId: string,
+  targetId: string,
+): boolean {
+  function findNode(list: TreeItem[], id: string): TreeItem | null {
+    for (const item of list) {
+      if (item.id === id) return item;
+      const found = findNode(item.children, id);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  function contains(item: TreeItem, id: string): boolean {
+    for (const child of item.children) {
+      if (child.id === id) return true;
+      if (contains(child, id)) return true;
+    }
+    return false;
+  }
+
+  const rootNode = findNode(nodes, rootId);
+  if (!rootNode) return false;
+  return contains(rootNode, targetId);
+}
+
 function canDrop(nodes: TreeItem[], noteId: string, target: DropTarget) {
   const currentParentId = findNodeParentId(nodes, noteId);
   if (currentParentId === undefined) return false;
 
   if (target.kind === "project" || target.kind === "child") {
     if (target.parentId === noteId) return false;
+    if (isDescendant(nodes, noteId, target.parentId)) return false;
     return true;
   }
 
@@ -220,6 +248,24 @@ export function NotesTree({
     setTreeNodes(nodes);
   }, [nodes]);
 
+  const handleCreateSubproject = React.useCallback(
+    (parentId: string) => {
+      setOpen((current) => ({ ...current, [parentId]: true }));
+      onNavigate?.();
+      router.push(`/notes/new?parent=${parentId}&as=project`);
+    },
+    [onNavigate, router],
+  );
+
+  const handleCreateNote = React.useCallback(
+    (parentId: string) => {
+      setOpen((current) => ({ ...current, [parentId]: true }));
+      onNavigate?.();
+      router.push(`/notes/new?parent=${parentId}`);
+    },
+    [onNavigate, router],
+  );
+
   if (treeNodes.length === 0) return null;
 
   const ancestorId = (() => {
@@ -244,7 +290,7 @@ export function NotesTree({
     const target = parseDropTarget(overValue);
     if (!target) return;
     if (!canDrop(treeNodes, activeId, target)) {
-      toast.error("Only plain notes without child notes can be dropped into projects.");
+      toast.error("Cannot move this item here.");
       return;
     }
 
@@ -356,6 +402,9 @@ export function NotesTree({
                     makeProjectDropId(node.id),
                     dragState.overId,
                   )}
+                  isProject={isProject}
+                  onCreateSubproject={() => handleCreateSubproject(node.id)}
+                  onCreateNote={() => handleCreateNote(node.id)}
                   onNavigate={onNavigate}
                 >
                   {hasChildren ? (
@@ -382,7 +431,18 @@ export function NotesTree({
                   )}
                 </TreeRow>
 
-                {isOpen && <TreeChildren nodes={node.children} pathname={pathname} open={open} setOpen={setOpen} onNavigate={onNavigate} />}
+                {isOpen && (
+                  <TreeChildren
+                    nodes={node.children}
+                    pathname={pathname}
+                    open={open}
+                    setOpen={setOpen}
+                    dragState={dragState}
+                    onCreateSubproject={handleCreateSubproject}
+                    onCreateNote={handleCreateNote}
+                    onNavigate={onNavigate}
+                  />
+                )}
               </li>
             );
           })}
@@ -406,12 +466,18 @@ function TreeChildren({
   pathname,
   open,
   setOpen,
+  dragState,
+  onCreateSubproject,
+  onCreateNote,
   onNavigate,
 }: {
   nodes: TreeItem[];
   pathname: string;
   open: Record<string, boolean>;
   setOpen: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  dragState: { activeId: string | null; overId: string | null };
+  onCreateSubproject: (parentId: string) => void;
+  onCreateNote: (parentId: string) => void;
   onNavigate?: () => void;
 }) {
   return (
@@ -419,6 +485,7 @@ function TreeChildren({
       {nodes.map((node) => {
         const isOpen = Boolean(open[node.id]);
         const hasChildren = node.children.length > 0;
+        const isProject = node.type === "project";
         return (
           <li key={node.id} className="notes-tree-row">
             <TreeRow
@@ -427,6 +494,16 @@ function TreeChildren({
               href={getNodeHref(node)}
               isActive={pathname === getNodeHref(node)}
               icon={getNodeIcon(node)}
+              canAcceptChildren={isProject}
+              projectDropId={isProject ? makeProjectDropId(node.id) : null}
+              projectDropActive={isProject && isDropTargetActive(
+                dragState.activeId,
+                makeProjectDropId(node.id),
+                dragState.overId,
+              )}
+              isProject={isProject}
+              onCreateSubproject={() => onCreateSubproject(node.id)}
+              onCreateNote={() => onCreateNote(node.id)}
               onNavigate={onNavigate}
             >
               {hasChildren ? (
@@ -440,7 +517,18 @@ function TreeChildren({
                 </button>
               ) : <span className="block size-4 shrink-0" />}
             </TreeRow>
-            {isOpen && <TreeChildren nodes={node.children} pathname={pathname} open={open} setOpen={setOpen} onNavigate={onNavigate} />}
+            {isOpen && (
+              <TreeChildren
+                nodes={node.children}
+                pathname={pathname}
+                open={open}
+                setOpen={setOpen}
+                dragState={dragState}
+                onCreateSubproject={onCreateSubproject}
+                onCreateNote={onCreateNote}
+                onNavigate={onNavigate}
+              />
+            )}
           </li>
         );
       })}
@@ -457,6 +545,9 @@ function TreeRow({
   canAcceptChildren = false,
   projectDropId = null,
   projectDropActive = false,
+  isProject = false,
+  onCreateSubproject,
+  onCreateNote,
   onNavigate,
   children,
 }: {
@@ -468,6 +559,9 @@ function TreeRow({
   canAcceptChildren?: boolean;
   projectDropId?: string | null;
   projectDropActive?: boolean;
+  isProject?: boolean;
+  onCreateSubproject?: () => void;
+  onCreateNote?: () => void;
   onNavigate?: () => void;
   children: React.ReactNode;
 }) {
@@ -482,7 +576,7 @@ function TreeRow({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
-      className={cn(isDragging && "opacity-50")}
+      className={cn("group/tree-item relative", isDragging && "opacity-50")}
     >
       <div
         ref={canAcceptChildren ? drop.setNodeRef : undefined}
@@ -515,6 +609,36 @@ function TreeRow({
             {title || "Untitled"}
           </span>
         </Link>
+        {isProject && (
+          <div className="flex items-center opacity-0 group-hover/tree-item:opacity-100 focus-within:opacity-100 transition-opacity gap-0.5 pr-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCreateSubproject?.();
+              }}
+              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              title="New subproject"
+              aria-label={`New subproject in ${title || "project"}`}
+            >
+              <FolderPlus className="size-3" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCreateNote?.();
+              }}
+              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              title="New note"
+              aria-label={`New note in ${title || "project"}`}
+            >
+              <Plus className="size-3" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ArrowUpRight, Check, GitFork, Play } from "lucide-react";
 import { getCurrentUser } from "@/server/auth";
 import { SpotlightHero } from "@/components/marketing/spotlight-hero";
@@ -87,7 +86,6 @@ const TRUST_POINTS = ["Markdown native", "Open source", "Your data, always"];
 
 export default async function LandingPage() {
   const user = await getCurrentUser();
-  if (user) redirect("/dashboard");
 
   return (
     <div className="marketing-shell">
@@ -116,8 +114,11 @@ export default async function LandingPage() {
             </p>
 
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link className="marketing-button marketing-button--primary btn-sheen" href="/signup">
-                Start your workspace
+              <Link
+                className="marketing-button marketing-button--primary btn-sheen"
+                href={user ? "/dashboard" : "/signup"}
+              >
+                {user ? "Open workspace" : "Start your workspace"}
                 <ArrowUpRight className="size-4" aria-hidden="true" />
               </Link>
               <a className="marketing-button marketing-button--ghost" href="#product">
@@ -163,7 +164,7 @@ export default async function LandingPage() {
       <WorkflowSection />
       <SelfHostSection />
       <PricingSection />
-      <CtaSection />
+      <CtaSection user={user} />
 
       <a
         href="https://github.com/ekbatani/inkest"

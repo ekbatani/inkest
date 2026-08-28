@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   Target,
   Lock,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,6 +29,10 @@ export const mainNav: NavItem[] = [
   { label: "Tags", href: "/tags", icon: Tags },
   { label: "Views", href: "/views", icon: SlidersHorizontal },
   { label: "Archive", href: "/archive", icon: Archive },
+];
+
+export const adminNav: NavItem[] = [
+  { label: "User Management", href: "/admin/users", icon: Users },
 ];
 
 export const settingsNav: NavItem[] = [

@@ -14,6 +14,7 @@ import {
   isTaskNote,
   listNotes,
   listProjectTaskNotes,
+  listParentCandidates,
 } from "@/server/notes/service";
 import { listAttachmentsForUser } from "@/server/attachments/service";
 import { getProjectShareInfo } from "@/server/projects/service";
@@ -28,6 +29,7 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import { ProjectTitleEditor } from "@/components/projects/project-title-editor";
+import { ProjectParentPicker } from "@/components/projects/project-parent-picker";
 import { ProjectShareMenu } from "@/components/projects/project-share-dialog";
 import { NoteStatusBadge } from "@/components/notes/note-status-badge";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
@@ -71,7 +73,7 @@ export default async function ProjectDetailPage({
     ? (rawTab as Tab)
     : "overview";
 
-  const [taskNotes, childNotes, linkableTargets] = await Promise.all([
+  const [taskNotes, childNotes, linkableTargets, parentCandidates, parentProject] = await Promise.all([
     listProjectTaskNotes(id),
     listNotes({ parentId: id, limit: 100 }),
     Promise.all([
@@ -93,6 +95,8 @@ export default async function ProjectDetailPage({
         url: `/api/attachments/${a.id}`,
       })),
     ]),
+    listParentCandidates(id),
+    note.parentId ? getNoteById(note.parentId) : Promise.resolve(null),
   ]);
   const referenceNotes = childNotes.filter((note) => !isTaskNote(note));
   const childProjects = childNotes.filter((childNote) => childNote.type === "project");
@@ -118,8 +122,28 @@ export default async function ProjectDetailPage({
         >
           <ChevronLeft className="size-4" />
         </Button>
-        <ProjectTitleEditor id={note.id} title={note.title} readOnly={!canEdit} />
+        <div className="flex items-center gap-1.5 min-w-0">
+          {parentProject && (
+            <>
+              <Link
+                href={`/projects/${parentProject.id}`}
+                className="hidden sm:inline truncate max-w-[130px] text-sm text-muted-foreground hover:text-foreground transition-colors"
+                title={parentProject.title}
+              >
+                {parentProject.title || "Parent project"}
+              </Link>
+              <span className="hidden sm:inline text-muted-foreground/50">/</span>
+            </>
+          )}
+          <ProjectTitleEditor id={note.id} title={note.title} readOnly={!canEdit} />
+        </div>
         <div className="ml-2 flex items-center gap-2">
+          <ProjectParentPicker
+            projectId={note.id}
+            parentId={note.parentId}
+            candidates={parentCandidates}
+            readOnly={!canEdit}
+          />
           <NoteStatusBadge status={note.status} />
           {note.priority !== "none" && (
             <Badge variant="outline" className="text-xs">
@@ -226,6 +250,7 @@ export default async function ProjectDetailPage({
               note={note}
               childProjects={childProjects}
               linkableNotes={linkableTargets}
+              canEdit={canEdit}
             />
           )}
           {tab === "tasks" && (
@@ -249,21 +274,38 @@ function OverviewTab({
   note,
   childProjects,
   linkableNotes = [],
+  canEdit = true,
 }: {
   note: NonNullable<Awaited<ReturnType<typeof getNoteById>>>;
   childProjects: { id: string; title: string; status: string; updatedAt: Date }[];
   linkableNotes?: WikiLinkTarget[];
+  canEdit?: boolean;
 }) {
   const isEmpty = note.contentMd.trim().length === 0;
 
   if (isEmpty && childProjects.length === 0) {
     return (
-      <div className="surface-card-dashed p-10 text-center text-sm text-muted-foreground">
-        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border bg-background">
+      <div className="surface-card-dashed p-10 text-center text-sm text-muted-foreground flex flex-col items-center gap-3">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-full border bg-background">
           <FileText className="size-5" />
         </div>
-        This project has no content yet. Use the Edit button to add Markdown,
-        then use the Tasks tab to create note-based tasks.
+        <p>
+          This project has no content yet. Use the Edit button to add Markdown,
+          then use the Tasks tab to create note-based tasks.
+        </p>
+        {canEdit && (
+          <div className="mt-2 flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              nativeButton={false}
+              render={<Link href={`/notes/new?parent=${note.id}&as=project`} />}
+            >
+              <FolderPlus className="size-4" /> Create subproject
+            </Button>
+          </div>
+        )}
       </div>
     );
   }
@@ -287,8 +329,23 @@ function OverviewTab({
       </Card>}
       {childProjects.length > 0 && (
         <div className="surface-card p-4">
-          <h2 className="text-sm font-semibold">Subprojects</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Task boards stay local to each project; use a subproject for its own workstream.</p>
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold">Subprojects</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">Task boards stay local to each project; use a subproject for its own workstream.</p>
+            </div>
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs h-7"
+                nativeButton={false}
+                render={<Link href={`/notes/new?parent=${note.id}&as=project`} />}
+              >
+                <FolderPlus className="size-3.5" /> Add subproject
+              </Button>
+            )}
+          </div>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {childProjects.map((project) => (
               <li key={project.id}>

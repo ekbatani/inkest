@@ -25,14 +25,37 @@ export async function createNoteWithTitleAction(title: string) {
   return note;
 }
 
-export async function createProjectAction() {
+export async function createProjectAction(
+  formDataOrParentId?: FormData | string | null,
+) {
+  const parentId =
+    typeof formDataOrParentId === "string"
+      ? formDataOrParentId
+      : formDataOrParentId instanceof FormData
+        ? (formDataOrParentId.get("parentId") as string | null)
+        : undefined;
+
   const note = await createNote({
-    title: "New project",
+    title: parentId ? "New subproject" : "New project",
     type: "project",
+    parentId: parentId || undefined,
     status: "todo",
   });
   revalidatePath("/", "layout");
   redirect(`/projects/${note.id}`);
+}
+
+export async function createSubprojectAction(parentId: string) {
+  return createProjectAction(parentId);
+}
+
+export async function setProjectParentAction(
+  projectId: string,
+  parentId: string | null,
+) {
+  const updated = await updateNote(projectId, { parentId });
+  revalidatePath("/", "layout");
+  return updated;
 }
 
 export async function createProjectTaskNoteAction(

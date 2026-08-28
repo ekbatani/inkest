@@ -11,7 +11,11 @@ const LINKS = [
   { label: "Pricing", href: "/#pricing" },
 ] as const;
 
-export function MarketingNav() {
+export function MarketingNav({
+  user,
+}: {
+  user?: { id?: string; name?: string | null; email?: string | null } | null;
+}) {
   return (
     <header className="marketing-nav">
       <div className="mx-auto flex h-[4.5rem] max-w-[90rem] items-center justify-between px-5 sm:px-8 lg:px-12 xl:px-16">
@@ -35,11 +39,20 @@ export function MarketingNav() {
         </nav>
 
         <div className="flex items-center gap-1 sm:gap-2">
-          <Link href="/signin" className="marketing-signin">Sign in</Link>
-          <Link href="/signup" className="marketing-nav-cta btn-sheen">
-            Get started
-            <ArrowUpRight className="size-3.5" aria-hidden="true" />
-          </Link>
+          {user ? (
+            <Link href="/dashboard" className="marketing-nav-cta btn-sheen">
+              Dashboard
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          ) : (
+            <>
+              <Link href="/signin" className="marketing-signin">Sign in</Link>
+              <Link href="/signup" className="marketing-nav-cta btn-sheen">
+                Get started
+                <ArrowUpRight className="size-3.5" aria-hidden="true" />
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

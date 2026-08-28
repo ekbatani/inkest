@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { LogoMark } from "@/components/brand/logo-mark";
 import {
   mainNav,
+  adminNav,
   settingsNav,
   type NavItem,
 } from "@/components/app-shell/nav-items";
@@ -53,12 +54,18 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar({
   notesTree = [],
+  isAdmin = false,
   onNavigate,
 }: {
   notesTree?: NoteTreeNode[];
+  isAdmin?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+
+  const navItemsToRender = isAdmin
+    ? [...adminNav, ...settingsNav]
+    : settingsNav;
 
   return (
     <div className="flex h-full flex-col">
@@ -93,8 +100,8 @@ export function Sidebar({
         <NavLinks onNavigate={onNavigate} />
         <NotesTree nodes={notesTree} onNavigate={onNavigate} />
       </div>
-      <div className="border-t border-sidebar-border/70 px-3 py-3">
-        {settingsNav.map((item) => (
+      <div className="border-t border-sidebar-border/70 px-3 py-3 space-y-1">
+        {navItemsToRender.map((item) => (
           <Link
             key={item.href}
             href={item.href}

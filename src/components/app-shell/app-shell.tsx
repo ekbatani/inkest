@@ -5,11 +5,13 @@ import { AiChatSidebar } from "@/components/ai/ai-chat-sidebar";
 import { PageContextProvider } from "@/components/providers/page-context-provider";
 import { listNotesTree } from "@/server/notes/service";
 import { listInboxNotifications } from "@/server/notifications/service";
+import { isAdmin } from "@/server/auth/admin";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const [notesTree, notifications] = await Promise.all([
+  const [notesTree, notifications, isAdminUser] = await Promise.all([
     listNotesTree().catch(() => []),
     listInboxNotifications().catch(() => []),
+    isAdmin().catch(() => false),
   ]);
 
   return (
@@ -21,10 +23,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         Skip to main content
       </a>
       <SidebarToggleWrapper
-        sidebar={<Sidebar notesTree={notesTree} />}
+        sidebar={<Sidebar notesTree={notesTree} isAdmin={isAdminUser} />}
         aiSidebar={<AiChatSidebar />}
       >
-        <Topbar notesTree={notesTree} notifications={notifications} />
+        <Topbar
+          notesTree={notesTree}
+          notifications={notifications}
+          isAdmin={isAdminUser}
+        />
         <main
           id="main-content"
           tabIndex={-1}
