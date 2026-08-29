@@ -851,7 +851,6 @@ export function MarkdownEditor({
   spellcheck = true,
   spellcheckLanguage = "auto",
 }: Props) {
-  const [editorValue, setEditorValue] = React.useState(value);
   const lastEmittedValueRef = React.useRef(value);
 
   // Link management state
@@ -894,7 +893,6 @@ export function MarkdownEditor({
   React.useEffect(() => {
     if (value === lastEmittedValueRef.current) return;
     lastEmittedValueRef.current = value;
-    setEditorValue(value);
 
     const view = editorRef?.current?.view;
     if (view && view.state.doc.toString() !== value) {
@@ -912,18 +910,13 @@ export function MarkdownEditor({
   const handleCodeMirrorChange = React.useCallback(
     (nextValue: string) => {
       lastEmittedValueRef.current = nextValue;
-      setEditorValue(nextValue);
       onChange(nextValue);
     },
     [onChange],
   );
 
   const usesRtlFont =
-    direction === "rtl" || (direction === "auto" && containsArabicScript(editorValue));
-  const editorFontFamily =
-    usesRtlFont
-      ? "var(--font-rtl)"
-      : "var(--inkest-font-writing, var(--font-sans))";
+    direction === "rtl" || (direction === "auto" && containsArabicScript(value.slice(0, 200)));
 
   const extensions = React.useMemo(
     () => [
@@ -1037,7 +1030,7 @@ export function MarkdownEditor({
             textRendering: "optimizeLegibility",
           },
           ".cm-scroller": {
-            fontFamily: editorFontFamily,
+            fontFamily: "var(--inkest-font-writing, var(--font-sans))",
             lineHeight: "1.75",
             letterSpacing: "-0.011em",
             overflow: "auto",
@@ -1098,7 +1091,7 @@ export function MarkdownEditor({
             maxHeight: "15em",
             padding: "0",
             margin: "0",
-            fontFamily: editorFontFamily,
+            fontFamily: "var(--inkest-font-writing, var(--font-sans))",
             fontSize: "0.8125rem",
           },
           ".cm-tooltip-autocomplete ul li": {
@@ -1322,44 +1315,59 @@ export function MarkdownEditor({
           },
           ".cm-toggle-mono": {
             fontFamily: "var(--font-mono)",
-            fontSize: "0.6875rem",
+            whiteSpace: "nowrap",
+            userSelect: "none",
           },
-          ".cm-find-replace-actions": {
+          ".cm-find-replace-toggle-btn": {
             display: "inline-flex",
             alignItems: "center",
-            gap: "0.25rem",
+            justifyContent: "center",
+            padding: "0.15rem 0.3rem",
+            borderRadius: "0.3rem",
+            fontSize: "0.6875rem",
+            fontWeight: "600",
+            fontFamily: "var(--font-mono)",
+            border: "1px solid transparent",
+            backgroundColor: "transparent",
+            color: "var(--muted-foreground)",
+            cursor: "pointer",
+            transition: "all 120ms ease",
+            userSelect: "none",
+          },
+          ".cm-find-replace-toggle-btn:hover": {
+            backgroundColor: "color-mix(in oklab, var(--muted) 80%, transparent)",
+            color: "var(--foreground)",
+          },
+          ".cm-find-replace-toggle-btn[aria-pressed=\"true\"]": {
+            backgroundColor: "color-mix(in oklab, var(--primary) 18%, transparent)",
+            borderColor: "color-mix(in oklab, var(--primary) 40%, transparent)",
+            color: "var(--primary)",
+          },
+          ".cm-find-replace-actions": {
+            display: "flex",
+            alignItems: "center",
+            gap: "0.2rem",
             flexShrink: "0",
           },
           ".cm-find-replace-action-btn": {
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            height: "1.75rem",
-            paddingInline: "0.5rem",
+            padding: "0.2rem 0.45rem",
+            borderRadius: "0.375rem",
             fontSize: "0.75rem",
             fontWeight: "500",
-            borderRadius: "0.375rem",
-            border: "1px solid color-mix(in oklab, var(--border) 80%, transparent)",
-            backgroundColor: "color-mix(in oklab, var(--secondary) 80%, transparent)",
+            border: "1px solid color-mix(in oklab, var(--border) 90%, transparent)",
+            backgroundColor: "var(--secondary)",
             color: "var(--secondary-foreground)",
             cursor: "pointer",
+            transition: "all 120ms ease",
+            userSelect: "none",
             whiteSpace: "nowrap",
-            transition: "background-color 0.12s, border-color 0.12s, transform 0.08s",
           },
           ".cm-find-replace-action-btn:hover:not(:disabled)": {
             backgroundColor: "color-mix(in oklab, var(--secondary) 100%, white 10%)",
             borderColor: "var(--border)",
-          },
-          ".cm-find-replace-action-btn:active:not(:disabled)": {
-            transform: "scale(0.96)",
-          },
-          ".cm-find-replace-action-btn:disabled": {
-            opacity: "0.4",
-            cursor: "not-allowed",
-          },
-          ".cm-find-replace-action-btn-subtle": {
-            paddingInline: "0.375rem",
-            width: "1.75rem",
           },
           ".cm-searchMatch": {
             backgroundColor:
@@ -1418,65 +1426,66 @@ export function MarkdownEditor({
             borderRadius: "0.35rem",
             backgroundColor: "color-mix(in oklab, var(--muted) 72%, transparent)",
             fontFamily: "var(--font-mono)",
-            fontSize: "0.92em",
-            padding: "0.08em 0.24em",
+            fontSize: "0.88em",
+            paddingInline: "0.32em",
+            paddingBlock: "0.14em",
           },
           ".cm-md-quote-line": {
-            borderInlineStart:
-              "2px solid color-mix(in oklab, var(--primary) 48%, var(--border))",
-            color: "color-mix(in oklab, var(--foreground) 70%, transparent)",
-            fontStyle: "normal",
-            paddingInlineStart: "0.9rem",
+            borderLeft: "2.5px solid var(--primary)",
+            paddingLeft: "0.85rem",
+            color: "color-mix(in oklab, var(--foreground) 78%, transparent)",
+            fontStyle: "italic",
           },
           ".cm-md-task-checkbox": {
             display: "inline-flex",
+            alignItems: "center",
+            verticalAlign: "middle",
+            marginInlineEnd: "0.45rem",
+          },
+          ".cm-md-task-checkbox input": {
+            cursor: "pointer",
             width: "1rem",
             height: "1rem",
-            marginInlineEnd: "0.45rem",
-            verticalAlign: "-0.12rem",
-            accentColor: "var(--foreground)",
-            pointerEvents: "none",
+            accentColor: "var(--primary)",
           },
           ".cm-md-highlight": {
-            borderRadius: "0.25rem",
-            backgroundColor: "color-mix(in oklch, var(--ai-end) 32%, transparent)",
-            padding: "0.04em 0.2em",
+            borderRadius: "0.22rem",
+            paddingInline: "0.22em",
+            paddingBlock: "0.08em",
+            backgroundColor:
+              "color-mix(in oklab, var(--warning, #eab308) 28%, transparent)",
+            color: "inherit",
           },
           ".cm-md-comment": {
-            borderBottom: "1px dotted color-mix(in oklch, var(--ai-start) 70%, var(--foreground) 30%)",
-            backgroundColor: "color-mix(in oklch, var(--ai-start) 12%, transparent)",
+            borderRadius: "0.22rem",
+            paddingInline: "0.22em",
+            paddingBlock: "0.08em",
+            backgroundColor:
+              "color-mix(in oklab, var(--primary) 20%, transparent)",
+            borderBottom: "1px dashed var(--primary)",
           },
           ".cm-md-small": {
-            fontSize: "0.86em",
+            fontSize: "0.85em",
           },
           ".cm-md-large": {
-            fontSize: "1.18em",
+            fontSize: "1.2em",
           },
           ".cm-md-huge": {
-            fontSize: "1.42em",
-            lineHeight: "1.32",
+            fontSize: "1.45em",
           },
           ".cm-md-link": {
             color: "var(--primary)",
-            cursor: "pointer",
             textDecoration: "underline",
-            textDecorationColor:
-              "color-mix(in oklab, var(--primary) 65%, transparent)",
-            textUnderlineOffset: "0.16em",
-          },
-          ".cm-md-link-unresolved": {
-            color: "color-mix(in oklab, var(--warning, #f59e0b) 90%, var(--foreground))",
+            textUnderlineOffset: "3px",
             cursor: "pointer",
-            textDecoration: "underline dashed",
-            textDecorationColor:
-              "color-mix(in oklab, var(--warning, #f59e0b) 60%, transparent)",
-            textUnderlineOffset: "0.16em",
+          },
+          ".cm-md-link:hover": {
+            opacity: "0.8",
           },
         }),
       ),
     ],
     [
-      editorFontFamily,
       targets,
       onOpenLink,
       onLargeMarkdownPaste,
@@ -1491,7 +1500,7 @@ export function MarkdownEditor({
     <div className={cn("relative h-full", usesRtlFont && "rtl-vazir", className)} dir={dir}>
       <CodeMirror
         ref={editorRef}
-        value={editorValue}
+        value={value}
         onChange={handleCodeMirrorChange}
         extensions={extensions}
         height="100%"
@@ -1514,7 +1523,7 @@ export function MarkdownEditor({
         onOpenChange={setInsertLinkOpen}
         editorRef={editorRef}
         linkableNotes={targets}
-        currentNoteContent={editorValue}
+        currentNoteContent={value}
         prefilledQuery={insertLinkQuery}
         replaceRange={insertLinkRange}
         onTargetCreated={handleTargetCreated}

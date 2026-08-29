@@ -212,13 +212,16 @@ export function NoteEditor({
   const { setPageContext, clearPageContext } = usePageContext();
 
   React.useEffect(() => {
-    setPageContext({
-      noteId: note.id,
-      pageTitle: title || "Untitled Note",
-      pageContent: content,
-      pageType: "note",
-      editorRef,
-    });
+    const timer = setTimeout(() => {
+      setPageContext({
+        noteId: note.id,
+        pageTitle: title || "Untitled Note",
+        pageContent: content,
+        pageType: "note",
+        editorRef,
+      });
+    }, 400);
+    return () => clearTimeout(timer);
   }, [note.id, title, content, editorRef, setPageContext]);
 
   React.useEffect(() => {
@@ -230,6 +233,7 @@ export function NoteEditor({
   const isSavingRef = React.useRef(false);
   const pendingSaveAfterInFlightRef = React.useRef(false);
   const localDraftTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const contentStateTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const latestContentRef = React.useRef<NoteSnapshot>({ title: note.title, content: note.contentMd });
   const persistenceManagerRef = React.useRef<DocumentPersistenceManager | null>(null);
 
@@ -251,16 +255,21 @@ export function NoteEditor({
     }, 1000);
   }, [note.id]);
 
-  // CodeMirror keeps the keystroke path local. Its debounced parent update still
-  // drives autosave, history, preview, and metadata, but it must not make those
-  // route-level renders compete with the next keystroke.
+  // CodeMirror keeps the keystroke path local. Parent React state is debounced so
+  // route-level renders and AI context never compete with the user's keystrokes.
   const handleEditorChange = React.useCallback((nextContent: string) => {
     latestContentRef.current = {
       title: latestContentRef.current?.title ?? title,
       content: nextContent,
     };
-    setContent(nextContent);
     scheduleLocalDraftSave();
+
+    if (contentStateTimerRef.current) clearTimeout(contentStateTimerRef.current);
+    contentStateTimerRef.current = setTimeout(() => {
+      React.startTransition(() => {
+        setContent(nextContent);
+      });
+    }, 250);
   }, [scheduleLocalDraftSave, title]);
 
   const handleTitleChange = React.useCallback((nextTitle: string) => {
@@ -307,10 +316,6 @@ export function NoteEditor({
       if (superFocusPrefsTimer.current) clearTimeout(superFocusPrefsTimer.current);
     };
   }, [trackingMode, radius, ttsRate, ttsVoiceURI]);
-
-  React.useEffect(() => {
-    latestContentRef.current = { title, content };
-  }, [title, content]);
 
   const flushBeaconSave = React.useCallback(() => {
     if (typeof window === "undefined") return;

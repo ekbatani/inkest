@@ -490,6 +490,11 @@ html.dark[data-palette="midnight"] {
   font-family: var(--font-rtl) !important;
 }
 
+.rtl-vazir .cm-scroller,
+.rtl-vazir .cm-content {
+  font-family: var(--font-rtl) !important;
+}
+
 @keyframes skeleton-shimmer {
   0% {
     transform: translateX(-100%);
