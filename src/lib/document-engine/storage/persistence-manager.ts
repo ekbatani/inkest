@@ -91,11 +91,18 @@ export class DocumentPersistenceManager {
   /**
    * Marks the current document snapshot as synced with the server.
    */
-  public async markSynced(version?: number, contentHash?: string): Promise<void> {
+  public async markSynced(
+    version?: number,
+    contentHash?: string,
+    title?: string,
+    content?: string,
+  ): Promise<void> {
     await documentIndexedDBStore.markSnapshotSynced(
       this.documentId,
       version ?? this.currentVersion,
       contentHash,
+      title,
+      content,
     );
   }
 

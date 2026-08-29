@@ -128,8 +128,19 @@ export class DocumentIndexedDBStore {
     documentId: string,
     version?: number,
     contentHash?: string,
-    timestamp?: number,
+    title?: string,
+    content?: string,
   ): Promise<boolean> {
+    if (content !== undefined) {
+      return this.saveSnapshot(
+        documentId,
+        version ?? 1,
+        content,
+        title,
+        true,
+        contentHash,
+      );
+    }
     const current = await this.getSnapshot(documentId);
     if (current) {
       return this.saveSnapshot(
@@ -153,7 +164,7 @@ export class DocumentIndexedDBStore {
           parsed.synced = true;
           if (version !== undefined) parsed.version = version;
           if (contentHash !== undefined) parsed.contentHash = contentHash;
-          if (timestamp !== undefined) parsed.timestamp = timestamp;
+          parsed.timestamp = Date.now();
           window.localStorage.setItem(key, JSON.stringify(parsed));
         }
       }

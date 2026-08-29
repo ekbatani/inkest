@@ -208,7 +208,6 @@ export function NoteEditor({
     content: note.contentMd,
     hash: computeContentHash(note.contentMd),
   });
-  const pendingSyncRef = React.useRef(false);
 
   const { setPageContext, clearPageContext } = usePageContext();
 
@@ -228,10 +227,29 @@ export function NoteEditor({
     };
   }, [clearPageContext]);
 
-  const saveSeqRef = React.useRef(0);
-  const lastSavedSeqRef = React.useRef(0);
+  const isSavingRef = React.useRef(false);
+  const pendingSaveAfterInFlightRef = React.useRef(false);
+  const localDraftTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const latestContentRef = React.useRef<NoteSnapshot>({ title: note.title, content: note.contentMd });
   const persistenceManagerRef = React.useRef<DocumentPersistenceManager | null>(null);
+
+  const scheduleLocalDraftSave = React.useCallback(() => {
+    if (localDraftTimerRef.current) clearTimeout(localDraftTimerRef.current);
+    localDraftTimerRef.current = setTimeout(() => {
+      try {
+        if (!persistenceManagerRef.current) {
+          persistenceManagerRef.current = new DocumentPersistenceManager(note.id);
+        }
+        const draft = latestContentRef.current;
+        void persistenceManagerRef.current.recordLocalDraft(
+          draft.title,
+          draft.content,
+        ).catch(() => {});
+      } catch {
+        // Ignore
+      }
+    }, 1000);
+  }, [note.id]);
 
   // CodeMirror keeps the keystroke path local. Its debounced parent update still
   // drives autosave, history, preview, and metadata, but it must not make those
@@ -242,21 +260,8 @@ export function NoteEditor({
       content: nextContent,
     };
     setContent(nextContent);
-
-    // Immediate non-blocking local persistence
-    try {
-      if (!persistenceManagerRef.current) {
-        persistenceManagerRef.current = new DocumentPersistenceManager(note.id);
-      }
-      void persistenceManagerRef.current.recordLocalDraft(
-        latestContentRef.current.title,
-        nextContent,
-        computeContentHash(nextContent),
-      ).catch(() => {});
-    } catch {
-      // Persistence logging should never break editing
-    }
-  }, [note.id, title]);
+    scheduleLocalDraftSave();
+  }, [scheduleLocalDraftSave, title]);
 
   const handleTitleChange = React.useCallback((nextTitle: string) => {
     latestContentRef.current = {
@@ -264,19 +269,8 @@ export function NoteEditor({
       content: latestContentRef.current?.content ?? content,
     };
     setTitle(nextTitle);
-
-    try {
-      if (!persistenceManagerRef.current) {
-        persistenceManagerRef.current = new DocumentPersistenceManager(note.id);
-      }
-      void persistenceManagerRef.current.recordLocalDraft(
-        nextTitle,
-        latestContentRef.current.content,
-      ).catch(() => {});
-    } catch {
-      // Ignore
-    }
-  }, [content, note.id]);
+    scheduleLocalDraftSave();
+  }, [content, scheduleLocalDraftSave]);
 
   const [historyState, setHistoryState] = React.useState<{
     past: NoteSnapshot[];
@@ -348,6 +342,11 @@ export function NoteEditor({
         maxWaitTimer.current = null;
       }
 
+      if (isSavingRef.current) {
+        pendingSaveAfterInFlightRef.current = true;
+        return;
+      }
+
       const snapshot = { ...latestContentRef.current };
       const lastSynced = lastSyncedSnapshotRef.current;
 
@@ -355,19 +354,17 @@ export function NoteEditor({
       if (!options?.forceRevalidate && sameSnapshot(snapshot, lastSynced)) {
         if (typeof navigator !== "undefined" && navigator.onLine && saveState === "offline") {
           setSaveState("saved");
-          setTimeout(() => setSaveState("idle"), 2000);
+          setTimeout(() => setSaveState((prev) => (prev === "saved" ? "idle" : prev)), 2000);
         }
         return;
       }
-
-      const currentSeq = ++saveSeqRef.current;
-      pendingSyncRef.current = true;
 
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         setSaveState("offline");
         return;
       }
 
+      isSavingRef.current = true;
       setSaveState("saving");
 
       try {
@@ -382,7 +379,7 @@ export function NoteEditor({
               ? computeTextEdit(lastSynced.content, snapshot.content)
               : null;
 
-          // If diff is small (< 60% of total length) and exists, send micro-patch
+          // If diff is compact (< 60% of total length) and exists, send micro-patch
           if (textDiff && textDiff.text.length < snapshot.content.length * 0.6) {
             payload = {
               baseHash: lastSynced.hash,
@@ -400,8 +397,8 @@ export function NoteEditor({
           const jsonStr = JSON.stringify(payload);
           let res: Response;
 
-          // If payload > 512 bytes, compress with deflate
-          if (jsonStr.length > 512) {
+          // Only compress when payload is genuinely large (> 32KB)
+          if (jsonStr.length > 32768) {
             const compressed = await compressPayload(payload);
             res = await fetch(`/api/notes/${note.id}/save`, {
               method: "POST",
@@ -420,7 +417,7 @@ export function NoteEditor({
           }
 
           if (res.status === 409 && attempt === 0) {
-            // Base hash mismatch or conflict -> retry immediately with full payload
+            // Base hash mismatch -> retry once with full payload
             forceFull = true;
             continue;
           }
@@ -432,51 +429,45 @@ export function NoteEditor({
           const data = await res.json();
           const newHash = data.contentHash ?? computeContentHash(snapshot.content);
 
-          if (currentSeq >= lastSavedSeqRef.current) {
-            lastSavedSeqRef.current = currentSeq;
-            pendingSyncRef.current = false;
+          lastSyncedSnapshotRef.current = {
+            title: snapshot.title,
+            content: snapshot.content,
+            hash: newHash,
+          };
 
-            lastSyncedSnapshotRef.current = {
-              title: snapshot.title,
-              content: snapshot.content,
-              hash: newHash,
-            };
+          // Mark local IndexedDB/localStorage as synced
+          if (!persistenceManagerRef.current) {
+            persistenceManagerRef.current = new DocumentPersistenceManager(note.id);
+          }
+          void persistenceManagerRef.current.markSynced(undefined, newHash, snapshot.title, snapshot.content);
 
-            // Mark local IndexedDB/localStorage as synced
-            if (!persistenceManagerRef.current) {
-              persistenceManagerRef.current = new DocumentPersistenceManager(note.id);
-            }
-            void persistenceManagerRef.current.markSynced(undefined, newHash);
+          if (options?.forceRevalidate) {
+            router.refresh();
+          }
 
-            if (options?.forceRevalidate) {
-              router.refresh();
-            }
+          const currentLatest = latestContentRef.current;
+          const hasMoreEdits =
+            currentLatest.title !== snapshot.title || currentLatest.content !== snapshot.content;
 
-            const latest = latestContentRef.current;
-            const hasPendingEdits =
-              latest.title !== snapshot.title || latest.content !== snapshot.content;
-
+          if (!hasMoreEdits && !pendingSaveAfterInFlightRef.current) {
             setSaveState("saved");
             setTimeout(() => {
-              if (lastSavedSeqRef.current === currentSeq) {
-                setSaveState("idle");
-              }
+              setSaveState((prev) => (prev === "saved" ? "idle" : prev));
             }, 2000);
-
-            if (hasPendingEdits) {
-              setSaveState("saving");
-            }
+          } else {
+            pendingSaveAfterInFlightRef.current = false;
           }
+
           break;
         }
       } catch {
-        if (currentSeq >= lastSavedSeqRef.current) {
-          if (typeof navigator !== "undefined" && !navigator.onLine) {
-            setSaveState("offline");
-          } else {
-            setSaveState("error");
-          }
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          setSaveState("offline");
+        } else {
+          setSaveState("error");
         }
+      } finally {
+        isSavingRef.current = false;
       }
     },
     [note.id, router, saveState],
@@ -530,15 +521,15 @@ export function NoteEditor({
   // Network online/offline event listeners and auto-sync
   React.useEffect(() => {
     const handleOnline = () => {
-      if (saveSeqRef.current > lastSavedSeqRef.current || pendingSyncRef.current) {
+      if (!sameSnapshot(latestContentRef.current, lastSyncedSnapshotRef.current)) {
         void performSave({ forceRevalidate: false });
       } else if (saveState === "offline") {
         setSaveState("saved");
-        setTimeout(() => setSaveState("idle"), 2000);
+        setTimeout(() => setSaveState((prev) => (prev === "saved" ? "idle" : prev)), 2000);
       }
     };
     const handleOffline = () => {
-      if (saveSeqRef.current > lastSavedSeqRef.current || pendingSyncRef.current) {
+      if (!sameSnapshot(latestContentRef.current, lastSyncedSnapshotRef.current)) {
         setSaveState("offline");
       }
     };
@@ -557,7 +548,8 @@ export function NoteEditor({
       if (
         typeof navigator !== "undefined" &&
         navigator.onLine &&
-        (saveSeqRef.current > lastSavedSeqRef.current || pendingSyncRef.current)
+        !isSavingRef.current &&
+        !sameSnapshot(latestContentRef.current, lastSyncedSnapshotRef.current)
       ) {
         void performSave({ forceRevalidate: false });
       }
@@ -596,12 +588,15 @@ export function NoteEditor({
 
   React.useEffect(() => {
     const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden" && saveSeqRef.current > lastSavedSeqRef.current) {
+      if (
+        document.visibilityState === "hidden" &&
+        !sameSnapshot(latestContentRef.current, lastSyncedSnapshotRef.current)
+      ) {
         flushBeaconSave();
       }
     };
     const onBeforeUnload = () => {
-      if (saveSeqRef.current > lastSavedSeqRef.current) {
+      if (!sameSnapshot(latestContentRef.current, lastSyncedSnapshotRef.current)) {
         flushBeaconSave();
       }
     };
