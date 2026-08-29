@@ -125,7 +125,7 @@ export function Topbar({
           className="h-9 w-full max-w-sm justify-start gap-2 rounded-xl border-border/70 bg-muted/25 px-3 text-muted-foreground shadow-none hover:bg-muted/50 sm:w-72 lg:w-80"
         >
           <Search className="size-4" />
-          <span className="text-sm">Search…</span>
+          <span className="text-sm">Search notes &amp; projects…</span>
           <kbd className="ml-auto hidden rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline-block">
             Ctrl K
           </kbd>

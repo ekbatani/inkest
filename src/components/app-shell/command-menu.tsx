@@ -13,6 +13,10 @@ import {
   Code2,
   List,
   Users,
+  FolderKanban,
+  CalendarDays,
+  FilePlus2,
+  FolderPlus,
 } from "lucide-react";
 import {
   Dialog,
@@ -30,6 +34,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import { Badge } from "@/components/ui/badge";
 import { mainNav, settingsNav } from "@/components/app-shell/nav-items";
 import {
   searchNotesAction,
@@ -45,6 +50,55 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   isAdmin?: boolean;
 };
+
+function hitHref(hit: NoteSearchHit) {
+  return hit.type === "project" ? `/projects/${hit.id}` : `/notes/${hit.id}`;
+}
+
+function HitIcon({ type }: { type: NoteSearchHit["type"] }) {
+  return (
+    <span
+      className={cn(
+        "flex size-7 shrink-0 items-center justify-center rounded-lg border border-border/40",
+        type === "project" && "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+        type === "daily" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+        type === "note" && "bg-primary/10 text-primary",
+      )}
+    >
+      {type === "project" ? (
+        <FolderKanban className="size-3.5" />
+      ) : type === "daily" ? (
+        <CalendarDays className="size-3.5" />
+      ) : (
+        <FileText className="size-3.5" />
+      )}
+    </span>
+  );
+}
+
+function HitBadges({ hit }: { hit: NoteSearchHit }) {
+  if (hit.type === "daily") {
+    return (
+      <Badge
+        variant="outline"
+        className="shrink-0 h-4 px-1.5 py-0 text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5"
+      >
+        Daily
+      </Badge>
+    );
+  }
+  if (hit.type === "project") {
+    return (
+      <Badge
+        variant="outline"
+        className="shrink-0 h-4 px-1.5 py-0 text-[9px] font-bold uppercase text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/5"
+      >
+        {hit.status ? `Project · ${hit.status}` : "Project"}
+      </Badge>
+    );
+  }
+  return null;
+}
 
 export function CommandMenu({ open, onOpenChange, isAdmin = false }: Props) {
   const router = useRouter();
@@ -129,12 +183,55 @@ export function CommandMenu({ open, onOpenChange, isAdmin = false }: Props) {
     );
   };
 
-  const showNotesGroup = query.trim().length >= 2;
-  const noteItems = showNotesGroup ? results : recent;
+  const showResults = query.trim().length >= 2;
+  const hits = showResults ? results : recent;
+  const projectHits = hits.filter((h) => h.type === "project");
+  const noteHits = hits.filter((h) => h.type !== "project");
+  const showHits = showResults || (!query.trim() && recent.length > 0);
+  // Server results already matched title and body content; cmdk must not
+  // re-filter them by title only, or body matches would be hidden.
+  const filterCommand = (value: string, search: string) => {
+    if (value.startsWith("hit:") || !search.trim()) return 1;
+    const haystack = value.toLowerCase();
+    return search
+      .toLowerCase()
+      .split(/\s+/)
+      .every((token) => haystack.includes(token))
+      ? 1
+      : 0;
+  };
   const adminNavItems = isAdmin
     ? [{ label: "User Management (Admin)", href: "/settings?tab=users", icon: Users }]
     : [];
   const navItemsToRender = [...mainNav, ...settingsNav, ...adminNavItems];
+
+  const renderHit = (hit: NoteSearchHit) => (
+    <CommandItem
+      key={hit.id}
+      value={`hit:${hit.id}`}
+      onSelect={() => go(hitHref(hit))}
+    >
+      <HitIcon type={hit.type} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "truncate",
+              usesRtlTitleFont(hit.title) && "rtl-vazir",
+            )}
+          >
+            {hit.title || "Untitled"}
+          </span>
+          <HitBadges hit={hit} />
+        </div>
+        {hit.excerpt && (
+          <div className="truncate text-xs text-muted-foreground">
+            {hit.excerpt}
+          </div>
+        )}
+      </div>
+    </CommandItem>
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -142,16 +239,19 @@ export function CommandMenu({ open, onOpenChange, isAdmin = false }: Props) {
         <DialogHeader className="sr-only">
           <DialogTitle>Command menu</DialogTitle>
           <DialogDescription>
-            Search notes and navigate inkest.
+            Search notes and projects, and navigate inkest.
           </DialogDescription>
         </DialogHeader>
-        <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-input]]:h-12">
+        <Command
+          filter={filterCommand}
+          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-input]]:h-12"
+        >
           <div className="flex items-center border-b px-3">
             <Search className="mr-2 size-4 shrink-0 text-muted-foreground" />
             <CommandInput
               value={query}
               onValueChange={onQueryChange}
-              placeholder="Type a command or search notes…"
+              placeholder="Search notes and projects, or type a command…"
               className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
             {loading && (
@@ -159,44 +259,26 @@ export function CommandMenu({ open, onOpenChange, isAdmin = false }: Props) {
             )}
           </div>
           <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandEmpty>
+              No matching notes, projects, or commands.
+            </CommandEmpty>
 
-            {(showNotesGroup || (!query.trim() && recent.length > 0)) && (
-              <CommandGroup heading={showNotesGroup ? "Notes" : "Recent notes"}>
-                {noteItems.length === 0 && showNotesGroup && (
-                  <div className="px-2 py-2 text-sm text-muted-foreground">
-                    No notes match “{query}”.
-                  </div>
-                )}
-                {noteItems.map((n) => (
-                  <CommandItem
-                    key={n.id}
-                    value={`note ${n.title} ${n.excerpt}`}
-                    onSelect={() => go(`/notes/${n.id}`)}
-                  >
-                    <FileText className="size-4 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <div
-                        className={cn(
-                          "truncate",
-                          usesRtlTitleFont(n.title) && "rtl-vazir",
-                        )}
-                      >
-                        {n.title || "Untitled"}
-                      </div>
-                      {n.excerpt && (
-                        <div className="truncate text-xs text-muted-foreground">
-                          {n.excerpt}
-                        </div>
-                      )}
-                    </div>
-                  </CommandItem>
-                ))}
+            {showHits && projectHits.length > 0 && (
+              <CommandGroup
+                heading={showResults ? "Projects" : "Recent projects"}
+              >
+                {projectHits.map(renderHit)}
+              </CommandGroup>
+            )}
+
+            {showHits && noteHits.length > 0 && (
+              <CommandGroup heading={showResults ? "Notes" : "Recent notes"}>
+                {noteHits.map(renderHit)}
               </CommandGroup>
             )}
 
             <>
-              <CommandSeparator />
+              {(showHits || query.trim()) && <CommandSeparator />}
               <CommandGroup heading="Navigate">
                 {navItemsToRender.map((item) => (
                   <CommandItem
@@ -229,21 +311,21 @@ export function CommandMenu({ open, onOpenChange, isAdmin = false }: Props) {
                   value="new note create"
                   onSelect={() => go("/notes/new")}
                 >
-                  <Search className="size-4" />
+                  <FilePlus2 className="size-4" />
                   <span>New note</span>
                 </CommandItem>
                 <CommandItem
                   value="new project create"
                   onSelect={() => go("/projects")}
                 >
-                  <Search className="size-4" />
+                  <FolderPlus className="size-4" />
                   <span>New project</span>
                 </CommandItem>
                 <CommandItem
                   value="daily note today"
                   onSelect={() => go("/daily")}
                 >
-                  <Search className="size-4" />
+                  <CalendarDays className="size-4" />
                   <span>Open today’s daily note</span>
                 </CommandItem>
               </CommandGroup>
@@ -273,6 +355,20 @@ export function CommandMenu({ open, onOpenChange, isAdmin = false }: Props) {
               )}
             </>
           </CommandList>
+          <div className="flex items-center gap-4 border-t border-border/60 px-3 py-2 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <kbd className="rounded border bg-muted px-1 font-sans">↑↓</kbd>
+              Navigate
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="rounded border bg-muted px-1 font-sans">↵</kbd>
+              Open
+            </span>
+            <span className="ml-auto flex items-center gap-1">
+              <kbd className="rounded border bg-muted px-1 font-sans">Esc</kbd>
+              Close
+            </span>
+          </div>
         </Command>
       </DialogContent>
     </Dialog>

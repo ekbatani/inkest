@@ -590,6 +590,438 @@ html.dark[data-palette="midnight"] {
   }
 }
 
+/* ============================================================
+   Icon hover micro-animations — one signature motion per icon.
+
+   Lucide renders every icon with a stable `lucide-{name}` class,
+   so each concept group below targets icons by class wherever they
+   sit inside an interactive control, and plays a single short,
+   transform-only animation when that control is hovered or
+   keyboard-focused. The motion always echoes what the icon means:
+   the pencil scribbles, the trash shakes, the bell swings, the eye
+   blinks, the refresh arrow spins.
+
+   Rules of the system:
+   - Tiny motion only (≤ 20°, ≤ 3px), plays once per hover.
+   - Keyboard parity: :focus-visible triggers the same motion.
+   - The whole section is gated on `prefers-reduced-motion:
+     no-preference`, so reduced-motion users get a static UI.
+   - Buttons containing a loading spinner (:has(.animate-spin))
+     stay still; spinners are never hijacked.
+   - Directional motions read --icon-nudge / --icon-esc-x so they
+     flip automatically under [dir="rtl"].
+   When adding a new icon to the app, give it a home in one of the
+   concept groups below (or add a new keyframe in the same style).
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  /* Direction memory for nudges and escapes */
+  :is(.lucide-arrow-right, .lucide-chevron-right, .lucide-log-in) {
+    --icon-nudge: 2.5px;
+  }
+  .lucide-send {
+    --icon-nudge: 3.5px;
+  }
+  :is(.lucide-arrow-left, .lucide-chevron-left) {
+    --icon-nudge: -2.5px;
+  }
+  :is(.lucide-arrow-up, .lucide-chevron-up, .lucide-upload, .lucide-archive-restore) {
+    --icon-nudge: -2.5px;
+  }
+  :is(.lucide-arrow-down, .lucide-chevron-down, .lucide-download, .lucide-archive) {
+    --icon-nudge: 2.5px;
+  }
+  .lucide-scan-line {
+    --icon-nudge: 2px;
+  }
+  :is(.lucide-arrow-up-right, .lucide-external-link) {
+    --icon-esc-x: 2px;
+  }
+  /* Rotation memory: which way each arc-spinning icon turns */
+  .lucide-refresh-cw {
+    --icon-arc: 180deg;
+  }
+  .lucide-redo2 {
+    --icon-arc: 110deg;
+  }
+  :is(.lucide-undo2, .lucide-rotate-ccw) {
+    --icon-arc: -110deg;
+  }
+  :is(.lucide-clock, .lucide-clock3, .lucide-timer) {
+    --icon-arc: 24deg;
+  }
+  .lucide-history {
+    --icon-arc: -24deg;
+  }
+  /* RTL: horizontal motion reads the other way */
+  [dir="rtl"] :is(.lucide-arrow-right, .lucide-chevron-right, .lucide-log-in) {
+    --icon-nudge: -2.5px;
+  }
+  [dir="rtl"] .lucide-send {
+    --icon-nudge: -3.5px;
+  }
+  [dir="rtl"] :is(.lucide-arrow-left, .lucide-chevron-left) {
+    --icon-nudge: 2.5px;
+  }
+  [dir="rtl"] :is(.lucide-arrow-up-right, .lucide-external-link) {
+    --icon-esc-x: -2px;
+  }
+
+  :is(
+    button,
+    a,
+    [role="button"],
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [role="tab"],
+    [role="option"],
+    [role="switch"],
+    [cmdk-item],
+    summary
+  ):not(:disabled):not([aria-disabled="true"]):not(:has(.animate-spin)) {
+    &:is(:hover, :focus-visible) {
+      /* Growth & creation — create, confirm, zoom in, celebrate */
+      :is(
+        .lucide-plus,
+        .lucide-check,
+        .lucide-circle-check,
+        .lucide-square-check-big,
+        .lucide-play,
+        .lucide-search,
+        .lucide-image,
+        .lucide-expand,
+        .lucide-users,
+        .lucide-user-plus,
+        .lucide-trophy,
+        .lucide-network,
+        .lucide-git-fork,
+        .lucide-kanban,
+        .lucide-info,
+        .lucide-folder-plus,
+        .lucide-file-plus-corner
+      ) {
+        animation: icon-pop 0.4s ease;
+      }
+
+      /* A firm press — copy stamps, target locks, close buttons sink */
+      :is(.lucide-copy, .lucide-target, .lucide-x) {
+        animation: icon-stamp 0.35s ease;
+      }
+
+      /* Rejection — destructive and alerting icons flinch away */
+      :is(.lucide-trash2, .lucide-circle-alert, .lucide-triangle-alert, .lucide-octagon-x) {
+        animation: icon-shake 0.4s ease-in-out;
+      }
+
+      /* Writing — the pen scribbles a short stroke */
+      :is(.lucide-pencil, .lucide-notebook-pen, .lucide-file-pen) {
+        animation: icon-scribble 0.45s ease-in-out;
+      }
+
+      /* The quill dips into the inkwell */
+      .lucide-feather {
+        animation: icon-quill 0.4s ease-in-out;
+      }
+
+      /* Magic — a wave of the wand */
+      :is(.lucide-sparkles, .lucide-wand-sparkles) {
+        animation: icon-swish 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      /* Arc turns — refresh spins, undo/redo rewind, clock ticks on */
+      :is(
+        .lucide-refresh-cw,
+        .lucide-redo2,
+        .lucide-undo2,
+        .lucide-rotate-ccw,
+        .lucide-clock,
+        .lucide-clock3,
+        .lucide-timer,
+        .lucide-history
+      ) {
+        animation: icon-arc 0.5s cubic-bezier(0.22, 0.8, 0.3, 1);
+      }
+
+      /* Horizontal drift — go forward, go back, send it off */
+      :is(
+        .lucide-arrow-right,
+        .lucide-arrow-left,
+        .lucide-chevron-right,
+        .lucide-chevron-left,
+        .lucide-log-in,
+        .lucide-send
+      ) {
+        animation: icon-nudge-x 0.3s ease-in-out;
+      }
+
+      /* Vertical drift — collapse/expand, download drops, upload rises */
+      :is(
+        .lucide-arrow-up,
+        .lucide-arrow-down,
+        .lucide-chevron-up,
+        .lucide-chevron-down,
+        .lucide-upload,
+        .lucide-download,
+        .lucide-archive,
+        .lucide-archive-restore,
+        .lucide-scan-line
+      ) {
+        animation: icon-nudge-y 0.3s ease-in-out;
+      }
+
+      /* Escape — open externally, out it goes */
+      :is(.lucide-arrow-up-right, .lucide-external-link) {
+        animation: icon-escape 0.3s ease-in-out;
+      }
+
+      /* Hanging things — bells ring, tags and pins swing from their hole */
+      :is(.lucide-bell, .lucide-bell-off, .lucide-tag, .lucide-tags, .lucide-pin, .lucide-paperclip) {
+        transform-origin: 50% 15%;
+        animation: icon-swing 0.65s ease-in-out;
+      }
+
+      /* Live signals — mic on air, sound pulses, a zap of energy */
+      :is(.lucide-mic, .lucide-volume2, .lucide-zap) {
+        animation: icon-pulse 0.35s ease;
+      }
+
+      /* Adjustment — sliders wiggle, palettes tilt, locks test their shackle */
+      :is(
+        .lucide-message-square,
+        .lucide-palette,
+        .lucide-coffee,
+        .lucide-sliders-horizontal,
+        .lucide-hash,
+        .lucide-lock-keyhole
+      ) {
+        animation: icon-wiggle 0.45s ease-in-out;
+      }
+
+      /* Pour/tilt — the funnel tips, the moon leans */
+      :is(.lucide-funnel, .lucide-moon) {
+        animation: icon-tilt 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+      }
+
+      /* Page turn — documents, books and calendars lift a corner */
+      :is(
+        .lucide-file,
+        .lucide-file-text,
+        .lucide-file-code,
+        .lucide-book-open,
+        .lucide-library,
+        .lucide-folder-kanban,
+        .lucide-calendar,
+        .lucide-calendar-days,
+        .lucide-layers
+      ) {
+        animation: icon-lift 0.35s ease;
+      }
+
+      /* The eye blinks */
+      .lucide-eye {
+        animation: icon-blink 0.5s ease-in-out;
+      }
+
+      /* A keystroke — press down and release */
+      :is(
+        .lucide-minus,
+        .lucide-keyboard,
+        .lucide-terminal,
+        .lucide-mouse-pointer2,
+        .lucide-laptop,
+        .lucide-square,
+        .lucide-pause
+      ) {
+        animation: icon-press 0.25s ease-out;
+      }
+
+      /* Lightness — the cloud bobs */
+      .lucide-cloud {
+        animation: icon-bob 0.4s ease-in-out;
+      }
+
+      /* A ratchet click — the gear and the sun step forward */
+      :is(.lucide-settings, .lucide-sun) {
+        animation: icon-click 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
+      }
+
+      /* Tension — the chain link stretches, columns pull apart */
+      :is(.lucide-link2, .lucide-columns2, .lucide-split) {
+        animation: icon-stretch-x 0.35s ease;
+      }
+
+      /* Contraction — code brackets pull together */
+      .lucide-code-xml {
+        animation: icon-squeeze-x 0.3s ease;
+      }
+
+      /* Collapse — the menu bar squeezes shut */
+      .lucide-menu {
+        animation: icon-squash-y 0.3s ease;
+      }
+
+      /* Weight — databases and drives settle into their stack */
+      :is(.lucide-database, .lucide-hard-drive, .lucide-server) {
+        animation: icon-stack 0.3s ease;
+      }
+
+      /* The tree expand chevron manages its own rotation state */
+      .sidebar-chevron {
+        animation: none;
+      }
+    }
+  }
+
+  @keyframes icon-pop {
+    45% {
+      transform: scale(1.18);
+    }
+  }
+  @keyframes icon-stamp {
+    35% {
+      transform: scale(0.85);
+    }
+    70% {
+      transform: scale(1.06);
+    }
+  }
+  @keyframes icon-shake {
+    20% {
+      transform: translateX(-2px);
+    }
+    40% {
+      transform: translateX(2px);
+    }
+    60% {
+      transform: translateX(-1.5px);
+    }
+    80% {
+      transform: translateX(1px);
+    }
+  }
+  @keyframes icon-scribble {
+    30% {
+      transform: rotate(-12deg);
+    }
+    60% {
+      transform: rotate(7deg);
+    }
+  }
+  @keyframes icon-quill {
+    45% {
+      transform: rotate(-14deg) translateY(1px);
+    }
+  }
+  @keyframes icon-swish {
+    45% {
+      transform: rotate(18deg) scale(1.15);
+    }
+  }
+  @keyframes icon-arc {
+    to {
+      transform: rotate(var(--icon-arc, 90deg));
+    }
+  }
+  @keyframes icon-nudge-x {
+    50% {
+      transform: translateX(var(--icon-nudge, 2px));
+    }
+  }
+  @keyframes icon-nudge-y {
+    50% {
+      transform: translateY(var(--icon-nudge, 2px));
+    }
+  }
+  @keyframes icon-escape {
+    50% {
+      transform: translate(var(--icon-esc-x, 2px), -2px);
+    }
+  }
+  @keyframes icon-swing {
+    15% {
+      transform: rotate(11deg);
+    }
+    35% {
+      transform: rotate(-8deg);
+    }
+    55% {
+      transform: rotate(5deg);
+    }
+    75% {
+      transform: rotate(-2deg);
+    }
+  }
+  @keyframes icon-pulse {
+    40% {
+      transform: scale(1.18);
+    }
+  }
+  @keyframes icon-wiggle {
+    25% {
+      transform: rotate(-7deg);
+    }
+    55% {
+      transform: rotate(6deg);
+    }
+    80% {
+      transform: rotate(-3deg);
+    }
+  }
+  @keyframes icon-tilt {
+    45% {
+      transform: rotate(-16deg);
+    }
+  }
+  @keyframes icon-lift {
+    45% {
+      transform: rotate(-6deg) translateY(-1.5px);
+    }
+  }
+  @keyframes icon-blink {
+    35% {
+      transform: scaleY(0.15);
+    }
+    70% {
+      transform: scaleY(1.08);
+    }
+  }
+  @keyframes icon-press {
+    40% {
+      transform: translateY(1px);
+    }
+  }
+  @keyframes icon-bob {
+    50% {
+      transform: translateY(-1.5px);
+    }
+  }
+  @keyframes icon-click {
+    50% {
+      transform: rotate(40deg);
+    }
+  }
+  @keyframes icon-stretch-x {
+    45% {
+      transform: scaleX(1.15);
+    }
+  }
+  @keyframes icon-squeeze-x {
+    40% {
+      transform: scaleX(0.85);
+    }
+  }
+  @keyframes icon-squash-y {
+    40% {
+      transform: scaleY(0.78);
+    }
+  }
+  @keyframes icon-stack {
+    40% {
+      transform: translateY(1px) scaleY(0.94);
+    }
+  }
+}
+
 /* Task-list checkboxes — checkmark draws in on check */
 .inkest-prose li > input[type="checkbox"] {
   appearance: none;

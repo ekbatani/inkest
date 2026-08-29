@@ -136,7 +136,28 @@ export type NoteSearchHit = {
   title: string;
   excerpt: string;
   updatedAt: Date;
+  type: "note" | "project" | "daily";
+  status: string | null;
 };
+
+function toSearchHit(n: {
+  id: string;
+  title: string;
+  excerpt: string | null;
+  contentMd: string;
+  updatedAt: Date;
+  type: string;
+  status: string | null;
+}): NoteSearchHit {
+  return {
+    id: n.id,
+    title: n.title,
+    excerpt: (n.excerpt || n.contentMd || "").replace(/[#*`>\-\[\]()!]/g, "").replace(/\n+/g, " ").trim().slice(0, 90),
+    updatedAt: n.updatedAt,
+    type: n.type === "project" || n.type === "daily" ? n.type : "note",
+    status: n.status,
+  };
+}
 
 export async function searchNotesAction(
   query: string,
@@ -144,24 +165,24 @@ export async function searchNotesAction(
   const { listNotes } = await import("./service");
   const q = (query ?? "").trim();
   if (!q) return [];
-  const notes = await listNotes({ search: q, limit: 6 });
-  return notes.map((n) => ({
-    id: n.id,
-    title: n.title,
-    excerpt: (n.excerpt || n.contentMd || "").replace(/[#*`>\-\[\]()!]/g, "").replace(/\n+/g, " ").trim().slice(0, 90),
-    updatedAt: n.updatedAt,
-  }));
+  // listNotes applies its SQL limit before the in-memory text filter, so the
+  // pool must be large enough to surface matches beyond the newest rows.
+  const poolLimit = 200;
+  const [projects, notes, dailies] = await Promise.all([
+    listNotes({ search: q, limit: poolLimit, type: "project" }),
+    listNotes({ search: q, limit: poolLimit, type: "note" }),
+    listNotes({ search: q, limit: poolLimit, type: "daily" }),
+  ]);
+  return [
+    ...projects.slice(0, 4),
+    ...[...notes, ...dailies].slice(0, 8),
+  ].map(toSearchHit);
 }
 
 export async function listRecentNotesAction(): Promise<NoteSearchHit[]> {
   const { listNotes } = await import("./service");
-  const notes = await listNotes({ limit: 6 });
-  return notes.map((n) => ({
-    id: n.id,
-    title: n.title,
-    excerpt: (n.excerpt || n.contentMd || "").replace(/[#*`>\-\[\]()!]/g, "").replace(/\n+/g, " ").trim().slice(0, 90),
-    updatedAt: n.updatedAt,
-  }));
+  const notes = await listNotes({ limit: 8 });
+  return notes.map(toSearchHit);
 }
 
 export async function getLinkableTargetsAction(): Promise<import("@/lib/markdown/wiki").WikiLinkTarget[]> {

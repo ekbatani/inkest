@@ -259,22 +259,15 @@ function extractDocumentHeadings(docText: string) {
 
 function getTargetDetail(t: WikiLinkTarget): string {
   if (t.type === "project") {
-    return t.status ? `📁 Project · ${t.status}` : "📁 Project";
+    return t.status ? `Project · ${t.status}` : "Project";
   }
-  if (t.type === "daily") return "📅 Daily note";
+  if (t.type === "daily") return "Daily note";
   if (t.type === "asset") {
-    if (t.mimeType?.startsWith("image/")) return "🖼️ Image asset";
-    if (t.mimeType?.includes("pdf")) return "📄 PDF document";
-    return "📎 Asset file";
+    if (t.mimeType?.startsWith("image/")) return "Image";
+    if (t.mimeType?.includes("pdf")) return "PDF";
+    return "File";
   }
-  return "📝 Note";
-}
-
-function getCompletionType(t: WikiLinkTarget): string {
-  if (t.type === "project") return "keyword";
-  if (t.type === "daily") return "constant";
-  if (t.type === "asset") return "variable";
-  return "text";
+  return "Note";
 }
 
 function createWikiLinkCompletionSource(targets: WikiLinkTarget[]) {
@@ -312,9 +305,8 @@ function createWikiLinkCompletionSource(targets: WikiLinkTarget[]) {
           .filter((h) => !headingQuery || h.title.toLowerCase().includes(headingQuery))
           .map((h) => ({
             label: h.title,
-            detail: `🏷️ H${h.level} Heading`,
+            detail: `Heading · H${h.level}`,
             apply: `${h.title}]]`,
-            type: "text",
             boost: 3,
           })),
       };
@@ -348,7 +340,6 @@ function createWikiLinkCompletionSource(targets: WikiLinkTarget[]) {
             label: t.title,
             detail: getTargetDetail(t),
             apply: `${t.title}]]`,
-            type: getCompletionType(t),
             boost,
           };
         }),
@@ -946,6 +937,7 @@ export function MarkdownEditor({
       autocompletion({
         override: [createWikiLinkCompletionSource(targets)],
         defaultKeymap: true,
+        icons: false,
       }),
       syntaxHighlighting(fencedCodeHighlightStyle),
       EditorView.lineWrapping,
@@ -1091,6 +1083,51 @@ export function MarkdownEditor({
           },
           ".cm-panels-top": {
             borderBottom: "none",
+          },
+          ".cm-tooltip": {
+            border: "1px solid color-mix(in oklab, var(--border) 90%, transparent)",
+            backgroundColor: "var(--popover)",
+            color: "var(--popover-foreground)",
+            borderRadius: "0.75rem",
+            overflow: "hidden",
+            padding: "0.25rem",
+            boxShadow:
+              "0 12px 32px -12px rgba(0, 0, 0, 0.45), 0 4px 12px -6px rgba(0, 0, 0, 0.25)",
+          },
+          ".cm-tooltip.cm-tooltip-autocomplete > ul": {
+            maxHeight: "15em",
+            padding: "0",
+            margin: "0",
+            fontFamily: editorFontFamily,
+            fontSize: "0.8125rem",
+          },
+          ".cm-tooltip-autocomplete ul li": {
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.3rem 0.55rem",
+            borderRadius: "0.5rem",
+            color: "var(--foreground)",
+            cursor: "pointer",
+          },
+          ".cm-tooltip-autocomplete ul li[aria-selected]": {
+            backgroundColor:
+              "color-mix(in oklab, var(--primary) 16%, transparent)",
+            color: "var(--foreground)",
+          },
+          ".cm-completionLabel": {
+            minWidth: "0",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          },
+          ".cm-completionDetail": {
+            marginLeft: "auto",
+            paddingLeft: "0.75rem",
+            flexShrink: "0",
+            fontStyle: "normal",
+            fontSize: "0.6875rem",
+            color: "var(--muted-foreground)",
           },
           ".cm-find-replace-panel": {
             display: "flex",
