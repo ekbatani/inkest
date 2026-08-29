@@ -204,30 +204,45 @@ export function LinkPreviewPopover({
     toast.success("Link removed.");
   };
 
-  const targetType = linkData.target?.type || (linkData.isWeb ? "web" : linkData.isAttachment ? "asset" : "note");
+  const targetType =
+    linkData.target?.type ||
+    (linkData.isWeb
+      ? "web"
+      : linkData.isAttachment
+        ? "asset"
+        : "note");
 
   return (
     <div
       ref={popoverRef}
       style={style}
-      className="rounded-2xl border border-border/80 bg-background/95 p-3 shadow-2xl backdrop-blur-xl transition-all duration-150 animate-in fade-in zoom-in-95"
+      className="rounded-2xl border border-border/80 bg-background/95 p-3.5 shadow-2xl backdrop-blur-xl transition-all duration-150 animate-in fade-in zoom-in-95"
     >
       <div className="flex items-start gap-2.5">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary mt-0.5">
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-xl",
+            targetType === "project" && "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+            targetType === "daily" && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+            targetType === "asset" && "bg-sky-500/15 text-sky-600 dark:text-sky-400",
+            targetType === "web" && "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
+            targetType === "note" && "bg-primary/15 text-primary",
+          )}
+        >
           {targetType === "project" ? (
-            <FolderKanban className="size-4 text-amber-500" />
+            <FolderKanban className="size-4" />
           ) : targetType === "daily" ? (
-            <Calendar className="size-4 text-emerald-500" />
+            <Calendar className="size-4" />
           ) : targetType === "asset" ? (
             linkData.target && isImageAsset(linkData.target) ? (
               <ImageIcon className="size-4 text-rose-500" />
             ) : (
-              <Paperclip className="size-4 text-sky-500" />
+              <Paperclip className="size-4" />
             )
           ) : linkData.isWeb ? (
-            <Globe className="size-4 text-indigo-500" />
+            <Globe className="size-4" />
           ) : (
-            <FileText className="size-4 text-primary" />
+            <FileText className="size-4" />
           )}
         </span>
 
@@ -240,18 +255,21 @@ export function LinkPreviewPopover({
             <Badge
               variant="outline"
               className={cn(
-                "text-[9px] px-1 py-0 h-4 uppercase font-semibold",
-                targetType === "project" && "text-amber-600 dark:text-amber-400 border-amber-500/30",
-                targetType === "daily" && "text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-                targetType === "asset" && "text-sky-600 dark:text-sky-400 border-sky-500/30",
-                targetType === "web" && "text-indigo-600 dark:text-indigo-400 border-indigo-500/30",
+                "text-[9px] px-1.5 py-0 h-4 uppercase font-bold",
+                targetType === "project" && "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/5",
+                targetType === "daily" && "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5",
+                targetType === "asset" && "text-sky-600 dark:text-sky-400 border-sky-500/30 bg-sky-500/5",
+                targetType === "web" && "text-indigo-600 dark:text-indigo-400 border-indigo-500/30 bg-indigo-500/5",
+                targetType === "note" && "text-primary border-primary/30 bg-primary/5",
               )}
             >
-              {targetType}
+              {targetType === "project" && linkData.target?.status
+                ? `Project · ${linkData.target.status}`
+                : targetType}
             </Badge>
 
             {linkData.targetSection && (
-              <span className="text-[10px] text-muted-foreground font-mono">
+              <span className="text-[10px] text-indigo-500 font-mono">
                 #{linkData.targetSection}
               </span>
             )}
@@ -262,18 +280,18 @@ export function LinkPreviewPopover({
           </div>
 
           {linkData.target?.excerpt && (
-            <p className="mt-1.5 line-clamp-2 text-[11px] text-muted-foreground/90 bg-muted/40 p-1.5 rounded-lg border border-border/40">
+            <p className="mt-1.5 line-clamp-2 text-[11px] text-muted-foreground/90 bg-muted/30 p-2 rounded-lg border border-border/40">
               {linkData.target.excerpt}
             </p>
           )}
 
           {linkData.isAttachment && linkData.target && isImageAsset(linkData.target) && (
-            <div className="mt-2 overflow-hidden rounded-lg border border-border/50 bg-muted/20">
+            <div className="mt-2 overflow-hidden rounded-xl border border-border/50 bg-muted/20">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={linkData.href}
                 alt={linkData.target.title}
-                className="max-h-24 w-full object-cover"
+                className="max-h-28 w-full object-cover"
                 loading="lazy"
               />
             </div>
@@ -287,7 +305,7 @@ export function LinkPreviewPopover({
           size="sm"
           variant="secondary"
           onClick={handleOpen}
-          className="h-7 text-xs gap-1 px-2.5 rounded-lg"
+          className="h-7 text-xs gap-1.5 px-3 rounded-lg font-medium"
         >
           <span>Open</span>
           {linkData.isWeb || linkData.isAttachment ? (
@@ -297,7 +315,7 @@ export function LinkPreviewPopover({
           )}
         </Button>
 
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
           <Button
             type="button"
             size="icon-xs"
@@ -325,7 +343,7 @@ export function LinkPreviewPopover({
             size="icon-xs"
             variant="ghost"
             onClick={handleUnlink}
-            title="Remove link (keep text)"
+            title="Remove link syntax (keep text)"
             className="size-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
           >
             <Unlink className="size-3.5" />
@@ -335,3 +353,4 @@ export function LinkPreviewPopover({
     </div>
   );
 }
+

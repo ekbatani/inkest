@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
@@ -26,13 +27,15 @@ export function NotificationInbox({ notifications }: { notifications: InboxNotif
         {unread ? <span className="absolute end-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background" /> : null}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-2">
-        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-        {notifications.length ? notifications.map((notification) => (
-          <DropdownMenuItem key={notification.id} onClick={() => openNotification(notification)} className="items-start whitespace-normal py-2.5">
-            <CheckCircle2 className={notification.readAt ? "mt-0.5 size-4 text-muted-foreground" : "mt-0.5 size-4 text-primary"} />
-            <span className="grid gap-0.5"><span>{notification.title}</span><span className="text-xs font-normal text-muted-foreground">{notification.body}</span></span>
-          </DropdownMenuItem>
-        )) : <p className="px-3 py-4 text-sm text-muted-foreground">You’re all caught up.</p>}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+          {notifications.length ? notifications.map((notification) => (
+            <DropdownMenuItem key={notification.id} onClick={() => openNotification(notification)} className="items-start whitespace-normal py-2.5">
+              <CheckCircle2 className={notification.readAt ? "mt-0.5 size-4 text-muted-foreground" : "mt-0.5 size-4 text-primary"} />
+              <span className="grid gap-0.5"><span>{notification.title}</span><span className="text-xs font-normal text-muted-foreground">{notification.body}</span></span>
+            </DropdownMenuItem>
+          )) : <p className="px-3 py-4 text-sm text-muted-foreground">You’re all caught up.</p>}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

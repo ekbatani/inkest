@@ -45,6 +45,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -962,29 +963,31 @@ export function AiChatSidebar({
               <Lightbulb className="size-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 text-xs">
-              <DropdownMenuLabel className="flex items-center justify-between">
-                <span>Quick Actions</span>
-                {isProjectPage && (
-                  <span className="text-[10px] font-normal text-blue-500">Project mode</span>
-                )}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {quickActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <DropdownMenuItem
-                    key={action.id}
-                    onClick={() => void handleSendPrompt(action.prompt, action.id)}
-                    className="gap-2 text-xs cursor-pointer py-1.5"
-                  >
-                    <Icon className="size-3.5 text-violet-500 shrink-0" />
-                    <div className="truncate">
-                      <p className="font-medium text-foreground truncate">{action.label}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{action.description}</p>
-                    </div>
-                  </DropdownMenuItem>
-                );
-              })}
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="flex items-center justify-between">
+                  <span>Quick Actions</span>
+                  {isProjectPage && (
+                    <span className="text-[10px] font-normal text-blue-500">Project mode</span>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {quickActions.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={action.id}
+                      onClick={() => void handleSendPrompt(action.prompt, action.id)}
+                      className="gap-2 text-xs cursor-pointer py-1.5"
+                    >
+                      <Icon className="size-3.5 text-violet-500 shrink-0" />
+                      <div className="truncate">
+                        <p className="font-medium text-foreground truncate">{action.label}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{action.description}</p>
+                      </div>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -1195,18 +1198,20 @@ export function AiChatSidebar({
                               <ChevronDown className="size-2 opacity-60" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-44 text-xs">
-                              <DropdownMenuLabel>Replace options</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              {selectedText && (
-                                <DropdownMenuItem onClick={() => handleReplaceSelection(msg.content)}>
-                                  <Replace className="size-3.5 mr-1.5" />
-                                  Replace selection
+                              <DropdownMenuGroup>
+                                <DropdownMenuLabel>Replace options</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {selectedText && (
+                                  <DropdownMenuItem onClick={() => handleReplaceSelection(msg.content)}>
+                                    <Replace className="size-3.5 mr-1.5" />
+                                    Replace selection
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => handleReplaceEntireNote(msg.content)}>
+                                  <FileText className="size-3.5 mr-1.5" />
+                                  Replace entire note
                                 </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem onClick={() => handleReplaceEntireNote(msg.content)}>
-                                <FileText className="size-3.5 mr-1.5" />
-                                Replace entire note
-                              </DropdownMenuItem>
+                              </DropdownMenuGroup>
                             </DropdownMenuContent>
                           </DropdownMenu>
 
@@ -1220,20 +1225,22 @@ export function AiChatSidebar({
                               <ChevronDown className="size-2 opacity-60" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-44 text-xs">
-                              <DropdownMenuLabel>Add options</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleInsertAtCursor(msg.content)}>
-                                <Plus className="size-3.5 mr-1.5" />
-                                Insert at cursor
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAppendToNote(msg.content)}>
-                                <ArrowDown className="size-3.5 mr-1.5" />
-                                Append to bottom
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handlePrependToNote(msg.content)}>
-                                <ArrowUp className="size-3.5 mr-1.5" />
-                                Prepend to top
-                              </DropdownMenuItem>
+                              <DropdownMenuGroup>
+                                <DropdownMenuLabel>Add options</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleInsertAtCursor(msg.content)}>
+                                  <Plus className="size-3.5 mr-1.5" />
+                                  Insert at cursor
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleAppendToNote(msg.content)}>
+                                  <ArrowDown className="size-3.5 mr-1.5" />
+                                  Append to bottom
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handlePrependToNote(msg.content)}>
+                                  <ArrowUp className="size-3.5 mr-1.5" />
+                                  Prepend to top
+                                </DropdownMenuItem>
+                              </DropdownMenuGroup>
                             </DropdownMenuContent>
                           </DropdownMenu>
 

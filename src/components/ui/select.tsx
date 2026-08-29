@@ -98,9 +98,9 @@ function SelectContent({
 function SelectLabel({
   className,
   ...props
-}: SelectPrimitive.GroupLabel.Props) {
+}: React.ComponentProps<"div">) {
   return (
-    <SelectPrimitive.GroupLabel
+    <div
       data-slot="select-label"
       className={cn("px-3 py-2.5 text-xs text-muted-foreground", className)}
       {...props}

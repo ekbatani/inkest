@@ -258,14 +258,16 @@ function extractDocumentHeadings(docText: string) {
 }
 
 function getTargetDetail(t: WikiLinkTarget): string {
-  if (t.type === "project") return "Project";
-  if (t.type === "daily") return "Daily note";
-  if (t.type === "asset") {
-    if (t.mimeType?.startsWith("image/")) return "Image asset";
-    if (t.mimeType?.includes("pdf")) return "PDF document";
-    return "Asset attachment";
+  if (t.type === "project") {
+    return t.status ? `📁 Project · ${t.status}` : "📁 Project";
   }
-  return t.slug !== t.title.toLowerCase() ? t.slug : "Note";
+  if (t.type === "daily") return "📅 Daily note";
+  if (t.type === "asset") {
+    if (t.mimeType?.startsWith("image/")) return "🖼️ Image asset";
+    if (t.mimeType?.includes("pdf")) return "📄 PDF document";
+    return "📎 Asset file";
+  }
+  return "📝 Note";
 }
 
 function getCompletionType(t: WikiLinkTarget): string {
@@ -281,7 +283,21 @@ function createWikiLinkCompletionSource(targets: WikiLinkTarget[]) {
     if (!word) return null;
 
     const isEmbed = word.text.startsWith("!");
-    const rawQuery = word.text.replace(/^!?\[\[/, "");
+    let rawQuery = word.text.replace(/^!?\[\[/, "");
+    let filterCategory: "all" | "projects" | "notes" | "assets" = "all";
+
+    // Support prefix filters: @ / p: / /p / a: / /a / n: / /n
+    if (rawQuery.startsWith("@") || rawQuery.startsWith("p:") || rawQuery.startsWith("/p")) {
+      filterCategory = "projects";
+      rawQuery = rawQuery.replace(/^(@|p:|\/p\s*)/i, "");
+    } else if (rawQuery.startsWith("a:") || rawQuery.startsWith("/a")) {
+      filterCategory = "assets";
+      rawQuery = rawQuery.replace(/^(a:|\/a\s*)/i, "");
+    } else if (rawQuery.startsWith("n:") || rawQuery.startsWith("/n")) {
+      filterCategory = "notes";
+      rawQuery = rawQuery.replace(/^(n:|\/n\s*)/i, "");
+    }
+
     const query = rawQuery.toLowerCase().trim();
 
     // 1. Heading completion: [[# or [[Note#
@@ -296,7 +312,7 @@ function createWikiLinkCompletionSource(targets: WikiLinkTarget[]) {
           .filter((h) => !headingQuery || h.title.toLowerCase().includes(headingQuery))
           .map((h) => ({
             label: h.title,
-            detail: `H${h.level} Heading`,
+            detail: `🏷️ H${h.level} Heading`,
             apply: `${h.title}]]`,
             type: "text",
             boost: 3,
@@ -307,17 +323,26 @@ function createWikiLinkCompletionSource(targets: WikiLinkTarget[]) {
     return {
       from: word.from + (isEmbed ? 3 : 2),
       options: targets
-        .filter(
-          (t) =>
+        .filter((t) => {
+          if (filterCategory === "projects" && t.type !== "project") return false;
+          if (filterCategory === "notes" && t.type !== "note" && t.type !== "daily") return false;
+          if (filterCategory === "assets" && t.type !== "asset") return false;
+
+          return (
+            !query ||
             t.title.toLowerCase().includes(query) ||
-            t.slug.toLowerCase().includes(query),
-        )
+            t.slug.toLowerCase().includes(query) ||
+            (t.excerpt && t.excerpt.toLowerCase().includes(query))
+          );
+        })
         .map((t) => {
           const isImage = isImageAsset(t);
           const isTargetAsset = t.type === "asset";
-          const boost =
-            (isEmbed && (isImage || isTargetAsset) ? 4 : 1) *
-            (t.title.toLowerCase().startsWith(query) ? 2 : 1);
+          const isProject = t.type === "project";
+
+          let boost = t.title.toLowerCase().startsWith(query) ? 2 : 1;
+          if (isEmbed && (isImage || isTargetAsset)) boost += 3;
+          if (isProject) boost += 1;
 
           return {
             label: t.title,
@@ -330,6 +355,7 @@ function createWikiLinkCompletionSource(targets: WikiLinkTarget[]) {
     };
   };
 }
+
 
 
 async function uploadAndInsertFile(
