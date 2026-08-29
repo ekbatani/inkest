@@ -482,10 +482,24 @@ export function NoteEditor({
     [note.id, router, saveState],
   );
 
-  // Mount recovery: check IndexedDB / local storage for unsaved drafts
+  const hasCheckedRecoveryRef = React.useRef(false);
+
+  // Mount recovery: check IndexedDB / local storage for unsaved drafts (runs once per note mount)
   React.useEffect(() => {
+    hasCheckedRecoveryRef.current = false;
     void DocumentPersistenceManager.recoverDocument(note.id).then((recovered) => {
-      if (!recovered) return;
+      if (!recovered || hasCheckedRecoveryRef.current) return;
+      hasCheckedRecoveryRef.current = true;
+
+      // If the user has already modified the note since mount, preserve active in-memory typing
+      const currentInMemory = latestContentRef.current;
+      if (
+        currentInMemory.content !== note.contentMd ||
+        currentInMemory.title !== note.title
+      ) {
+        return;
+      }
+
       const noteUpdatedAtMs = note.updatedAt ? new Date(note.updatedAt).getTime() : 0;
       const isNewer = recovered.timestamp > noteUpdatedAtMs;
       const contentDiffers =
@@ -507,9 +521,7 @@ export function NoteEditor({
           title: recovered.title ?? note.title,
           content: recovered.content,
         });
-        toast.info("Restored unsaved offline changes", {
-          description: "Local edits were recovered and will sync automatically.",
-        });
+        // Silently sync recovered draft to server without noisy toast notifications
         void performSave({ forceRevalidate: false });
       }
     });
