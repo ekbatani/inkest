@@ -201,7 +201,19 @@ export const notifications = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    type: text("type", { enum: ["task_due", "delivery_failed"] }).notNull(),
+    type: text("type", {
+      enum: [
+        "task_due",
+        "delivery_failed",
+        "project_shared",
+        "note_shared_updated",
+        "project_deadline",
+        "daily_nudge",
+        "weekly_review",
+        "morning_briefing",
+        "telegram_action",
+      ],
+    }).notNull(),
     title: text("title").notNull(),
     body: text("body").notNull(),
     href: text("href"),

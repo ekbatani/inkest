@@ -76,3 +76,23 @@ export async function decompressAndDeserializeModel(
   const data = JSON.parse(jsonStr);
   return parseFunc(data.source, data.id, data.version);
 }
+
+/**
+ * Compresses an arbitrary serializable payload into a Deflate-compressed Uint8Array.
+ */
+export async function compressPayload(data: unknown): Promise<Uint8Array> {
+  const json = JSON.stringify(data);
+  return compressText(json);
+}
+
+/**
+ * Decompresses a Deflate-compressed buffer or Uint8Array back into parsed JSON data.
+ */
+export async function decompressPayload<T = unknown>(
+  buffer: ArrayBuffer | Uint8Array,
+): Promise<T> {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  const text = await decompressText(bytes);
+  return JSON.parse(text) as T;
+}
+

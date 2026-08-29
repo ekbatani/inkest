@@ -23,6 +23,8 @@ import {
   History,
   Search,
   Link2,
+  CloudOff,
+  AlertCircle,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -46,7 +48,6 @@ import { usePageContext } from "@/components/providers/page-context-provider";
 import { NoteDetailsPopover } from "@/components/notes/note-details-popover";
 import type { Note, Tag } from "@/server/db/schema";
 import {
-  autoSaveNoteAction,
   updateNoteAction,
   deleteNoteAction,
   togglePinnedAction,
@@ -73,6 +74,8 @@ import {
 } from "@/components/editor/markdown-editor-utils";
 
 import { DocumentPersistenceManager } from "@/lib/document-engine/storage/persistence-manager";
+import { computeTextEdit, computeContentHash } from "@/lib/document-engine/diff-patch";
+import { compressPayload } from "@/lib/document-engine/compression";
 
 // Dynamically imported so CodeMirror and the react-markdown preview
 // stack (read mode, copy-preview) split into separate chunks instead of always loading
@@ -162,10 +165,9 @@ export function NoteEditor({
     React.useState<string | null>(null);
   const superFocusPrefsTimer = React.useRef<ReturnType<typeof setTimeout> | null>(
     null,
-  );
-  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">(
-    "idle",
-  );
+  );  const [saveState, setSaveState] = React.useState<
+    "idle" | "saving" | "saved" | "offline" | "error"
+  >("idle");
   const [metadata, setMetadata] = React.useState({
     type: note.type,
     direction: note.direction,
@@ -178,6 +180,7 @@ export function NoteEditor({
   });
 
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxWaitTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoCheckpointTimer = React.useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -195,6 +198,17 @@ export function NoteEditor({
   const [lastCheckpointSnapshot, setLastCheckpointSnapshot] =
     React.useState<NoteSnapshot>(initialCheckpoint);
   const lastCheckpointRef = React.useRef<NoteSnapshot>(initialCheckpoint);
+
+  const lastSyncedSnapshotRef = React.useRef<{
+    title: string;
+    content: string;
+    hash: string;
+  }>({
+    title: note.title,
+    content: note.contentMd,
+    hash: computeContentHash(note.contentMd),
+  });
+  const pendingSyncRef = React.useRef(false);
 
   const { setPageContext, clearPageContext } = usePageContext();
 
@@ -228,19 +242,42 @@ export function NoteEditor({
       content: nextContent,
     };
     setContent(nextContent);
-    // Non-blocking micro-patch log to local IndexedDB
+
+    // Immediate non-blocking local persistence
     try {
       if (!persistenceManagerRef.current) {
         persistenceManagerRef.current = new DocumentPersistenceManager(note.id);
       }
-      void persistenceManagerRef.current.recordEdit(
-        { from: 0, to: content.length, text: nextContent },
+      void persistenceManagerRef.current.recordLocalDraft(
+        latestContentRef.current.title,
         nextContent,
+        computeContentHash(nextContent),
       ).catch(() => {});
     } catch {
       // Persistence logging should never break editing
     }
-  }, [content.length, note.id, title]);
+  }, [note.id, title]);
+
+  const handleTitleChange = React.useCallback((nextTitle: string) => {
+    latestContentRef.current = {
+      title: nextTitle,
+      content: latestContentRef.current?.content ?? content,
+    };
+    setTitle(nextTitle);
+
+    try {
+      if (!persistenceManagerRef.current) {
+        persistenceManagerRef.current = new DocumentPersistenceManager(note.id);
+      }
+      void persistenceManagerRef.current.recordLocalDraft(
+        nextTitle,
+        latestContentRef.current.content,
+      ).catch(() => {});
+    } catch {
+      // Ignore
+    }
+  }, [content, note.id]);
+
   const [historyState, setHistoryState] = React.useState<{
     past: NoteSnapshot[];
     future: NoteSnapshot[];
@@ -283,7 +320,13 @@ export function NoteEditor({
 
   const flushBeaconSave = React.useCallback(() => {
     if (typeof window === "undefined") return;
-    const payload = JSON.stringify(latestContentRef.current);
+    const snapshot = latestContentRef.current;
+    if (sameSnapshot(snapshot, lastSyncedSnapshotRef.current)) return;
+
+    const payload = JSON.stringify({
+      title: snapshot.title,
+      contentMd: snapshot.content,
+    });
     if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
       const blob = new Blob([payload], { type: "application/json" });
       navigator.sendBeacon(`/api/notes/${note.id}/save`, blob);
@@ -297,58 +340,220 @@ export function NoteEditor({
     }
   }, [note.id]);
 
-  const performSaveRef = React.useRef<(options?: { forceRevalidate?: boolean }) => Promise<void>>(async () => {});
-
   const performSave = React.useCallback(
-    async (options?: { forceRevalidate?: boolean }) => {
+    async (options?: { forceRevalidate?: boolean; forceFull?: boolean }) => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (maxWaitTimer.current) {
+        clearTimeout(maxWaitTimer.current);
+        maxWaitTimer.current = null;
+      }
 
-      const snapshot = latestContentRef.current;
+      const snapshot = { ...latestContentRef.current };
+      const lastSynced = lastSyncedSnapshotRef.current;
+
+      // No-op check: if unchanged from confirmed server snapshot, skip network call
+      if (!options?.forceRevalidate && sameSnapshot(snapshot, lastSynced)) {
+        if (typeof navigator !== "undefined" && navigator.onLine && saveState === "offline") {
+          setSaveState("saved");
+          setTimeout(() => setSaveState("idle"), 2000);
+        }
+        return;
+      }
+
       const currentSeq = ++saveSeqRef.current;
+      pendingSyncRef.current = true;
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        setSaveState("offline");
+        return;
+      }
+
       setSaveState("saving");
 
       try {
-        if (options?.forceRevalidate) {
-          await updateNoteAction(note.id, { title: snapshot.title, contentMd: snapshot.content });
-        } else {
-          await autoSaveNoteAction(note.id, { title: snapshot.title, contentMd: snapshot.content });
-        }
+        let forceFull = options?.forceFull ?? false;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const contentChanged = snapshot.content !== lastSynced.content;
+          const titleChanged = snapshot.title !== lastSynced.title;
 
-        if (currentSeq >= lastSavedSeqRef.current) {
-          lastSavedSeqRef.current = currentSeq;
+          let payload: Record<string, unknown>;
+          const textDiff =
+            !forceFull && contentChanged && lastSynced.hash
+              ? computeTextEdit(lastSynced.content, snapshot.content)
+              : null;
 
-          const latest = latestContentRef.current;
-          const hasPendingEdits =
-            latest.title !== snapshot.title || latest.content !== snapshot.content;
-
-          setSaveState("saved");
-          setTimeout(() => {
-            if (lastSavedSeqRef.current === currentSeq) {
-              setSaveState("idle");
-            }
-          }, 2000);
-
-          if (hasPendingEdits) {
-            if (saveTimer.current) clearTimeout(saveTimer.current);
-            saveTimer.current = setTimeout(() => {
-              void performSaveRef.current({ forceRevalidate: false });
-            }, 1000);
+          // If diff is small (< 60% of total length) and exists, send micro-patch
+          if (textDiff && textDiff.text.length < snapshot.content.length * 0.6) {
+            payload = {
+              baseHash: lastSynced.hash,
+              patches: [textDiff],
+              ...(titleChanged ? { title: snapshot.title } : {}),
+            };
+          } else {
+            // Full save
+            payload = {
+              title: snapshot.title,
+              contentMd: snapshot.content,
+            };
           }
+
+          const jsonStr = JSON.stringify(payload);
+          let res: Response;
+
+          // If payload > 512 bytes, compress with deflate
+          if (jsonStr.length > 512) {
+            const compressed = await compressPayload(payload);
+            res = await fetch(`/api/notes/${note.id}/save`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/octet-stream",
+                "Content-Encoding": "deflate",
+              },
+              body: new Blob([compressed as unknown as ArrayBufferView<ArrayBuffer>]),
+            });
+          } else {
+            res = await fetch(`/api/notes/${note.id}/save`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: jsonStr,
+            });
+          }
+
+          if (res.status === 409 && attempt === 0) {
+            // Base hash mismatch or conflict -> retry immediately with full payload
+            forceFull = true;
+            continue;
+          }
+
+          if (!res.ok) {
+            throw new Error(`Save failed: ${res.statusText}`);
+          }
+
+          const data = await res.json();
+          const newHash = data.contentHash ?? computeContentHash(snapshot.content);
+
+          if (currentSeq >= lastSavedSeqRef.current) {
+            lastSavedSeqRef.current = currentSeq;
+            pendingSyncRef.current = false;
+
+            lastSyncedSnapshotRef.current = {
+              title: snapshot.title,
+              content: snapshot.content,
+              hash: newHash,
+            };
+
+            // Mark local IndexedDB/localStorage as synced
+            if (!persistenceManagerRef.current) {
+              persistenceManagerRef.current = new DocumentPersistenceManager(note.id);
+            }
+            void persistenceManagerRef.current.markSynced(undefined, newHash);
+
+            if (options?.forceRevalidate) {
+              router.refresh();
+            }
+
+            const latest = latestContentRef.current;
+            const hasPendingEdits =
+              latest.title !== snapshot.title || latest.content !== snapshot.content;
+
+            setSaveState("saved");
+            setTimeout(() => {
+              if (lastSavedSeqRef.current === currentSeq) {
+                setSaveState("idle");
+              }
+            }, 2000);
+
+            if (hasPendingEdits) {
+              setSaveState("saving");
+            }
+          }
+          break;
         }
       } catch {
         if (currentSeq >= lastSavedSeqRef.current) {
-          setSaveState("idle");
-          toast.error("Failed to save note.");
+          if (typeof navigator !== "undefined" && !navigator.onLine) {
+            setSaveState("offline");
+          } else {
+            setSaveState("error");
+          }
         }
       }
     },
-    [note.id],
+    [note.id, router, saveState],
   );
 
+  // Mount recovery: check IndexedDB / local storage for unsaved drafts
   React.useEffect(() => {
-    performSaveRef.current = performSave;
+    void DocumentPersistenceManager.recoverDocument(note.id).then((recovered) => {
+      if (!recovered) return;
+      const noteUpdatedAtMs = note.updatedAt ? new Date(note.updatedAt).getTime() : 0;
+      const isNewer = recovered.timestamp > noteUpdatedAtMs;
+      const contentDiffers =
+        recovered.content !== note.contentMd ||
+        (recovered.title !== undefined && recovered.title !== note.title);
+
+      if ((recovered.synced === false || isNewer) && contentDiffers) {
+        if (recovered.title !== undefined) setTitle(recovered.title);
+        setContent(recovered.content);
+        latestContentRef.current = {
+          title: recovered.title ?? note.title,
+          content: recovered.content,
+        };
+        lastCheckpointRef.current = {
+          title: recovered.title ?? note.title,
+          content: recovered.content,
+        };
+        setLastCheckpointSnapshot({
+          title: recovered.title ?? note.title,
+          content: recovered.content,
+        });
+        toast.info("Restored unsaved offline changes", {
+          description: "Local edits were recovered and will sync automatically.",
+        });
+        void performSave({ forceRevalidate: false });
+      }
+    });
+  }, [note.contentMd, note.id, note.title, note.updatedAt, performSave]);
+
+  // Network online/offline event listeners and auto-sync
+  React.useEffect(() => {
+    const handleOnline = () => {
+      if (saveSeqRef.current > lastSavedSeqRef.current || pendingSyncRef.current) {
+        void performSave({ forceRevalidate: false });
+      } else if (saveState === "offline") {
+        setSaveState("saved");
+        setTimeout(() => setSaveState("idle"), 2000);
+      }
+    };
+    const handleOffline = () => {
+      if (saveSeqRef.current > lastSavedSeqRef.current || pendingSyncRef.current) {
+        setSaveState("offline");
+      }
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [performSave, saveState]);
+
+  // Periodic background retry for pending syncs
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.onLine &&
+        (saveSeqRef.current > lastSavedSeqRef.current || pendingSyncRef.current)
+      ) {
+        void performSave({ forceRevalidate: false });
+      }
+    }, 10000);
+    return () => clearInterval(interval);
   }, [performSave]);
 
+  // Adaptive debounce with max throttle interval
   React.useEffect(() => {
     if (skipNextPersist.current) {
       skipNextPersist.current = false;
@@ -364,6 +569,13 @@ export function NoteEditor({
     saveTimer.current = setTimeout(() => {
       void performSave({ forceRevalidate: false });
     }, 1500);
+
+    if (!maxWaitTimer.current) {
+      maxWaitTimer.current = setTimeout(() => {
+        maxWaitTimer.current = null;
+        void performSave({ forceRevalidate: false });
+      }, 5000);
+    }
 
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -876,15 +1088,32 @@ export function NoteEditor({
           {saveState !== "idle" && (
             <span
               key={saveState}
-              className="save-indicator flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-1 text-xs font-medium text-muted-foreground"
+              className={cn(
+                "save-indicator flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                saveState === "offline"
+                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                  : saveState === "error"
+                    ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                    : "bg-muted/60 text-muted-foreground",
+              )}
             >
               {saveState === "saving" ? (
                 <Loader2 className="size-3 animate-spin text-primary" />
-              ) : (
+              ) : saveState === "saved" ? (
                 <Check className="size-3 text-emerald-500" />
+              ) : saveState === "offline" ? (
+                <CloudOff className="size-3 text-amber-500" />
+              ) : (
+                <AlertCircle className="size-3 text-rose-500" />
               )}
               <span className="hidden sm:inline">
-                {saveState === "saving" ? "Saving…" : "Saved"}
+                {saveState === "saving"
+                  ? "Saving…"
+                  : saveState === "saved"
+                    ? "Saved"
+                    : saveState === "offline"
+                      ? "Saved locally (offline)"
+                      : "Saved locally · Syncing…"}
               </span>
             </span>
           )}
@@ -1037,7 +1266,7 @@ export function NoteEditor({
                 id="note-title"
                 ref={titleInputRef}
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => handleTitleChange(e.target.value)}
                 onBlur={() => {
                   void performSave({ forceRevalidate: true });
                 }}

@@ -10,10 +10,15 @@ const DB_VERSION = 1;
 export interface StoredSnapshot {
   documentId: string;
   version: number;
+  title?: string;
   content: string;
   timestamp: number;
+  synced?: boolean;
+  contentHash?: string;
   compressed?: Uint8Array;
 }
+
+const LOCAL_STORAGE_PREFIX = "inkest_draft_";
 
 export class DocumentIndexedDBStore {
   private dbPromise: Promise<IDBDatabase | null> | null = null;
@@ -58,14 +63,48 @@ export class DocumentIndexedDBStore {
   }
 
   /**
-   * Saves a full document snapshot to IndexedDB.
+   * Saves a full document snapshot to IndexedDB with localStorage fallback.
    */
   public async saveSnapshot(
     documentId: string,
     version: number,
     content: string,
+    title?: string,
+    synced = false,
+    contentHash?: string,
     compressed?: Uint8Array,
   ): Promise<boolean> {
+    const snapshot: StoredSnapshot = {
+      documentId,
+      version,
+      title,
+      content,
+      timestamp: Date.now(),
+      synced,
+      contentHash,
+      compressed,
+    };
+
+    // Always mirror to localStorage as an instant sync/fallback
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(
+          `${LOCAL_STORAGE_PREFIX}${documentId}`,
+          JSON.stringify({
+            documentId,
+            version,
+            title,
+            content,
+            timestamp: snapshot.timestamp,
+            synced,
+            contentHash,
+          }),
+        );
+      }
+    } catch {
+      // Ignore quota/access errors
+    }
+
     const db = await this.initDB();
     if (!db) return false;
 
@@ -73,13 +112,6 @@ export class DocumentIndexedDBStore {
       try {
         const tx = db.transaction("document_snapshots", "readwrite");
         const store = tx.objectStore("document_snapshots");
-        const snapshot: StoredSnapshot = {
-          documentId,
-          version,
-          content,
-          timestamp: Date.now(),
-          compressed,
-        };
         const req = store.put(snapshot);
         req.onsuccess = () => resolve(true);
         req.onerror = () => resolve(false);
@@ -90,23 +122,81 @@ export class DocumentIndexedDBStore {
   }
 
   /**
-   * Retrieves the latest snapshot for a document.
+   * Marks the current snapshot for a document as synced with the server.
+   */
+  public async markSnapshotSynced(
+    documentId: string,
+    version?: number,
+    contentHash?: string,
+    timestamp?: number,
+  ): Promise<boolean> {
+    const current = await this.getSnapshot(documentId);
+    if (current) {
+      return this.saveSnapshot(
+        documentId,
+        version ?? current.version,
+        current.content,
+        current.title,
+        true,
+        contentHash ?? current.contentHash,
+        current.compressed,
+      );
+    }
+
+    // Mirror to localStorage
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        const key = `${LOCAL_STORAGE_PREFIX}${documentId}`;
+        const raw = window.localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          parsed.synced = true;
+          if (version !== undefined) parsed.version = version;
+          if (contentHash !== undefined) parsed.contentHash = contentHash;
+          if (timestamp !== undefined) parsed.timestamp = timestamp;
+          window.localStorage.setItem(key, JSON.stringify(parsed));
+        }
+      }
+    } catch {
+      // Ignore
+    }
+
+    return true;
+  }
+
+  /**
+   * Retrieves the latest snapshot for a document, consulting IndexedDB then localStorage fallback.
    */
   public async getSnapshot(documentId: string): Promise<StoredSnapshot | null> {
     const db = await this.initDB();
-    if (!db) return null;
+    if (db) {
+      const fromDb = await new Promise<StoredSnapshot | null>((resolve) => {
+        try {
+          const tx = db.transaction("document_snapshots", "readonly");
+          const store = tx.objectStore("document_snapshots");
+          const req = store.get(documentId);
+          req.onsuccess = () => resolve((req.result as StoredSnapshot) || null);
+          req.onerror = () => resolve(null);
+        } catch {
+          resolve(null);
+        }
+      });
+      if (fromDb) return fromDb;
+    }
 
-    return new Promise((resolve) => {
-      try {
-        const tx = db.transaction("document_snapshots", "readonly");
-        const store = tx.objectStore("document_snapshots");
-        const req = store.get(documentId);
-        req.onsuccess = () => resolve((req.result as StoredSnapshot) || null);
-        req.onerror = () => resolve(null);
-      } catch {
-        resolve(null);
+    // Fallback: localStorage
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        const raw = window.localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${documentId}`);
+        if (raw) {
+          return JSON.parse(raw) as StoredSnapshot;
+        }
       }
-    });
+    } catch {
+      // Ignore
+    }
+
+    return null;
   }
 
   /**

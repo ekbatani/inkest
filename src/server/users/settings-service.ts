@@ -137,9 +137,15 @@ export const userSettingsSchema = z.object({
   notifications: z
     .object({
       inApp: z.boolean().optional(),
-      aiResults: z.boolean().optional(),
+      telegramPush: z.boolean().optional(),
+      sharedProjectInvites: z.boolean().optional(),
+      sharedNoteUpdates: z.boolean().optional(),
       taskDueReminders: z.boolean().optional(),
+      projectDeadlineReminders: z.boolean().optional(),
+      dailyMorningBriefing: z.boolean().optional(),
       dailyNoteNudge: z.boolean().optional(),
+      weeklyReviewPrompt: z.boolean().optional(),
+      aiResults: z.boolean().optional(),
     })
     .optional(),
   telegram: telegramSettingsSchema.optional(),
@@ -183,9 +189,15 @@ export const DEFAULTS: UserSettings = {
   tts: { rate: 1 },
   notifications: {
     inApp: true,
-    aiResults: true,
+    telegramPush: true,
+    sharedProjectInvites: true,
+    sharedNoteUpdates: true,
     taskDueReminders: false,
+    projectDeadlineReminders: true,
+    dailyMorningBriefing: false,
     dailyNoteNudge: false,
+    weeklyReviewPrompt: false,
+    aiResults: true,
   },
   agentHarness: {
     enabled: true,

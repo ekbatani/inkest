@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, test, beforeEach, afterEach } from "node:test";
-import { telegramSettingsSchema } from "../../users/settings-service";
+import {
+  telegramSettingsSchema,
+  userSettingsSchema,
+  DEFAULTS,
+} from "../../users/settings-service";
 import { telegramBotToken, getEffectiveTelegramBotToken } from "../telegram";
 
 describe("Telegram Settings Schema", () => {
@@ -32,6 +36,42 @@ describe("Telegram Settings Schema", () => {
     };
     const parsed = telegramSettingsSchema.safeParse(invalid);
     assert.equal(parsed.success, false);
+  });
+});
+
+describe("Notification Settings Schema & Routing", () => {
+  test("validates complete notification preferences including shared projects, deadlines, and multi-channel routing", () => {
+    const valid = {
+      notifications: {
+        inApp: true,
+        telegramPush: true,
+        sharedProjectInvites: true,
+        sharedNoteUpdates: false,
+        taskDueReminders: true,
+        projectDeadlineReminders: true,
+        dailyMorningBriefing: false,
+        dailyNoteNudge: true,
+        weeklyReviewPrompt: true,
+        aiResults: false,
+      },
+    };
+    const parsed = userSettingsSchema.safeParse(valid);
+    assert.equal(parsed.success, true);
+    if (parsed.success && parsed.data.notifications) {
+      assert.equal(parsed.data.notifications.telegramPush, true);
+      assert.equal(parsed.data.notifications.sharedProjectInvites, true);
+      assert.equal(parsed.data.notifications.sharedNoteUpdates, false);
+      assert.equal(parsed.data.notifications.projectDeadlineReminders, true);
+    }
+  });
+
+  test("provides expected defaults for all notification categories in DEFAULTS", () => {
+    assert.equal(DEFAULTS.notifications?.inApp, true);
+    assert.equal(DEFAULTS.notifications?.telegramPush, true);
+    assert.equal(DEFAULTS.notifications?.sharedProjectInvites, true);
+    assert.equal(DEFAULTS.notifications?.sharedNoteUpdates, true);
+    assert.equal(DEFAULTS.notifications?.projectDeadlineReminders, true);
+    assert.equal(DEFAULTS.notifications?.aiResults, true);
   });
 });
 

@@ -3,7 +3,14 @@ import { parseDocument } from "../parser";
 import { applyIncrementalEdit } from "../incremental-parser";
 import { hashBlock, hashFnv1a32, hashFnv1a64, hashMermaid } from "../hashing";
 import { DocumentSearchIndex } from "../search-index";
-import { compressText, decompressText, serializeAndCompressModel, decompressAndDeserializeModel } from "../compression";
+import {
+  compressText,
+  decompressText,
+  serializeAndCompressModel,
+  decompressAndDeserializeModel,
+  compressPayload,
+  decompressPayload,
+} from "../compression";
 import { mermaidCache } from "../mermaid-cache";
 import type { TextEdit } from "../types";
 
@@ -226,6 +233,23 @@ describe("Document Engine - Compression & Serialization", () => {
     const restored = await decompressAndDeserializeModel(compressed, parseDocument);
     expect(restored.source).toBe(model.source);
     expect(restored.blocks.length).toBe(model.blocks.length);
+  });
+
+  it("compresses and decompresses arbitrary JSON payloads", async () => {
+    const payload = {
+      title: "Differential Save Title",
+      baseHash: "a1b2c3d4",
+      patches: [
+        { from: 10, to: 15, text: "replaced content with lots of text" },
+      ],
+      metadata: { nested: true, count: 42 },
+    };
+
+    const compressed = await compressPayload(payload);
+    expect(compressed instanceof Uint8Array).toBe(true);
+
+    const restored = await decompressPayload<typeof payload>(compressed);
+    expect(restored).toEqual(payload);
   });
 });
 

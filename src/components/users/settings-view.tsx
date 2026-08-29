@@ -281,9 +281,15 @@ export function SettingsView({
                 initialChatId={telegramStatus.chatId}
                 telegramSettings={settings.telegram}
                 inApp={settings.notifications?.inApp}
-                aiResults={settings.notifications?.aiResults}
+                telegramPush={settings.notifications?.telegramPush}
+                sharedProjectInvites={settings.notifications?.sharedProjectInvites}
+                sharedNoteUpdates={settings.notifications?.sharedNoteUpdates}
                 taskDueReminders={settings.notifications?.taskDueReminders}
+                projectDeadlineReminders={settings.notifications?.projectDeadlineReminders}
+                dailyMorningBriefing={settings.notifications?.dailyMorningBriefing}
                 dailyNoteNudge={settings.notifications?.dailyNoteNudge}
+                weeklyReviewPrompt={settings.notifications?.weeklyReviewPrompt}
+                aiResults={settings.notifications?.aiResults}
               />
             </div>
           )}

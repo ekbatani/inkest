@@ -70,13 +70,54 @@ export class DocumentPersistenceManager {
   }
 
   /**
+   * Records a local draft snapshot (including title and content) and marks it unsaved.
+   */
+  public async recordLocalDraft(
+    title: string,
+    content: string,
+    contentHash?: string,
+  ): Promise<void> {
+    const nextVersion = ++this.currentVersion;
+    await documentIndexedDBStore.saveSnapshot(
+      this.documentId,
+      nextVersion,
+      content,
+      title,
+      false,
+      contentHash,
+    );
+  }
+
+  /**
+   * Marks the current document snapshot as synced with the server.
+   */
+  public async markSynced(version?: number, contentHash?: string): Promise<void> {
+    await documentIndexedDBStore.markSnapshotSynced(
+      this.documentId,
+      version ?? this.currentVersion,
+      contentHash,
+    );
+  }
+
+  /**
    * Compacts patch journal into a clean full snapshot.
    */
-  public async compactSnapshot(content: string, version: number): Promise<void> {
+  public async compactSnapshot(
+    content: string,
+    version: number,
+    title?: string,
+    synced = false,
+  ): Promise<void> {
     if (this.compactTimer) clearTimeout(this.compactTimer);
     this.patchCountSinceSnapshot = 0;
 
-    await documentIndexedDBStore.saveSnapshot(this.documentId, version, content);
+    await documentIndexedDBStore.saveSnapshot(
+      this.documentId,
+      version,
+      content,
+      title,
+      synced,
+    );
     await documentIndexedDBStore.prunePatchesUpTo(this.documentId, version);
   }
 
@@ -85,12 +126,23 @@ export class DocumentPersistenceManager {
    */
   public static async recoverDocument(
     documentId: string,
-  ): Promise<{ content: string; version: number } | null> {
+  ): Promise<{
+    title?: string;
+    content: string;
+    version: number;
+    timestamp: number;
+    synced?: boolean;
+    contentHash?: string;
+  } | null> {
     const snapshot = await documentIndexedDBStore.getSnapshot(documentId);
     if (!snapshot) return null;
 
     let content = snapshot.content;
     let version = snapshot.version;
+    const title = snapshot.title;
+    const timestamp = snapshot.timestamp;
+    const synced = snapshot.synced;
+    const contentHash = snapshot.contentHash;
 
     const patches = await documentIndexedDBStore.getPatchesSince(documentId, version);
     for (const patch of patches) {
@@ -100,6 +152,7 @@ export class DocumentPersistenceManager {
       version = patch.targetVersion;
     }
 
-    return { content, version };
+    return { title, content, version, timestamp, synced, contentHash };
   }
 }
+

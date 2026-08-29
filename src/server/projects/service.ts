@@ -5,6 +5,9 @@ import { getWorkspaceForUser } from "@/server/auth/users";
 import { randomId } from "@/lib/slug";
 import type { Note } from "@/server/db/schema";
 import { resolveProjectAccess, type ProjectRole } from "./access";
+import { createNotification } from "@/server/notifications/service";
+import { sendTelegramNotification } from "@/server/notifications/telegram";
+import { getUserSettings } from "@/server/users/settings-service";
 import {
   MAX_PROJECT_MEMBERS,
   type AddProjectMemberInput,
@@ -54,7 +57,7 @@ async function auditProjectMemberChange(params: {
 }
 
 type OwnerGuard =
-  | { ok: true; user: { id: string }; note: Note }
+  | { ok: true; user: { id: string; email: string; name?: string | null }; note: Note }
   | { ok: false; error: string; code: string };
 
 /** Resolves the acting user's role; only the owner may manage members. */
@@ -220,6 +223,49 @@ export async function addProjectMember(
     metadata: { email: target.email, role: input.role },
   });
 
+  // Notify member via in-app notification and Telegram push
+  try {
+    const targetSettings = await getUserSettings(target.id);
+    const notificationsPrefs = targetSettings.notifications ?? {};
+    const projectName = owner.note.title || "Untitled Project";
+    const inviterName = owner.user.name || owner.user.email;
+
+    if (notificationsPrefs.inApp !== false && notificationsPrefs.sharedProjectInvites !== false) {
+      await createNotification({
+        userId: target.id,
+        type: "project_shared",
+        title: "Project shared with you",
+        body: `${inviterName} shared project "${projectName}" with you as ${input.role}.`,
+        href: `/projects/${projectId}`,
+        dedupeKey: `pm-share:${projectId}:${target.id}:${Date.now()}`,
+      });
+    }
+
+    if (notificationsPrefs.telegramPush !== false && notificationsPrefs.sharedProjectInvites !== false) {
+      const targetUserRow = await db
+        .select({ chatId: schema.users.telegramChatId })
+        .from(schema.users)
+        .where(eq(schema.users.id, target.id))
+        .limit(1);
+
+      if (targetUserRow[0]?.chatId) {
+        await sendTelegramNotification(
+          {
+            title: "🤝 Project Invitation",
+            body: `You were invited to collaborate on "${projectName}" as ${input.role} by ${inviterName}.`,
+            metadata: {
+              Project: projectName,
+              Role: input.role,
+            },
+          },
+          { chatId: targetUserRow[0].chatId, userId: target.id },
+        );
+      }
+    }
+  } catch (err) {
+    console.warn("[projects] Failed to deliver share notification:", err);
+  }
+
   return {
     ok: true,
     member: {
@@ -263,6 +309,25 @@ export async function updateProjectMemberRole(
     actingUserId: owner.user.id,
     metadata: { memberUserId, role: input.role },
   });
+
+  try {
+    const memberSettings = await getUserSettings(memberUserId);
+    const notificationsPrefs = memberSettings.notifications ?? {};
+    const projectName = owner.note.title || "Untitled Project";
+
+    if (notificationsPrefs.inApp !== false && notificationsPrefs.sharedProjectInvites !== false) {
+      await createNotification({
+        userId: memberUserId,
+        type: "project_shared",
+        title: "Project permissions updated",
+        body: `Your access role on "${projectName}" was updated to ${input.role}.`,
+        href: `/projects/${projectId}`,
+        dedupeKey: `pm-role:${projectId}:${memberUserId}:${Date.now()}`,
+      });
+    }
+  } catch (err) {
+    console.warn("[projects] Failed to deliver role update notification:", err);
+  }
 
   return { ok: true };
 }

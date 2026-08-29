@@ -37,6 +37,15 @@ import {
   RefreshCw,
   Trash2,
   Globe,
+  Users,
+  Share2,
+  Clock,
+  Target,
+  CalendarCheck,
+  ListChecks,
+  PenLine,
+  MessageSquare,
+  FolderKanban,
 } from "lucide-react";
 import { CopyCodeBlock } from "@/components/marketing/copy-code-block";
 import {
@@ -2036,9 +2045,15 @@ export function NotificationsSection({
   initialChatId,
   telegramSettings,
   inApp,
-  aiResults,
+  telegramPush,
+  sharedProjectInvites,
+  sharedNoteUpdates,
   taskDueReminders,
+  projectDeadlineReminders,
+  dailyMorningBriefing,
   dailyNoteNudge,
+  weeklyReviewPrompt,
+  aiResults,
 }: {
   initialLinked: boolean;
   initialChatId?: string | null;
@@ -2051,9 +2066,15 @@ export function NotificationsSection({
     webhookConfiguredAt?: number;
   };
   inApp?: boolean;
-  aiResults?: boolean;
+  telegramPush?: boolean;
+  sharedProjectInvites?: boolean;
+  sharedNoteUpdates?: boolean;
   taskDueReminders?: boolean;
+  projectDeadlineReminders?: boolean;
+  dailyMorningBriefing?: boolean;
   dailyNoteNudge?: boolean;
+  weeklyReviewPrompt?: boolean;
+  aiResults?: boolean;
 }) {
   const [linked, setLinked] = React.useState(initialLinked);
   const [chatId, setChatId] = React.useState<string | null>(initialChatId ?? null);
@@ -2094,9 +2115,15 @@ export function NotificationsSection({
   // Notification prefs state
   const [prefs, setPrefs] = React.useState({
     inApp: inApp ?? true,
-    aiResults: aiResults ?? true,
+    telegramPush: telegramPush ?? true,
+    sharedProjectInvites: sharedProjectInvites ?? true,
+    sharedNoteUpdates: sharedNoteUpdates ?? true,
     taskDueReminders: taskDueReminders ?? false,
+    projectDeadlineReminders: projectDeadlineReminders ?? true,
+    dailyMorningBriefing: dailyMorningBriefing ?? false,
     dailyNoteNudge: dailyNoteNudge ?? false,
+    weeklyReviewPrompt: weeklyReviewPrompt ?? false,
+    aiResults: aiResults ?? true,
   });
   const [savingPrefs, setSavingPrefs] = React.useState(false);
 
@@ -2257,7 +2284,7 @@ export function NotificationsSection({
     try {
       const { updateUserSettingsAction } = await import("@/server/users/settings-actions");
       await updateUserSettingsAction({ notifications: next });
-      toast.success("Preferences updated.");
+      toast.success("Notification preferences updated.");
     } catch {
       toast.error("Failed to save notification preferences.");
     } finally {
@@ -2504,7 +2531,7 @@ export function NotificationsSection({
               <h2 className="text-base font-semibold">3. Telegram Account Pairing</h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Bind your personal Telegram account to this workspace to receive reminders and AI task updates.
+              Bind your personal Telegram account to this workspace to receive reminders and chat with your workspace bot.
             </p>
           </div>
           <Link
@@ -2620,54 +2647,184 @@ export function NotificationsSection({
         )}
       </section>
 
-      {/* 4. Notification Preferences Card */}
+      {/* 4. Redesigned Notification Channels & Preferences */}
       <section className="surface-card flex flex-col gap-6 p-6">
-        <div className="flex items-start justify-between gap-4 border-b pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b pb-4">
           <div>
             <div className="flex items-center gap-2">
               <Bell className="size-4 text-primary" />
-              <h2 className="text-base font-semibold">Notification Channels</h2>
+              <h2 className="text-base font-semibold">4. Notification Channels & Routing</h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Select which events send in-app alerts and Telegram push reminders.
+              Customize delivery channels and configure automatic alerts for team collaboration, deadlines, daily reflection, and AI tasks.
             </p>
           </div>
-          {savingPrefs && (
-            <span className="text-xs text-muted-foreground animate-pulse">
-              Saving...
-            </span>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {savingPrefs && (
+              <Badge variant="outline" className="text-xs text-muted-foreground animate-pulse">
+                Saving preferences...
+              </Badge>
+            )}
+          </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <NotificationSwitchItem
-            label="In-App Activity"
-            desc="Show live activity badges and toast updates."
-            checked={prefs.inApp}
-            disabled={savingPrefs}
-            onChange={(v) => savePrefs({ ...prefs, inApp: v })}
-          />
-          <NotificationSwitchItem
-            label="AI Action Results"
-            desc="Notify when background AI summaries and plans finish."
-            checked={prefs.aiResults}
-            disabled={savingPrefs}
-            onChange={(v) => savePrefs({ ...prefs, aiResults: v })}
-          />
-          <NotificationSwitchItem
-            label="Task Due Reminders"
-            desc="Alerts for planner actions due today or overdue."
-            checked={prefs.taskDueReminders}
-            disabled={savingPrefs}
-            onChange={(v) => savePrefs({ ...prefs, taskDueReminders: v })}
-          />
-          <NotificationSwitchItem
-            label="Daily Note Nudge"
-            desc="Friendly reminder to open your journal and daily log."
-            checked={prefs.dailyNoteNudge}
-            disabled={savingPrefs}
-            onChange={(v) => savePrefs({ ...prefs, dailyNoteNudge: v })}
-          />
+        {/* Group A: Delivery Channels */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Send className="size-3.5 text-primary" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Delivery Channels
+            </h3>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <NotificationSwitchItem
+              icon={<Bell className="size-4 text-primary" />}
+              label="In-App Activity Center"
+              desc="Display live activity badges, unread indicators, and toast alerts in Inkest."
+              checked={prefs.inApp}
+              disabled={savingPrefs}
+              onChange={(v) => savePrefs({ ...prefs, inApp: v })}
+            />
+            <NotificationSwitchItem
+              icon={<Send className="size-4 text-blue-500" />}
+              label="Telegram Bot Push Delivery"
+              desc="Forward high-priority reminders and alerts directly to your paired Telegram chat."
+              checked={prefs.telegramPush}
+              disabled={savingPrefs || !linked}
+              badge={linked ? "Paired" : "Requires Linking"}
+              onChange={(v) => savePrefs({ ...prefs, telegramPush: v })}
+            />
+          </div>
+        </div>
+
+        {/* Group B: Shared Projects & Collaboration */}
+        <div className="flex flex-col gap-3 pt-2 border-t border-border/50">
+          <div className="flex items-center gap-2">
+            <Users className="size-3.5 text-primary" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Shared Projects & Collaboration
+            </h3>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <NotificationSwitchItem
+              icon={<Share2 className="size-4 text-emerald-500" />}
+              label="Project Invitations & Permissions"
+              desc="Notify immediately when you are invited to a shared project or your role changes."
+              checked={prefs.sharedProjectInvites}
+              disabled={savingPrefs}
+              onChange={(v) => savePrefs({ ...prefs, sharedProjectInvites: v })}
+            />
+            <NotificationSwitchItem
+              icon={<FolderKanban className="size-4 text-indigo-500" />}
+              label="Collaborator Note Updates"
+              desc="Alerts when team members create or edit notes within your shared projects."
+              checked={prefs.sharedNoteUpdates}
+              disabled={savingPrefs}
+              onChange={(v) => savePrefs({ ...prefs, sharedNoteUpdates: v })}
+            />
+          </div>
+        </div>
+
+        {/* Group C: Tasks, Deadlines & Planning */}
+        <div className="flex flex-col gap-3 pt-2 border-t border-border/50">
+          <div className="flex items-center gap-2">
+            <Clock className="size-3.5 text-primary" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Tasks & Project Deadlines
+            </h3>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <NotificationSwitchItem
+              icon={<CalendarCheck className="size-4 text-amber-500" />}
+              label="Task Due Date Alerts"
+              desc="Morning reminders for planner tasks and action items due today or overdue."
+              checked={prefs.taskDueReminders}
+              disabled={savingPrefs}
+              onChange={(v) => savePrefs({ ...prefs, taskDueReminders: v })}
+            />
+            <NotificationSwitchItem
+              icon={<Target className="size-4 text-red-500" />}
+              label="Project Deadline Warnings"
+              desc="Advance warnings (within 48 hours) for project completion dates and milestones."
+              checked={prefs.projectDeadlineReminders}
+              disabled={savingPrefs}
+              onChange={(v) => savePrefs({ ...prefs, projectDeadlineReminders: v })}
+            />
+            <NotificationSwitchItem
+              icon={<ListChecks className="size-4 text-teal-500" />}
+              label="Daily Morning Briefing"
+              desc="Automated morning summary digest of today's schedule, focus tasks, and deadlines."
+              checked={prefs.dailyMorningBriefing}
+              disabled={savingPrefs}
+              onChange={(v) => savePrefs({ ...prefs, dailyMorningBriefing: v })}
+            />
+            <NotificationSwitchItem
+              icon={<Sparkles className="size-4 text-purple-500" />}
+              label="AI & Autonomous Agent Results"
+              desc="Notify when background summaries, research plans, or agent loops finish."
+              checked={prefs.aiResults}
+              disabled={savingPrefs}
+              onChange={(v) => savePrefs({ ...prefs, aiResults: v })}
+            />
+          </div>
+        </div>
+
+        {/* Group D: Daily Habits & Reflection */}
+        <div className="flex flex-col gap-3 pt-2 border-t border-border/50">
+          <div className="flex items-center gap-2">
+            <PenLine className="size-3.5 text-primary" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Daily Habits & Reflection
+            </h3>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <NotificationSwitchItem
+              icon={<BookOpen className="size-4 text-amber-600" />}
+              label="Daily Journal Nudge"
+              desc="Gentle reminder to write your daily log if you haven't opened today's journal."
+              checked={prefs.dailyNoteNudge}
+              disabled={savingPrefs}
+              onChange={(v) => savePrefs({ ...prefs, dailyNoteNudge: v })}
+            />
+            <NotificationSwitchItem
+              icon={<RotateCcw className="size-4 text-cyan-500" />}
+              label="Weekly Review & Planning"
+              desc="Weekend prompt to review accomplishments, backlog, and plan the upcoming week."
+              checked={prefs.weeklyReviewPrompt}
+              disabled={savingPrefs}
+              onChange={(v) => savePrefs({ ...prefs, weeklyReviewPrompt: v })}
+            />
+          </div>
+        </div>
+
+        {/* Telegram Interactive Assistant Tips Banner */}
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-2.5">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="size-4 text-primary" />
+            <span className="text-xs font-semibold text-foreground">
+              Telegram Interactive Workspace Assistant
+            </span>
+            <Badge variant="outline" className="text-[10px] text-primary border-primary/30">
+              Interactive
+            </Badge>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Once connected, you can interact directly with your workspace via Telegram messages:
+          </p>
+          <div className="grid gap-1.5 sm:grid-cols-2 font-mono text-[11px] text-foreground/85">
+            <div className="rounded-md bg-background/80 px-2.5 py-1.5 border border-border/60">
+              💬 <em>&ldquo;Write a new note about &lsquo;daily focusing training&rsquo;&rdquo;</em>
+            </div>
+            <div className="rounded-md bg-background/80 px-2.5 py-1.5 border border-border/60">
+              💬 <em>&ldquo;Modify &lsquo;Inkest&rsquo; project &lsquo;Todo list&rsquo; note and add task &lsquo;Managing users on cloud&rsquo;&rdquo;</em>
+            </div>
+            <div className="rounded-md bg-background/80 px-2.5 py-1.5 border border-border/60">
+              💬 <em>&ldquo;Tell me about deadlines of the &lsquo;Inkest&rsquo; project&rdquo;</em>
+            </div>
+            <div className="rounded-md bg-background/80 px-2.5 py-1.5 border border-border/60">
+              💬 <em>&ldquo;Give me the content of the daily note of two days ago&rdquo;</em>
+            </div>
+          </div>
         </div>
       </section>
     </div>
@@ -2675,28 +2832,43 @@ export function NotificationsSection({
 }
 
 function NotificationSwitchItem({
+  icon,
   label,
   desc,
   checked,
   disabled,
+  badge,
   onChange,
 }: {
+  icon?: React.ReactNode;
   label: string;
   desc: string;
   checked: boolean;
   disabled?: boolean;
+  badge?: string;
   onChange: (value: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card/60 p-4">
-      <div className="flex flex-col gap-0.5">
-        <span className="text-xs font-semibold">{label}</span>
-        <span className="text-[11px] text-muted-foreground">{desc}</span>
+    <div className="flex items-start justify-between gap-3.5 rounded-xl border border-border/70 bg-card/60 p-4 transition-all hover:bg-muted/20">
+      <div className="flex items-start gap-3">
+        {icon && <div className="mt-0.5 shrink-0">{icon}</div>}
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-foreground">{label}</span>
+            {badge && (
+              <Badge variant="outline" className="text-[9px] py-0 h-4 px-1.5">
+                {badge}
+              </Badge>
+            )}
+          </div>
+          <span className="text-[11px] text-muted-foreground leading-relaxed">{desc}</span>
+        </div>
       </div>
       <Switch
         checked={checked}
         disabled={disabled}
         onCheckedChange={onChange}
+        className="shrink-0 mt-0.5"
       />
     </div>
   );

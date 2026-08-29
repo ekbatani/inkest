@@ -3,9 +3,20 @@ import { randomId } from "@/lib/slug";
 import { getCurrentUser } from "@/server/auth";
 import { db, schema } from "@/server/db/client";
 
+export type NotificationType =
+  | "task_due"
+  | "delivery_failed"
+  | "project_shared"
+  | "note_shared_updated"
+  | "project_deadline"
+  | "daily_nudge"
+  | "weekly_review"
+  | "morning_briefing"
+  | "telegram_action";
+
 type CreateNotificationInput = {
   userId: string;
-  type: "task_due" | "delivery_failed";
+  type: NotificationType;
   title: string;
   body: string;
   href?: string;
@@ -14,7 +25,7 @@ type CreateNotificationInput = {
 
 export type InboxNotification = {
   id: string;
-  type: "task_due" | "delivery_failed";
+  type: NotificationType;
   title: string;
   body: string;
   href: string | null;

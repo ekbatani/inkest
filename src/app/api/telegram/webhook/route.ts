@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { db, schema } from "@/server/db/client";
 import { consumeTelegramLinkCode } from "@/server/notifications/telegram-link";
 import {
   getEffectiveTelegramBotToken,
@@ -6,6 +8,7 @@ import {
   telegramBotToken,
 } from "@/server/notifications/telegram";
 import { getUserSettings } from "@/server/users/settings-service";
+import { handleTelegramWorkspaceMessage } from "@/server/telegram/bot-assistant";
 
 const START_WITH_CODE_RE = /^\/start(?:@[\w_]+)?\s+([A-Za-z0-9]{4,10})\s*$/;
 const START_RE = /^\/start(?:@[\w_]+)?\s*$/;
@@ -78,7 +81,7 @@ export async function POST(request: NextRequest) {
         targetToken,
         String(chatId),
         result.ok
-          ? "✅ Telegram is now linked to your Inkest account."
+          ? "✅ Telegram is now linked to your Inkest account. You can now manage your workspace, take notes, query deadlines, and view daily logs here."
           : "That code is invalid, expired, or already used by another account. Generate a new one from Settings → Notifications.",
       );
     } else if (START_RE.test(text)) {
@@ -87,6 +90,42 @@ export async function POST(request: NextRequest) {
         String(chatId),
         "Send /start followed by the linking code from Settings → Notifications, e.g. /start ABC123.",
       );
+    } else {
+      // Find linked user for this chatId
+      let resolvedUserId = uid;
+      if (!resolvedUserId) {
+        const userRow = await db
+          .select({ id: schema.users.id })
+          .from(schema.users)
+          .where(eq(schema.users.telegramChatId, String(chatId)))
+          .limit(1);
+        resolvedUserId = userRow[0]?.id;
+      }
+
+      if (resolvedUserId) {
+        const targetToken = (await getEffectiveTelegramBotToken(resolvedUserId)) || botToken;
+        try {
+          await handleTelegramWorkspaceMessage({
+            userId: resolvedUserId,
+            chatId: String(chatId),
+            text,
+            botToken: targetToken,
+          });
+        } catch (err) {
+          console.warn("[telegram webhook] failed to process workspace message:", err);
+          await sendRawTelegramMessage(
+            targetToken,
+            String(chatId),
+            "⚠️ An error occurred while processing your workspace command. Please try again.",
+          );
+        }
+      } else {
+        await sendRawTelegramMessage(
+          botToken,
+          String(chatId),
+          "⚠️ Your Telegram account is not linked to an Inkest workspace yet. To connect, open Inkest Settings → Notifications, generate a pairing code, and send `/start <code>`.",
+        );
+      }
     }
   }
 

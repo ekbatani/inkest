@@ -37,5 +37,20 @@ export const updateNoteSchema = z.object({
   parentId: z.string().nullable().optional(),
 });
 
+export const textEditSchema = z.object({
+  from: z.number().int().min(0),
+  to: z.number().int().min(0),
+  text: z.string(),
+});
+
+export const saveNotePayloadSchema = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  contentMd: z.string().max(1_000_000).optional(),
+  baseHash: z.string().optional(),
+  patches: z.array(textEditSchema).optional(),
+});
+
 export type CreateNoteInput = z.infer<typeof createNoteSchema>;
 export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;
+export type SaveNotePayloadInput = z.infer<typeof saveNotePayloadSchema>;
+
