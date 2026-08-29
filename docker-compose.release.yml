@@ -6,6 +6,8 @@ services:
       - "3000"
     environment:
       DATABASE_URL: file:/app/data/local.db
+      INKEST_DEPLOYMENT_ENV: ${INKEST_DEPLOYMENT_ENV:-self-hosted}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       NEXTAUTH_URL: ${NEXTAUTH_URL:?Set NEXTAUTH_URL to Inkest's public URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET to a unique random value}
       AI_CREDENTIAL_ENCRYPTION_KEYS: ${AI_CREDENTIAL_ENCRYPTION_KEYS:-}

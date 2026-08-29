@@ -1376,6 +1376,8 @@ export function AiOrchestrationSection({
   maxOutputTokens = 1_200,
   instructions = "",
   guardrails = "",
+  taskTimingPrompt = "",
+  projectPlanningPrompt = "",
 }: {
   temperature?: number;
   minInputTokens?: number;
@@ -1384,6 +1386,8 @@ export function AiOrchestrationSection({
   maxOutputTokens?: number;
   instructions?: string;
   guardrails?: string;
+  taskTimingPrompt?: string;
+  projectPlanningPrompt?: string;
 }) {
   const [nextTemperature, setNextTemperature] = React.useState(String(temperature));
   const [nextMinInputTokens, setNextMinInputTokens] = React.useState(String(minInputTokens));
@@ -1392,6 +1396,8 @@ export function AiOrchestrationSection({
   const [nextMaxOutputTokens, setNextMaxOutputTokens] = React.useState(String(maxOutputTokens));
   const [nextInstructions, setNextInstructions] = React.useState(instructions);
   const [nextGuardrails, setNextGuardrails] = React.useState(guardrails);
+  const [nextTaskTimingPrompt, setNextTaskTimingPrompt] = React.useState(taskTimingPrompt);
+  const [nextProjectPlanningPrompt, setNextProjectPlanningPrompt] = React.useState(projectPlanningPrompt);
   const [saving, setSaving] = React.useState(false);
 
   const tempPresets = [
@@ -1448,6 +1454,8 @@ export function AiOrchestrationSection({
           maxOutputTokens: parsedMaxOut,
           instructions: nextInstructions.trim(),
           guardrails: nextGuardrails.trim(),
+          taskTimingPrompt: nextTaskTimingPrompt.trim(),
+          projectPlanningPrompt: nextProjectPlanningPrompt.trim(),
         }),
       );
       toast.success("AI orchestration settings saved.");
@@ -1471,6 +1479,8 @@ export function AiOrchestrationSection({
       setNextMaxOutputTokens("1200");
       setNextInstructions("");
       setNextGuardrails("");
+      setNextTaskTimingPrompt("");
+      setNextProjectPlanningPrompt("");
       toast.success("AI orchestration controls reset to defaults.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to reset AI controls.");
@@ -1490,7 +1500,7 @@ export function AiOrchestrationSection({
             <h2 className="text-base font-semibold">AI Orchestration & Parameters</h2>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Configure per-user temperature, token budgets (min/max input and output), system instructions, and safety guardrails.
+            Configure per-user temperature, token budgets, timing heuristics prompts, and safety guardrails.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1637,6 +1647,51 @@ export function AiOrchestrationSection({
               <span className="text-[10px] text-muted-foreground">Hard cap on completion length</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Task Timing & Project Planning Heuristics */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="ai-task-timing-prompt" className="text-xs font-semibold text-foreground">
+              Task Timing & Due Date Prompt
+            </Label>
+            <span className="text-[11px] text-muted-foreground">{nextTaskTimingPrompt.length}/4000</span>
+          </div>
+          <Textarea
+            id="ai-task-timing-prompt"
+            value={nextTaskTimingPrompt}
+            maxLength={4000}
+            rows={5}
+            onChange={(event) => setNextTaskTimingPrompt(event.target.value)}
+            placeholder="e.g. Schedule urgent tasks within 1-2 days, medium priority within 1 week, and low priority within 2-3 weeks. Do not assign weekends as due dates."
+            className="text-xs leading-relaxed font-mono"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Custom rules and timing heuristics used by AI when extracting tasks and calculating start and due dates. Leave blank to use defaults.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="ai-project-planning-prompt" className="text-xs font-semibold text-foreground">
+              Project Planning Roadmap Prompt
+            </Label>
+            <span className="text-[11px] text-muted-foreground">{nextProjectPlanningPrompt.length}/4000</span>
+          </div>
+          <Textarea
+            id="ai-project-planning-prompt"
+            value={nextProjectPlanningPrompt}
+            maxLength={4000}
+            rows={5}
+            onChange={(event) => setNextProjectPlanningPrompt(event.target.value)}
+            placeholder="e.g. Break projects into 3-4 distinct milestones spanning 2-6 weeks. Ensure every milestone has concrete delivery criteria."
+            className="text-xs leading-relaxed font-mono"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Guidelines and milestone duration heuristics for project roadmap generation.
+          </p>
         </div>
       </div>
 

@@ -218,7 +218,7 @@ export function SettingsView({
                 configurationSource={aiConfiguration.source}
               />
               <AiOrchestrationSection
-                key={`ai-controls:${settings.ai?.temperature}:${settings.ai?.minInputTokens}:${settings.ai?.maxInputTokens}:${settings.ai?.minOutputTokens}:${settings.ai?.maxOutputTokens}:${settings.ai?.instructions ?? ""}:${settings.ai?.guardrails ?? ""}`}
+                key={`ai-controls:${settings.ai?.temperature}:${settings.ai?.minInputTokens}:${settings.ai?.maxInputTokens}:${settings.ai?.minOutputTokens}:${settings.ai?.maxOutputTokens}:${settings.ai?.instructions ?? ""}:${settings.ai?.guardrails ?? ""}:${settings.ai?.taskTimingPrompt ?? ""}:${settings.ai?.projectPlanningPrompt ?? ""}`}
                 temperature={settings.ai?.temperature}
                 minInputTokens={settings.ai?.minInputTokens}
                 maxInputTokens={settings.ai?.maxInputTokens}
@@ -226,6 +226,8 @@ export function SettingsView({
                 maxOutputTokens={settings.ai?.maxOutputTokens}
                 instructions={settings.ai?.instructions}
                 guardrails={settings.ai?.guardrails}
+                taskTimingPrompt={settings.ai?.taskTimingPrompt}
+                projectPlanningPrompt={settings.ai?.projectPlanningPrompt}
               />
               <AiPrivacySection onboardingDismissed={settings.ai?.onboardingDismissed} />
               <AgentHarnessSection

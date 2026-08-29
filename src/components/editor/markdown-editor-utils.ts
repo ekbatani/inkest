@@ -12,10 +12,13 @@ export function insertTextAtCursor(
 ) {
   const view = ref?.current?.view;
   if (!view) return;
+  const docLen = view.state.doc.length;
   const sel = view.state.selection.main;
+  const from = Math.min(Math.max(0, sel.from), docLen);
+  const to = Math.min(Math.max(0, sel.to), docLen);
   view.dispatch({
-    changes: { from: sel.from, to: sel.to, insert: text },
-    selection: { anchor: sel.from + text.length },
+    changes: { from, to, insert: text },
+    selection: { anchor: from + text.length },
   });
   view.focus();
 }
@@ -113,19 +116,21 @@ export function applyMarkdownFormatToView(
   format: MarkdownFormat,
   options?: { comment?: string },
 ) {
-
+  const docLen = view.state.doc.length;
   const sel = view.state.selection.main;
-  const selectedText = view.state.sliceDoc(sel.from, sel.to);
+  const from = Math.min(Math.max(0, sel.from), docLen);
+  const to = Math.min(Math.max(0, sel.to), docLen);
+  const selectedText = view.state.sliceDoc(from, to);
   const inline = INLINE_FORMATS[format];
 
   if (inline) {
     const text = selectedText || inline.placeholder;
     const insert = `${inline.before}${text}${inline.after}`;
     view.dispatch({
-      changes: { from: sel.from, to: sel.to, insert },
+      changes: { from, to, insert },
       selection: selectedText
-        ? { anchor: sel.from + insert.length }
-        : { anchor: sel.from + inline.before.length, head: sel.from + inline.before.length + text.length },
+        ? { anchor: from + insert.length }
+        : { anchor: from + inline.before.length, head: from + inline.before.length + text.length },
     });
     view.focus();
     return;
@@ -133,14 +138,14 @@ export function applyMarkdownFormatToView(
 
   if (format === "code-block") {
     const text = selectedText || "code";
-    const before = sel.from > 0 ? "\n\n" : "";
-    const after = sel.to < view.state.doc.length ? "\n\n" : "";
+    const before = from > 0 ? "\n\n" : "";
+    const after = to < docLen ? "\n\n" : "";
     const insert = `${before}\`\`\`\n${text}\n\`\`\`${after}`;
-    const contentFrom = sel.from + before.length + 4;
+    const contentFrom = from + before.length + 4;
     const contentTo = contentFrom + text.length;
 
     view.dispatch({
-      changes: { from: sel.from, to: sel.to, insert },
+      changes: { from, to, insert },
       selection: selectedText
         ? { anchor: contentTo }
         : { anchor: contentFrom, head: contentTo },
@@ -158,7 +163,7 @@ export function applyMarkdownFormatToView(
     format === "numbered-list" ||
     format === "check-list"
   ) {
-    const change = lineFormat(view.state.doc.toString(), format, sel.from, sel.to);
+    const change = lineFormat(view.state.doc.toString(), format, from, to);
     view.dispatch({
       changes: change,
       selection: { anchor: change.from + change.insert.length },
@@ -169,8 +174,8 @@ export function applyMarkdownFormatToView(
 
   const insert = encodedAnnotation(format, selectedText, options?.comment);
   view.dispatch({
-    changes: { from: sel.from, to: sel.to, insert },
-    selection: { anchor: sel.from + insert.length },
+    changes: { from, to, insert },
+    selection: { anchor: from + insert.length },
   });
   view.focus();
 }

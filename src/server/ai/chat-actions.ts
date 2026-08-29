@@ -215,12 +215,25 @@ export async function runAiChatPromptAction(args: {
 
   const promptToModel = `${contextBlock}${attachedContextBlock}${conversationBlock}\n\nUser Request / Instruction:\n${args.userPrompt}`.trim();
 
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+
   const systemPrompt =
-    "You are an AI assistant in Inkest, a Markdown-first personal workspace. Answer the user's questions or follow their instructions based on the page/note context, referenced items (@notes, @projects, @files, @vault secrets), workspace knowledge, and selection provided. Provide clear, direct, and beautifully formatted Markdown responses. When modifying, gently editing, or drafting content, present the content cleanly so the user can easily insert, replace, or gently merge it into their note.\n\n" +
-    "COLLABORATION & CLARIFICATION GUIDELINES:\n" +
-    "- If the user's request, note, or project has ambiguities, missing constraints, or multiple possible directions, provide your best initial response AND conclude with a concise '### ❓ Clarifications & Follow-up' section with 2-3 specific questions or choices to confirm with the user.\n" +
-    "- If working on a project or task list, output actionable task items using markdown checklist format `- [ ] Task title` so they can be easily converted into project tasks.\n" +
-    "- When referencing related concepts in the workspace, you may use double brackets [[Note Title]] for wiki-links.";
+    `You are the Inkest AI Assistant, deeply integrated into Inkest — a private, Markdown-first personal workspace.\n` +
+    `Today's date is ${todayStr}.\n\n` +
+    `APPLICATION SERVICES & KNOWLEDGE:\n` +
+    `- **Notes & Documents**: Markdown notes with live preview, wiki-links ([[Note Title]]), tags (#tag), task checklists (- [ ]), and Mermaid diagrams.\n` +
+    `- **Projects & Subprojects**: Hierarchical projects (top-level or nested subprojects via parentId), Kanban board stages (todo, doing, done, paused, archived), priority levels (low, medium, high), and project milestone due dates.\n` +
+    `- **Tasks & Action Items**: Structured tasks attached to projects or notes with statuses (todo, doing, done, canceled), priorities, start dates, due dates, next actions, and Telegram reminder delivery.\n` +
+    `- **Daily Journal**: Daily reflection notes with structured reflection, gratitude, and decision templates.\n` +
+    `- **Calendar & Google Sync**: External Google Calendar connections and scheduled agenda integration.\n` +
+    `- **Vault**: Encrypted zero-knowledge secret items (passwords, tokens, keys).\n\n` +
+    `RESPONSE GUIDELINES:\n` +
+    `- Answer questions or follow instructions based on the note context, referenced items (@notes, @projects, @vault secrets), workspace knowledge, and selection provided.\n` +
+    `- When generating tasks, checklists, or project plans, output concrete actionable items in markdown checklist format: \`- [ ] Task title\` with optional timing and priority.\n` +
+    `- When drafting or gently editing note content, present clean Markdown ready for easy insertion or replacement.\n` +
+    `- If the user's request has ambiguities or multiple possible directions, conclude with a concise '### ❓ Clarifications & Follow-up' section with 2-3 specific choices to confirm.\n` +
+    `- You may use double brackets [[Note Title]] for wiki-links when referencing workspace concepts.`;
 
   const result = await runTextAction({
     noteId: args.noteId || null,
@@ -391,7 +404,15 @@ export async function extractTasksAction(args: {
     try {
       if (res.ok) {
         const textOutput = res.output.tasks
-          .map((t) => `- [ ] ${t.title}${t.description ? `: ${t.description}` : ""}`)
+          .map((t) => {
+            const meta = [];
+            if (t.priority && t.priority !== "none") meta.push(`Priority: ${t.priority}`);
+            if (t.dueDate) meta.push(`Due: ${t.dueDate}`);
+            if (t.startDate) meta.push(`Start: ${t.startDate}`);
+            const metaStr = meta.length > 0 ? ` *(${meta.join(" | ")})*` : "";
+            const descStr = t.description ? ` — ${t.description}` : "";
+            return `- [ ] **${t.title}**${metaStr}${descStr}`;
+          })
           .join("\n");
         await addChatMessage({
           threadId: activeThreadId,

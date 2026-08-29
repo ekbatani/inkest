@@ -26,10 +26,11 @@ export const QuickCaptureNoteSchema = z.object({
 });
 
 export const ExtractedTaskSchema = z.object({
-  title: z.string().trim().min(1).max(90),
+  title: z.string().trim().min(1).max(120),
   description: z.string().trim().min(1).nullable().optional().default(null),
   priority: z.enum(["none", "low", "medium", "high"]).default("none"),
   dueDate: z.string().trim().min(1).nullable().optional().default(null),
+  startDate: z.string().trim().min(1).nullable().optional().default(null),
   sourceQuote: z.string().trim().min(1).nullable().optional().default(null),
 });
 
@@ -40,10 +41,12 @@ export const ExtractTasksSchema = z.object({
 export const ProjectPlanSchema = z.object({
   title: z.string().trim().min(1),
   summary: z.string().trim().min(1),
+  targetDueDate: z.string().trim().min(1).nullable().optional().default(null),
   milestones: z.array(
     z.object({
       title: z.string().trim().min(1),
       description: z.string().trim().min(1),
+      targetDate: z.string().trim().min(1).nullable().optional().default(null),
       tasks: z.array(z.string().trim().min(1)),
     }),
   ),
@@ -65,7 +68,7 @@ type ActionSpec = {
   outputSchema: z.ZodType<unknown>;
 };
 
-const AI_ACTION_SPECS: Record<AiActionId, ActionSpec> = {
+export const AI_ACTION_SPECS: Record<AiActionId, ActionSpec> = {
   summarize: {
     goal: "Summarize note content into concise, useful Markdown.",
     contextKeys: ["noteTitle", "noteContent", "selectedText"],
@@ -102,26 +105,27 @@ const AI_ACTION_SPECS: Record<AiActionId, ActionSpec> = {
     outputSchema: MarkdownResponseSchema,
   },
   "extract-tasks": {
-    goal: "Extract concrete next actions from note content.",
-    contextKeys: ["noteTitle", "noteContent", "selectedText"],
+    goal: "Extract concrete next actions, action items, and checklists from note content with realistic timing.",
+    contextKeys: ["noteTitle", "noteContent", "selectedText", "currentDate", "timingPrompt", "promptHint"],
     rules: [
       "If selectedText is present, extract tasks only from that selection.",
       "Return only concrete, actionable tasks and skip background facts or goals with no action.",
-      "Write task titles in imperative mood and keep them concise.",
-      "Set priority to none unless urgency is clearly implied.",
-      "Use dueDate only when an explicit date or deadline appears in the source.",
+      "Write task titles in imperative mood and keep them concise (max 90 characters).",
+      "Assign priority ('none', 'low', 'medium', 'high') reflecting urgency or impact.",
+      "Estimate and populate dueDate (and optional startDate) in YYYY-MM-DD format using currentDate as reference, taking into account explicit deadlines in the note and following timingPrompt heuristics.",
+      "Preserve any source context in description or sourceQuote when helpful.",
     ],
     outputSchema: ExtractTasksSchema,
   },
   "create-project-plan": {
-    goal: "Turn note goals into a structured project plan.",
-    contextKeys: ["noteTitle", "noteContent", "promptHint"],
+    goal: "Turn note goals into a structured project plan with phased milestones and timelines.",
+    contextKeys: ["noteTitle", "noteContent", "currentDate", "timingPrompt", "promptHint"],
     rules: [
-      "Use promptHint only as an additional constraint, not as a replacement for the note context.",
-      "Keep the plan practical and scoped to the supplied material.",
-      "Milestones should describe meaningful phases of work.",
+      "Use promptHint and timingPrompt as guidance for scope, milestone duration, and scheduling.",
+      "Keep the plan practical, grounded in the supplied context, and structured into progressive milestones.",
+      "Milestones should describe meaningful phases of work with target dates formatted as YYYY-MM-DD or relative week indicators.",
       "Tasks should be concrete next steps, not vague aspirations.",
-      "Do not assume teams, budgets, timelines, or technical details that were not provided unless clearly necessary and marked conservatively.",
+      "Do not assume teams or budgets not provided unless clearly framed as recommendations.",
     ],
     outputSchema: ProjectPlanSchema,
   },
@@ -288,12 +292,17 @@ export function createMarkdownResponseParser() {
 }
 
 export function renderProjectPlanMarkdown(plan: z.infer<typeof ProjectPlanSchema>) {
-  const lines: string[] = [`# ${plan.title}`, "", plan.summary];
+  const lines: string[] = [`# ${plan.title}`, ""];
+  if (plan.targetDueDate) {
+    lines.push(`**Target Due Date:** ${plan.targetDueDate}`, "");
+  }
+  lines.push(plan.summary);
 
   if (plan.milestones.length > 0) {
     lines.push("", "## Milestones");
     for (const [index, milestone] of plan.milestones.entries()) {
-      lines.push("", `${index + 1}. **${milestone.title}**`, `${milestone.description}`);
+      const dateBadge = milestone.targetDate ? ` *(Target: ${milestone.targetDate})*` : "";
+      lines.push("", `${index + 1}. **${milestone.title}**${dateBadge}`, `${milestone.description}`);
       if (milestone.tasks.length > 0) {
         lines.push("", "Tasks:");
         for (const task of milestone.tasks) {

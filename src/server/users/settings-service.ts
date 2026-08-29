@@ -45,6 +45,8 @@ export const aiProviderSettingsSchema = z
     maxOutputTokens: z.number().int().min(16).max(32_768).optional(),
     instructions: z.string().trim().max(4_000).optional(),
     guardrails: z.string().trim().max(4_000).optional(),
+    taskTimingPrompt: z.string().trim().max(4_000).optional(),
+    projectPlanningPrompt: z.string().trim().max(4_000).optional(),
     onboardingDismissed: z.boolean().optional(),
   })
   .partial();
@@ -142,7 +144,7 @@ export const userSettingsSchema = z.object({
 
 export type UserSettings = z.infer<typeof userSettingsSchema>;
 
-const DEFAULTS: UserSettings = {
+export const DEFAULTS: UserSettings = {
   editor: {
     autosaveDelayMs: 1500,
     showLineNumbers: false,
@@ -158,6 +160,8 @@ const DEFAULTS: UserSettings = {
     maxOutputTokens: 1_200,
     instructions: "",
     guardrails: "",
+    taskTimingPrompt: "Calculate realistic due dates and start dates relative to the current date. For urgent items, schedule within 1-2 days; medium priority within 1 week; low priority within 2-3 weeks. Sequence tasks logically by dependencies.",
+    projectPlanningPrompt: "Break down goals into concrete phased milestones with realistic deliverables, dependencies, and actionable tasks with scheduled timelines.",
     onboardingDismissed: false,
   },
   theme: { preference: "system", palette: "paper", font: "sans" },

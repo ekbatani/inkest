@@ -93,6 +93,8 @@ const aiOrchestrationInputSchema = z
     maxOutputTokens: z.number().int().min(16).max(32_768),
     instructions: z.string().trim().max(4_000).default(""),
     guardrails: z.string().trim().max(4_000).default(""),
+    taskTimingPrompt: z.string().trim().max(4_000).optional(),
+    projectPlanningPrompt: z.string().trim().max(4_000).optional(),
   })
   .refine((data) => data.maxInputTokens >= data.minInputTokens, {
     message: "Max input tokens must be greater than or equal to min input tokens.",
@@ -146,6 +148,10 @@ export async function resetAiOrchestrationSettingsAction() {
       maxOutputTokens: 1_200,
       instructions: "",
       guardrails: "",
+      taskTimingPrompt:
+        "Calculate realistic due dates and start dates relative to the current date. For urgent items, schedule within 1-2 days; medium priority within 1 week; low priority within 2-3 weeks. Sequence tasks logically by dependencies.",
+      projectPlanningPrompt:
+        "Break down goals into concrete phased milestones with realistic deliverables, dependencies, and actionable tasks with scheduled timelines.",
     },
   });
   revalidatePath("/settings");

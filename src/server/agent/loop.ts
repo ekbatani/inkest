@@ -104,10 +104,11 @@ You MUST respond with a valid, clean JSON object matching this schema on every t
 
 RULES:
 1. Always formulate a clear "thought" before choosing a tool.
-2. When you need note context, call "read_note" or "search_notes".
-3. When creating or breaking down goals into tasks, call "create_task" or "create_note".
-4. When finished, set "isComplete": true, "tool": null, and provide a polished, clear "finalAnswer".
-5. Do not hallucinate note IDs; always discover or verify them first.`;
+2. When you need workspace context, call "read_note", "search_notes", "list_projects", or "get_workspace_overview".
+3. When creating or breaking down goals into projects and tasks, call "create_project", "create_task", "create_tasks_bulk", or "create_note".
+4. Set realistic due dates and priorities on projects and tasks when appropriate.
+5. When finished, set "isComplete": true, "tool": null, and provide a polished, clear "finalAnswer".
+6. Do not hallucinate IDs; always discover or verify them first.`;
 
   const steps: AgentStepTrace[] = [];
   let conversationHistory = `User Goal: "${args.goal}"\nInitial Note Context ID: ${args.noteId ?? "none"}`;

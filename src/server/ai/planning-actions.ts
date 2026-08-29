@@ -2,49 +2,88 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createNote, getNoteById, listNotes } from "@/server/notes/service";
+import { createNote, getNoteById, listNotes, updateNote } from "@/server/notes/service";
 import { createTask, listTasks } from "@/server/tasks/service";
 
 const taskSchema = z.object({
   title: z.string().trim().min(1).max(300),
   description: z.string().trim().max(2_000).nullable().optional(),
-  priority: z.enum(["none", "low", "medium", "high"]),
-  status: z.enum(["todo", "doing", "done", "canceled"]),
-  dueDate: z.coerce.date().nullable(),
+  priority: z.enum(["none", "low", "medium", "high"]).default("none"),
+  status: z.enum(["todo", "doing", "done", "canceled"]).default("todo"),
+  dueDate: z.coerce.date().nullable().optional(),
+  startDate: z.coerce.date().nullable().optional(),
 });
 
 const savePlanSchema = z.object({
   sourceNoteId: z.string().min(1),
   destination: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("current") }),
-    z.object({ kind: z.literal("existing"), projectId: z.string().min(1) }),
-    z.object({ kind: z.literal("new"), title: z.string().trim().min(1).max(200) }),
-    z.object({ kind: z.literal("subproject"), parentProjectId: z.string().min(1), title: z.string().trim().min(1).max(200) }),
+    z.object({
+      kind: z.literal("current"),
+      projectDueDate: z.coerce.date().nullable().optional(),
+    }),
+    z.object({
+      kind: z.literal("existing"),
+      projectId: z.string().min(1),
+      projectDueDate: z.coerce.date().nullable().optional(),
+    }),
+    z.object({
+      kind: z.literal("new"),
+      title: z.string().trim().min(1).max(200),
+      dueDate: z.coerce.date().nullable().optional(),
+      priority: z.enum(["none", "low", "medium", "high"]).optional(),
+    }),
+    z.object({
+      kind: z.literal("subproject"),
+      parentProjectId: z.string().min(1),
+      title: z.string().trim().min(1).max(200),
+      dueDate: z.coerce.date().nullable().optional(),
+      priority: z.enum(["none", "low", "medium", "high"]).optional(),
+    }),
   ]),
   tasks: z.array(taskSchema).min(1).max(50),
 });
 
-type ProjectOption = { id: string; title: string; parentId: string | null };
+export type ProjectOption = {
+  id: string;
+  title: string;
+  parentId: string | null;
+  dueDate: Date | null;
+  status: string;
+  priority: string;
+};
 
-export async function getAiPlanningContextAction(sourceNoteId: string) {
-  const source = await getNoteById(sourceNoteId);
-  if (!source) throw new Error("NOTE_NOT_FOUND");
+export async function getAiPlanningContextAction(sourceNoteId?: string) {
+  let source = null;
+  if (sourceNoteId) {
+    source = await getNoteById(sourceNoteId);
+  }
 
   const projects = await listNotes({ type: "project", limit: 500 });
-  const currentProject = source.type === "project"
-    ? source
-    : source.parentId
-      ? projects.find((project) => project.id === source.parentId) ?? null
-      : null;
+  const currentProject = source
+    ? source.type === "project"
+      ? source
+      : source.parentId
+        ? projects.find((project) => project.id === source.parentId) ?? null
+        : null
+    : null;
 
   return {
     currentProject: currentProject
-      ? { id: currentProject.id, title: currentProject.title }
+      ? {
+          id: currentProject.id,
+          title: currentProject.title,
+          dueDate: currentProject.dueDate,
+          status: currentProject.status,
+          priority: currentProject.priority,
+        }
       : null,
     projects: projects.map<ProjectOption>((project) => ({
       id: project.id,
       title: project.title,
       parentId: project.parentId,
+      dueDate: project.dueDate,
+      status: project.status,
+      priority: project.priority,
     })),
   };
 }
@@ -59,12 +98,18 @@ async function resolveDestination(
 ) {
   if (input.destination.kind === "current") {
     if (!currentProjectId) throw new Error("CURRENT_PROJECT_REQUIRED");
+    if (input.destination.projectDueDate) {
+      await updateNote(currentProjectId, { dueDate: input.destination.projectDueDate });
+    }
     return currentProjectId;
   }
 
   if (input.destination.kind === "existing") {
     const project = await getNoteById(input.destination.projectId);
     if (!project || project.type !== "project") throw new Error("PROJECT_NOT_FOUND");
+    if (input.destination.projectDueDate) {
+      await updateNote(project.id, { dueDate: input.destination.projectDueDate });
+    }
     return project.id;
   }
 
@@ -77,7 +122,7 @@ async function resolveDestination(
     : null;
   if (parentId) {
     const parent = await getNoteById(parentId);
-    if (!parent || parent.type !== "project") throw new Error("PROJECT_NOT_FOUND");
+    if (!parent || parent.type !== "project") throw new Error("PARENT_PROJECT_NOT_FOUND");
   }
 
   const projects = await listNotes({ type: "project", parentId, limit: 500 });
@@ -90,6 +135,8 @@ async function resolveDestination(
     title: projectDraft.title,
     type: "project",
     status: "todo",
+    priority: projectDraft.priority ?? "none",
+    dueDate: projectDraft.dueDate ?? undefined,
     parentId,
   });
   return project.id;
@@ -117,10 +164,16 @@ export async function saveAiTaskPlanAction(input: z.input<typeof savePlanSchema>
       continue;
     }
     seen.add(title);
-    await createTask({ ...task, noteId: destinationNoteId, source: "ai" });
+    await createTask({
+      ...task,
+      noteId: destinationNoteId,
+      source: "ai",
+    });
     created++;
   }
 
   revalidatePath("/", "layout");
+  revalidatePath(`/projects/${destinationNoteId}`);
+  revalidatePath(`/notes/${parsed.sourceNoteId}`);
   return { created, skipped, destinationNoteId };
 }

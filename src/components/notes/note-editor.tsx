@@ -214,6 +214,9 @@ export function NoteEditor({
     };
   }, [clearPageContext]);
 
+  const saveSeqRef = React.useRef(0);
+  const lastSavedSeqRef = React.useRef(0);
+  const latestContentRef = React.useRef<NoteSnapshot>({ title: note.title, content: note.contentMd });
   const persistenceManagerRef = React.useRef<DocumentPersistenceManager | null>(null);
 
   // CodeMirror keeps the keystroke path local. Its debounced parent update still
@@ -226,13 +229,17 @@ export function NoteEditor({
     };
     setContent(nextContent);
     // Non-blocking micro-patch log to local IndexedDB
-    if (!persistenceManagerRef.current) {
-      persistenceManagerRef.current = new DocumentPersistenceManager(note.id);
+    try {
+      if (!persistenceManagerRef.current) {
+        persistenceManagerRef.current = new DocumentPersistenceManager(note.id);
+      }
+      void persistenceManagerRef.current.recordEdit(
+        { from: 0, to: content.length, text: nextContent },
+        nextContent,
+      ).catch(() => {});
+    } catch {
+      // Persistence logging should never break editing
     }
-    void persistenceManagerRef.current.recordEdit(
-      { from: 0, to: content.length, text: nextContent },
-      nextContent,
-    );
   }, [content.length, note.id, title]);
   const [historyState, setHistoryState] = React.useState<{
     past: NoteSnapshot[];
@@ -270,11 +277,7 @@ export function NoteEditor({
     };
   }, [trackingMode, radius, ttsRate, ttsVoiceURI]);
 
-  const saveSeqRef = React.useRef(0);
-  const lastSavedSeqRef = React.useRef(0);
-  const latestContentRef = React.useRef<NoteSnapshot>({ title: note.title, content: note.contentMd });
   React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/immutability
     latestContentRef.current = { title, content };
   }, [title, content]);
 

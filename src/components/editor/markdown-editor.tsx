@@ -386,8 +386,11 @@ function hideIfIdle(
   from: number,
   to: number,
 ) {
-  if (from >= to || selectionTouches(view.state, from, to)) return;
-  ranges.push(Decoration.replace({}).range(from, to));
+  const docLen = view.state.doc.length;
+  const clampedFrom = Math.min(Math.max(0, from), docLen);
+  const clampedTo = Math.min(Math.max(0, to), docLen);
+  if (clampedFrom >= clampedTo || selectionTouches(view.state, clampedFrom, clampedTo)) return;
+  ranges.push(Decoration.replace({}).range(clampedFrom, clampedTo));
 }
 
 function findHeadingPosition(state: EditorState, fragment: string) {
@@ -479,8 +482,11 @@ function replaceWithWidgetIfIdle(
   to: number,
   widget: WidgetType,
 ) {
-  if (from >= to || selectionTouches(view.state, from, to)) return;
-  ranges.push(Decoration.replace({ widget }).range(from, to));
+  const docLen = view.state.doc.length;
+  const clampedFrom = Math.min(Math.max(0, from), docLen);
+  const clampedTo = Math.min(Math.max(0, to), docLen);
+  if (clampedFrom >= clampedTo || selectionTouches(view.state, clampedFrom, clampedTo)) return;
+  ranges.push(Decoration.replace({ widget }).range(clampedFrom, clampedTo));
 }
 
 function decorateInlinePattern(
@@ -491,6 +497,7 @@ function decorateInlinePattern(
   pattern: RegExp,
   className: string,
 ) {
+  const docLen = view.state.doc.length;
   for (const match of text.matchAll(pattern)) {
     if (match.index === undefined || !match[1]) continue;
 
@@ -500,8 +507,11 @@ function decorateInlinePattern(
     const contentTo = openFrom + match[0].length - delimiter.length;
     const closeTo = openFrom + match[0].length;
 
-    if (contentFrom < contentTo) {
-      ranges.push(Decoration.mark({ class: className }).range(contentFrom, contentTo));
+    const clampedContentFrom = Math.min(Math.max(0, contentFrom), docLen);
+    const clampedContentTo = Math.min(Math.max(0, contentTo), docLen);
+
+    if (clampedContentFrom < clampedContentTo) {
+      ranges.push(Decoration.mark({ class: className }).range(clampedContentFrom, clampedContentTo));
     }
     hideIfIdle(ranges, view, openFrom, contentFrom);
     hideIfIdle(ranges, view, contentTo, closeTo);
@@ -520,7 +530,10 @@ function addLinkDecoration(
   href: string,
   classNameOverride?: string,
 ) {
-  if (!href || contentFrom >= contentTo) return;
+  const docLen = view.state.doc.length;
+  const clampedContentFrom = Math.min(Math.max(0, contentFrom), docLen);
+  const clampedContentTo = Math.min(Math.max(0, contentTo), docLen);
+  if (!href || clampedContentFrom >= clampedContentTo) return;
 
   ranges.push(
     Decoration.mark({
@@ -529,7 +542,7 @@ function addLinkDecoration(
         "data-inknest-link-href": href,
         title: href,
       },
-    }).range(contentFrom, contentTo),
+    }).range(clampedContentFrom, clampedContentTo),
   );
   hideIfIdle(ranges, view, openFrom, contentFrom);
   hideIfIdle(ranges, view, contentTo, closeTo);
@@ -545,7 +558,10 @@ function blockContainingLine(
 
 function findVisibleFencedBlocks(view: EditorView) {
   const blocks: { from: number; to: number }[] = [];
-  const visibleEnd = view.visibleRanges.at(-1)?.to ?? view.viewport.to;
+  const docLen = view.state.doc.length;
+  if (docLen === 0) return blocks;
+  const rawEnd = view.visibleRanges.at(-1)?.to ?? view.viewport.to;
+  const visibleEnd = Math.min(Math.max(0, rawEnd), docLen);
   // The language parser can still be catching up when the editor first mounts.
   // Resolve the visible tree now so an initially visible fenced block gets its
   // non-blocking surface decoration without waiting for a later transaction.
@@ -556,7 +572,7 @@ function findVisibleFencedBlocks(view: EditorView) {
       if (node.name !== "FencedCode") return;
       if (
         view.visibleRanges.some(
-          (range) => node.from <= range.to && node.to >= range.from,
+          (range) => node.from <= Math.min(range.to, docLen) && node.to >= Math.min(range.from, docLen),
         )
       ) {
         blocks.push({ from: node.from, to: node.to });
@@ -568,17 +584,21 @@ function findVisibleFencedBlocks(view: EditorView) {
 }
 
 function buildLineDecorations(view: EditorView) {
+  const docLen = view.state.doc.length;
+  if (docLen === 0) return Decoration.none;
   const ranges: Range<Decoration>[] = [];
   const fencedBlocks = findVisibleFencedBlocks(view);
 
   for (const { from, to } of view.visibleRanges) {
-    let pos = from;
-    while (pos <= to) {
+    let pos = Math.min(Math.max(0, from), docLen);
+    const clampedTo = Math.min(Math.max(0, to), docLen);
+    while (pos <= clampedTo) {
+      if (pos > docLen) break;
       const line = view.state.doc.lineAt(pos);
       const text = line.text;
       const fencedBlock = blockContainingLine(fencedBlocks, line.from, line.to);
       if (fencedBlock) {
-        if (line.to + 1 > to) break;
+        if (line.to + 1 > clampedTo || line.to >= docLen) break;
         pos = line.to + 1;
         continue;
       }
@@ -597,7 +617,7 @@ function buildLineDecorations(view: EditorView) {
         );
       }
 
-      if (line.to + 1 > to) break;
+      if (line.to + 1 > clampedTo || line.to >= docLen) break;
       pos = line.to + 1;
     }
   }
@@ -607,17 +627,21 @@ function buildLineDecorations(view: EditorView) {
 
 function buildInlineDecorations(linkableNotes: WikiLinkTarget[]) {
   return (view: EditorView) => {
+    const docLen = view.state.doc.length;
+    if (docLen === 0) return Decoration.none;
     const ranges: Range<Decoration>[] = [];
     const fencedBlocks = findVisibleFencedBlocks(view);
 
     for (const { from, to } of view.visibleRanges) {
-      let pos = from;
-      while (pos <= to) {
+      let pos = Math.min(Math.max(0, from), docLen);
+      const clampedTo = Math.min(Math.max(0, to), docLen);
+      while (pos <= clampedTo) {
+        if (pos > docLen) break;
         const line = view.state.doc.lineAt(pos);
         const text = line.text;
         const fencedBlock = blockContainingLine(fencedBlocks, line.from, line.to);
         if (fencedBlock) {
-          if (line.to + 1 > to) break;
+          if (line.to + 1 > clampedTo || line.to >= docLen) break;
           pos = line.to + 1;
           continue;
         }
@@ -751,7 +775,7 @@ function buildInlineDecorations(linkableNotes: WikiLinkTarget[]) {
           );
         }
 
-        if (line.to + 1 > to) break;
+        if (line.to + 1 > clampedTo || line.to >= docLen) break;
         pos = line.to + 1;
       }
     }
@@ -761,9 +785,12 @@ function buildInlineDecorations(linkableNotes: WikiLinkTarget[]) {
 }
 
 function findLinkTokenAtPos(state: EditorState, pos: number) {
-  const line = state.doc.lineAt(pos);
+  const docLen = state.doc.length;
+  if (docLen === 0) return null;
+  const clampedPos = Math.min(Math.max(0, pos), docLen);
+  const line = state.doc.lineAt(clampedPos);
   const text = line.text;
-  const lineOffset = pos - line.from;
+  const lineOffset = clampedPos - line.from;
 
   for (const match of text.matchAll(WIKI_RE)) {
     if (match.index === undefined) continue;

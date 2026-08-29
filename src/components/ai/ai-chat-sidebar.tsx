@@ -617,7 +617,15 @@ export function AiChatSidebar({
           if (res.ok) {
             isSuccess = true;
             resultOutput = res.output.tasks
-              .map((t) => `- [ ] ${t.title}${t.description ? `: ${t.description}` : ""}`)
+              .map((t) => {
+                const meta = [];
+                if (t.priority && t.priority !== "none") meta.push(`Priority: ${t.priority}`);
+                if (t.dueDate) meta.push(`Due: ${t.dueDate}`);
+                if (t.startDate) meta.push(`Start: ${t.startDate}`);
+                const metaStr = meta.length > 0 ? ` *(${meta.join(" | ")})*` : "";
+                const descStr = t.description ? ` — ${t.description}` : "";
+                return `- [ ] **${t.title}**${metaStr}${descStr}`;
+              })
               .join("\n");
             citations = res.citations;
             transformType = "Project Tasks";

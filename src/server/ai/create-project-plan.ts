@@ -6,6 +6,7 @@ import {
   ProjectPlanSchema,
   renderProjectPlanMarkdown,
 } from "./specs";
+import { getUserSettings } from "@/server/users/settings-service";
 
 export async function createProjectPlan(args: {
   noteId: string;
@@ -14,6 +15,14 @@ export async function createProjectPlan(args: {
   promptHint?: string;
 }): Promise<AiActionResult<string>> {
   const full = `# ${args.noteTitle}\n\n${args.noteContent}`;
+  const settings = await getUserSettings();
+
+  const now = new Date();
+  const currentDate = now.toISOString().slice(0, 10);
+  const timingPrompt =
+    settings.ai?.projectPlanningPrompt?.trim() ||
+    settings.ai?.taskTimingPrompt?.trim() ||
+    "Break down goals into concrete phased milestones with realistic deliverables, dependencies, and actionable tasks with scheduled timelines.";
 
   const result = await runJsonAction({
     noteId: args.noteId,
@@ -23,7 +32,9 @@ export async function createProjectPlan(args: {
     promptToModel: buildAiUserPrompt("create-project-plan", {
       noteTitle: args.noteTitle,
       noteContent: args.noteContent,
-      promptHint: args.promptHint,
+      currentDate,
+      timingPrompt,
+      promptHint: args.promptHint?.trim() || undefined,
     }),
     parse: createSchemaParser(ProjectPlanSchema),
   });
