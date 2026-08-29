@@ -32,6 +32,11 @@ import {
   LayoutGrid,
   Languages,
   Eye,
+  EyeOff,
+  ExternalLink,
+  RefreshCw,
+  Trash2,
+  Globe,
 } from "lucide-react";
 import { CopyCodeBlock } from "@/components/marketing/copy-code-block";
 import {
@@ -2028,22 +2033,65 @@ export function AgentHarnessSection({
 
 export function NotificationsSection({
   initialLinked,
+  initialChatId,
+  telegramSettings,
   inApp,
   aiResults,
   taskDueReminders,
   dailyNoteNudge,
 }: {
   initialLinked: boolean;
+  initialChatId?: string | null;
+  telegramSettings?: {
+    botToken?: string;
+    botUsername?: string;
+    botName?: string;
+    webhookUrl?: string;
+    webhookSecret?: string;
+    webhookConfiguredAt?: number;
+  };
   inApp?: boolean;
   aiResults?: boolean;
   taskDueReminders?: boolean;
   dailyNoteNudge?: boolean;
 }) {
   const [linked, setLinked] = React.useState(initialLinked);
+  const [chatId, setChatId] = React.useState<string | null>(initialChatId ?? null);
+
+  // Bot Token state
+  const [botTokenInput, setBotTokenInput] = React.useState(telegramSettings?.botToken ?? "");
+  const [showBotToken, setShowBotToken] = React.useState(false);
+  const [hasCustomBot, setHasCustomBot] = React.useState(Boolean(telegramSettings?.botToken));
+  const [botUsername, setBotUsername] = React.useState<string | null>(telegramSettings?.botUsername ?? null);
+  const [botName, setBotName] = React.useState<string | null>(telegramSettings?.botName ?? null);
+  const [isEditingToken, setIsEditingToken] = React.useState(!telegramSettings?.botToken);
+  const [savingToken, setSavingToken] = React.useState(false);
+  const [removingBot, setRemovingBot] = React.useState(false);
+
+  // Webhook state
+  const [webhookConfigured, setWebhookConfigured] = React.useState(
+    Boolean(telegramSettings?.webhookConfiguredAt || telegramSettings?.webhookUrl),
+  );
+  const [registeredWebhookUrl, setRegisteredWebhookUrl] = React.useState(telegramSettings?.webhookUrl ?? "");
+  const [customWebhookUrl, setCustomWebhookUrl] = React.useState("");
+  const [showCustomUrlInput, setShowCustomUrlInput] = React.useState(false);
+  const [registeringWebhook, setRegisteringWebhook] = React.useState(false);
+  const [checkingWebhook, setCheckingWebhook] = React.useState(false);
+  const [webhookInfo, setWebhookInfo] = React.useState<{
+    url: string;
+    pendingUpdateCount: number;
+    lastErrorMessage?: string;
+  } | null>(null);
+
+  // Pairing state
   const [linkCode, setLinkCode] = React.useState<string | null>(null);
-  const [generating, setGenerating] = React.useState(false);
+  const [deepLink, setDeepLink] = React.useState<string | null>(null);
+  const [generatingCode, setGeneratingCode] = React.useState(false);
   const [unlinking, setUnlinking] = React.useState(false);
+  const [sendingTest, setSendingTest] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+
+  // Notification prefs state
   const [prefs, setPrefs] = React.useState({
     inApp: inApp ?? true,
     aiResults: aiResults ?? true,
@@ -2052,34 +2100,112 @@ export function NotificationsSection({
   });
   const [savingPrefs, setSavingPrefs] = React.useState(false);
 
-  const generateCode = async () => {
-    setGenerating(true);
+  const defaultClientWebhookUrl = React.useMemo(() => {
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}/api/telegram/webhook`;
+    }
+    return "";
+  }, []);
+
+  const saveBotToken = async () => {
+    if (!botTokenInput.trim()) {
+      toast.error("Please enter a valid Telegram Bot Token.");
+      return;
+    }
+    setSavingToken(true);
     try {
-      const { code } = await import("@/server/notifications/telegram-actions").then((m) =>
-        m.generateTelegramLinkCodeAction(),
-      );
-      setLinkCode(code);
-    } catch {
-      toast.error("Failed to generate a linking code.");
+      const { saveTelegramBotTokenAction } = await import("@/server/notifications/telegram-actions");
+      const result = await saveTelegramBotTokenAction(botTokenInput.trim());
+      if (result.ok) {
+        setHasCustomBot(true);
+        setBotUsername(result.bot.username ?? null);
+        setBotName(result.bot.firstName ?? null);
+        setIsEditingToken(false);
+        toast.success(`Connected to bot ${result.bot.username ? `@${result.bot.username}` : result.bot.firstName}!`);
+      } else {
+        toast.error(result.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save bot token.");
     } finally {
-      setGenerating(false);
+      setSavingToken(false);
     }
   };
 
-  const unlink = async () => {
-    if (!confirm("Disconnect Telegram from your account?")) return;
-    setUnlinking(true);
+  const removeBot = async () => {
+    if (!confirm("Are you sure you want to remove this Telegram bot configuration?")) return;
+    setRemovingBot(true);
     try {
-      await import("@/server/notifications/telegram-actions").then((m) =>
-        m.unlinkTelegramAction(),
-      );
-      setLinked(false);
-      setLinkCode(null);
-      toast.success("Telegram disconnected.");
+      const { removeTelegramBotTokenAction } = await import("@/server/notifications/telegram-actions");
+      await removeTelegramBotTokenAction();
+      setHasCustomBot(false);
+      setBotTokenInput("");
+      setBotUsername(null);
+      setBotName(null);
+      setWebhookConfigured(false);
+      setRegisteredWebhookUrl("");
+      setIsEditingToken(true);
+      toast.success("Telegram bot removed.");
     } catch {
-      toast.error("Failed to disconnect Telegram.");
+      toast.error("Failed to remove bot.");
     } finally {
-      setUnlinking(false);
+      setRemovingBot(false);
+    }
+  };
+
+  const registerWebhook = async () => {
+    setRegisteringWebhook(true);
+    try {
+      const { registerTelegramWebhookAction } = await import("@/server/notifications/telegram-actions");
+      const targetUrl = showCustomUrlInput && customWebhookUrl.trim() ? customWebhookUrl.trim() : undefined;
+      const result = await registerTelegramWebhookAction({ customWebhookUrl: targetUrl });
+      if (result.ok) {
+        setWebhookConfigured(true);
+        setRegisteredWebhookUrl(result.webhookUrl);
+        toast.success("Webhook registered with Telegram successfully!");
+      } else {
+        toast.error(result.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to register webhook.");
+    } finally {
+      setRegisteringWebhook(false);
+    }
+  };
+
+  const checkWebhookStatus = async () => {
+    setCheckingWebhook(true);
+    try {
+      const { getTelegramWebhookStatusAction } = await import("@/server/notifications/telegram-actions");
+      const result = await getTelegramWebhookStatusAction();
+      if (result.ok) {
+        setWebhookInfo({
+          url: result.info.url,
+          pendingUpdateCount: result.info.pendingUpdateCount,
+          lastErrorMessage: result.info.lastErrorMessage,
+        });
+        toast.success("Webhook status updated from Telegram.");
+      } else {
+        toast.error(result.error);
+      }
+    } catch {
+      toast.error("Failed to check webhook status.");
+    } finally {
+      setCheckingWebhook(false);
+    }
+  };
+
+  const generateCode = async () => {
+    setGeneratingCode(true);
+    try {
+      const { generateTelegramLinkCodeAction } = await import("@/server/notifications/telegram-actions");
+      const result = await generateTelegramLinkCodeAction();
+      setLinkCode(result.code);
+      setDeepLink(result.deepLink);
+    } catch {
+      toast.error("Failed to generate a linking code.");
+    } finally {
+      setGeneratingCode(false);
     }
   };
 
@@ -2090,13 +2216,48 @@ export function NotificationsSection({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const unlink = async () => {
+    if (!confirm("Disconnect your Telegram account from this workspace?")) return;
+    setUnlinking(true);
+    try {
+      const { unlinkTelegramAction } = await import("@/server/notifications/telegram-actions");
+      await unlinkTelegramAction();
+      setLinked(false);
+      setChatId(null);
+      setLinkCode(null);
+      setDeepLink(null);
+      toast.success("Telegram account disconnected.");
+    } catch {
+      toast.error("Failed to disconnect Telegram.");
+    } finally {
+      setUnlinking(false);
+    }
+  };
+
+  const sendTestNotification = async () => {
+    setSendingTest(true);
+    try {
+      const { sendTelegramTestAction } = await import("@/server/notifications/telegram-actions");
+      const result = await sendTelegramTestAction();
+      if (result.ok) {
+        toast.success("Test notification sent! Check your Telegram chat.");
+      } else {
+        toast.error(result.error || "Failed to deliver test notification.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send test notification.");
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   const savePrefs = async (next: typeof prefs) => {
     setPrefs(next);
     setSavingPrefs(true);
     try {
-      await import("@/server/users/settings-actions").then((m) =>
-        m.updateUserSettingsAction({ notifications: next }),
-      );
+      const { updateUserSettingsAction } = await import("@/server/users/settings-actions");
+      await updateUserSettingsAction({ notifications: next });
+      toast.success("Preferences updated.");
     } catch {
       toast.error("Failed to save notification preferences.");
     } finally {
@@ -2106,20 +2267,248 @@ export function NotificationsSection({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Telegram Card */}
+      {/* 1. Bot Configuration Card */}
+      <section className="surface-card flex flex-col gap-6 p-6">
+        <div className="flex items-start justify-between gap-4 border-b pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Bot className="size-4 text-primary" />
+              <h2 className="text-base font-semibold">1. Telegram Bot Configuration</h2>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Provide your Telegram bot API token so Inkest can deliver push notifications and handle remote commands.
+            </p>
+          </div>
+          <a
+            href="https://t.me/BotFather"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs text-primary underline underline-offset-4 hover:text-foreground shrink-0"
+          >
+            <span>Create via @BotFather</span>
+            <ExternalLink className="size-3" />
+          </a>
+        </div>
+
+        {hasCustomBot && !isEditingToken ? (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Bot className="size-5" />
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-semibold text-foreground">
+                    {botName || "Custom Bot"}
+                  </h4>
+                  {botUsername && (
+                    <Badge variant="secondary" className="text-[10px] font-mono">
+                      @{botUsername}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-[10px] text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                    Token Saved
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Your custom bot credentials are encrypted at rest.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditingToken(true)}
+                className="text-xs h-8"
+              >
+                Change Token
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={removeBot}
+                disabled={removingBot}
+                className="text-xs h-8 text-destructive hover:bg-destructive/10 hover:text-destructive gap-1"
+              >
+                <Trash2 className="size-3.5" />
+                <span>{removingBot ? "Removing..." : "Remove"}</span>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3.5 rounded-xl border border-border/70 bg-card/60 p-4">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-foreground">
+                Bot API Token
+              </Label>
+              <p className="text-[11px] text-muted-foreground">
+                Copy the HTTP API token from @BotFather after creating your bot.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="relative flex-1">
+                <Input
+                  type={showBotToken ? "text" : "password"}
+                  value={botTokenInput}
+                  onChange={(e) => setBotTokenInput(e.target.value)}
+                  placeholder="123456789:ABCdefGhIJKlmNoPQRstuVWXyz"
+                  className="font-mono text-xs pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowBotToken(!showBotToken)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  title={showBotToken ? "Hide token" : "Show token"}
+                >
+                  {showBotToken ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  onClick={saveBotToken}
+                  disabled={savingToken || !botTokenInput.trim()}
+                  className="h-9 gap-1.5"
+                >
+                  <Key className="size-3.5" />
+                  <span>{savingToken ? "Validating & Saving..." : "Save Bot Token"}</span>
+                </Button>
+                {hasCustomBot && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditingToken(false)}
+                    className="h-9 text-xs"
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* 2. Automated Webhook Registration Card */}
+      <section className="surface-card flex flex-col gap-6 p-6">
+        <div className="flex items-start justify-between gap-4 border-b pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Globe className="size-4 text-primary" />
+              <h2 className="text-base font-semibold">2. Webhook Registration</h2>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Connect Telegram servers directly to your Inkest instance with 1-click — no terminal or curl command needed.
+            </p>
+          </div>
+          <Badge
+            variant={webhookConfigured ? "default" : "outline"}
+            className={cn(
+              "text-[10px] shrink-0",
+              webhookConfigured
+                ? "bg-emerald-600 text-white dark:bg-emerald-500"
+                : "text-amber-600 border-amber-500/40 bg-amber-500/10",
+            )}
+          >
+            {webhookConfigured ? "Webhook Active" : "Not Registered"}
+          </Badge>
+        </div>
+
+        <div className="flex flex-col gap-4 rounded-xl border border-border/70 bg-card/60 p-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex flex-col gap-0.5">
+              <h4 className="text-xs font-semibold text-foreground">
+                One-Click Webhook Sync
+              </h4>
+              <p className="text-[11px] text-muted-foreground">
+                {registeredWebhookUrl
+                  ? `Registered at: ${registeredWebhookUrl}`
+                  : "Registers this Inkest instance endpoint directly with the Telegram Bot API."}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                onClick={registerWebhook}
+                disabled={registeringWebhook || !hasCustomBot}
+                className="gap-1.5 h-8.5"
+              >
+                <RefreshCw className={cn("size-3.5", registeringWebhook && "animate-spin")} />
+                <span>{registeringWebhook ? "Registering..." : "Register Webhook"}</span>
+              </Button>
+              {webhookConfigured && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={checkWebhookStatus}
+                  disabled={checkingWebhook}
+                  className="h-8.5 text-xs"
+                >
+                  {checkingWebhook ? "Checking..." : "Check Status"}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Optional Custom Webhook URL Toggle */}
+          <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setShowCustomUrlInput(!showCustomUrlInput)}
+                className="text-[11px] font-medium text-primary hover:underline text-left"
+              >
+                {showCustomUrlInput ? "− Hide custom URL options" : "+ Advanced: Custom Webhook URL (Reverse proxy / ngrok)"}
+              </button>
+            </div>
+
+            {showCustomUrlInput && (
+              <div className="flex flex-col gap-1.5 animate-in fade-in duration-150">
+                <Label className="text-[11px] text-muted-foreground">
+                  Custom Webhook Endpoint (must be HTTPS)
+                </Label>
+                <Input
+                  type="url"
+                  value={customWebhookUrl}
+                  onChange={(e) => setCustomWebhookUrl(e.target.value)}
+                  placeholder={defaultClientWebhookUrl || "https://your-domain.com/api/telegram/webhook"}
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Webhook live diagnostic feedback */}
+          {webhookInfo && (
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-[11px] flex flex-col gap-1">
+              <span className="font-semibold text-foreground">Telegram Webhook Diagnostics:</span>
+              <span className="text-muted-foreground font-mono">Endpoint: {webhookInfo.url || "None"}</span>
+              <span className="text-muted-foreground">Pending updates in queue: {webhookInfo.pendingUpdateCount}</span>
+              {webhookInfo.lastErrorMessage && (
+                <span className="text-destructive">Last Telegram error: {webhookInfo.lastErrorMessage}</span>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 3. Account Pairing Card */}
       <section className="surface-card flex flex-col gap-6 p-6">
         <div className="flex items-start justify-between gap-4 border-b pb-4">
           <div>
             <div className="flex items-center gap-2">
               <Send className="size-4 text-primary" />
-              <h2 className="text-base font-semibold">Telegram Integration</h2>
+              <h2 className="text-base font-semibold">3. Telegram Account Pairing</h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Receive reminder alerts and capture notes remotely via your Telegram bot.
+              Bind your personal Telegram account to this workspace to receive reminders and AI task updates.
             </p>
           </div>
           <Link
-            href="/docs/telegram#setup"
+            href="/docs/telegram"
             className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground shrink-0"
           >
             Setup Guide →
@@ -2133,62 +2522,97 @@ export function NotificationsSection({
                 <Check className="size-5" />
               </div>
               <div>
-                <h4 className="text-xs font-semibold">Connected to Telegram</h4>
+                <h4 className="text-xs font-semibold text-foreground">Connected to Telegram</h4>
                 <p className="text-[11px] text-muted-foreground">
-                  Your Telegram chat is successfully paired with this workspace.
+                  {chatId ? `Linked to Chat ID: ${chatId}` : "Your Telegram chat is paired with this workspace."}
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={unlink}
-              disabled={unlinking}
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0"
-            >
-              {unlinking ? "Disconnecting..." : "Disconnect Bot"}
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={sendTestNotification}
+                disabled={sendingTest}
+                className="h-8 text-xs gap-1.5"
+              >
+                <Send className="size-3.5" />
+                <span>{sendingTest ? "Sending..." : "Send Test Ping"}</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={unlink}
+                disabled={unlinking}
+                className="h-8 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                {unlinking ? "Disconnecting..." : "Disconnect"}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-4 rounded-xl border border-border/70 bg-card/60 p-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <h4 className="text-xs font-semibold">Not Connected</h4>
+                <h4 className="text-xs font-semibold text-foreground">Not Connected</h4>
                 <p className="text-[11px] text-muted-foreground">
-                  Generate a temporary 15-minute pairing code to link your bot.
+                  Generate a temporary 15-minute pairing code to link your Telegram chat.
                 </p>
               </div>
               <Button
                 size="sm"
                 onClick={generateCode}
-                disabled={generating}
-                className="shrink-0"
+                disabled={generatingCode}
+                className="shrink-0 h-8.5"
               >
-                {generating ? "Generating..." : linkCode ? "Generate new code" : "Generate Pairing Code"}
+                {generatingCode ? "Generating..." : linkCode ? "Generate new code" : "Generate Pairing Code"}
               </Button>
             </div>
 
             {linkCode && (
-              <div className="flex flex-col gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3.5">
+              <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 animate-in fade-in duration-200">
                 <p className="text-xs font-medium text-foreground">
-                  Send this command to your Telegram bot:
+                  Complete pairing using either of the following methods:
                 </p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 rounded-md bg-background px-3 py-1.5 font-mono text-sm font-semibold text-primary border">
-                    /start {linkCode}
-                  </code>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => copyCode(linkCode)}
-                    className="gap-1.5 shrink-0"
-                  >
-                    {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
-                    {copied ? "Copied" : "Copy"}
-                  </Button>
+
+                {/* Method A: One-click deep link */}
+                {deepLink && (
+                  <div className="flex flex-col gap-1.5 rounded-lg border border-border/60 bg-background/80 p-3">
+                    <span className="text-[11px] font-semibold text-primary">Method 1 (Fastest — 1 Click):</span>
+                    <a
+                      href={deepLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-all"
+                    >
+                      <Send className="size-3.5" />
+                      <span>Open in Telegram & Press Start</span>
+                      <ExternalLink className="size-3" />
+                    </a>
+                  </div>
+                )}
+
+                {/* Method B: Manual code copy */}
+                <div className="flex flex-col gap-1.5 rounded-lg border border-border/60 bg-background/80 p-3">
+                  <span className="text-[11px] font-semibold text-muted-foreground">Method 2 (Manual Copy):</span>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 rounded-md bg-muted px-3 py-1.5 font-mono text-xs font-semibold text-primary border">
+                      /start {linkCode}
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => copyCode(linkCode)}
+                      className="gap-1.5 shrink-0 h-8"
+                    >
+                      {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                      <span>{copied ? "Copied" : "Copy"}</span>
+                    </Button>
+                  </div>
                 </div>
+
                 <span className="text-[11px] text-muted-foreground">
-                  Expires in 15 minutes. Once sent, reload this page.
+                  Expires in 15 minutes. Once you tap Start in Telegram, refresh this page to see the active connection.
                 </span>
               </div>
             )}
@@ -2196,7 +2620,7 @@ export function NotificationsSection({
         )}
       </section>
 
-      {/* Notification Preferences Card */}
+      {/* 4. Notification Preferences Card */}
       <section className="surface-card flex flex-col gap-6 p-6">
         <div className="flex items-start justify-between gap-4 border-b pb-4">
           <div>
@@ -2205,7 +2629,7 @@ export function NotificationsSection({
               <h2 className="text-base font-semibold">Notification Channels</h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Select which events send in-app and push reminders.
+              Select which events send in-app alerts and Telegram push reminders.
             </p>
           </div>
           {savingPrefs && (
@@ -2550,31 +2974,39 @@ export function HelpGuidesSection() {
               <h3 className="text-base font-semibold">Telegram Notifications Setup</h3>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Connect your Telegram chat to receive AI task outputs and morning reminders.
+              Connect your Telegram chat to receive AI task outputs, morning reminders, and daily journaling nudges.
             </p>
           </div>
           <Link
-            href="/docs/telegram#setup"
+            href="/docs/telegram"
             className="text-xs text-primary underline underline-offset-4 hover:text-foreground shrink-0"
           >
             Full Telegram doc →
           </Link>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-border/70 bg-card/40 p-4 flex flex-col gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Step 1 (Admin)</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Step 1</span>
             <h4 className="text-xs font-semibold text-foreground">Create the Bot</h4>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Message <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">@BotFather</a> on Telegram, run <code>/newbot</code>, copy your token into <code>TELEGRAM_BOT_TOKEN</code> env variable, and register the webhook.
+              Message <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">@BotFather</a> on Telegram, run <code>/newbot</code>, and copy your API token.
             </p>
           </div>
 
           <div className="rounded-xl border border-border/70 bg-card/40 p-4 flex flex-col gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Step 2 (User)</span>
-            <h4 className="text-xs font-semibold text-foreground">Link Your Account</h4>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Step 2</span>
+            <h4 className="text-xs font-semibold text-foreground">Register Webhook</h4>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Go to <Link href="/settings?tab=notifications" className="text-primary underline underline-offset-4">Settings → Notifications</Link>, click &ldquo;Generate linking code&rdquo;, and send <code>/start &lt;code&gt;</code> to your bot.
+              Paste your token in <Link href="/settings?tab=notifications" className="text-primary underline underline-offset-4">Settings → Notifications</Link> and click <strong>Register Webhook</strong> for 1-click sync.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border/70 bg-card/40 p-4 flex flex-col gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Step 3</span>
+            <h4 className="text-xs font-semibold text-foreground">Link Account</h4>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Generate a pairing code and click <strong>Open in Telegram</strong> to start receiving notifications immediately.
             </p>
           </div>
         </div>

@@ -7,18 +7,233 @@ const TELEGRAM_MESSAGE_LIMIT = 4096;
 const TELEGRAM_SAFE_MESSAGE_LIMIT = 3900;
 const TELEGRAM_REQUEST_TIMEOUT_MS = 10_000;
 
-type TelegramNotification = {
+export type TelegramNotification = {
   title: string;
   body: string;
   metadata?: Record<string, string | null | undefined>;
 };
 
-type TelegramResult =
+export type TelegramResult =
   | { ok: true }
   | { ok: false; error: string; notConfigured?: boolean };
 
+export type TelegramBotInfo = {
+  id: number;
+  isBot: boolean;
+  firstName: string;
+  username?: string;
+  canJoinGroups?: boolean;
+  canReadAllGroupMessages?: boolean;
+  supportsInlineQueries?: boolean;
+};
+
+export type TelegramWebhookInfo = {
+  url: string;
+  hasCustomCertificate: boolean;
+  pendingUpdateCount: number;
+  ipAddress?: string;
+  lastErrorDate?: number;
+  lastErrorMessage?: string;
+  maxConnections?: number;
+  allowedUpdates?: string[];
+};
+
 export function telegramBotToken(): string | null {
   return process.env.TELEGRAM_BOT_TOKEN?.trim() || null;
+}
+
+export async function getEffectiveTelegramBotToken(userId?: string): Promise<string | null> {
+  try {
+    const settings = await getUserSettings(userId);
+    if (settings.telegram?.botToken?.trim()) {
+      return settings.telegram.botToken.trim();
+    }
+  } catch {
+    // Ignore settings fetch error
+  }
+  return telegramBotToken();
+}
+
+/** Fetches bot details from Telegram Bot API getMe. */
+export async function getTelegramBotInfo(
+  botToken: string,
+): Promise<{ ok: true; bot: TelegramBotInfo } | { ok: false; error: string }> {
+  try {
+    const response = await fetch(`${TELEGRAM_API_BASE_URL}/bot${botToken}/getMe`, {
+      method: "GET",
+      signal: AbortSignal.timeout(TELEGRAM_REQUEST_TIMEOUT_MS),
+    });
+
+    const data = (await response.json()) as {
+      ok: boolean;
+      result?: {
+        id: number;
+        is_bot: boolean;
+        first_name: string;
+        username?: string;
+        can_join_groups?: boolean;
+        can_read_all_group_messages?: boolean;
+        supports_inline_queries?: boolean;
+      };
+      description?: string;
+    };
+
+    if (!response.ok || !data.ok || !data.result) {
+      return {
+        ok: false,
+        error: data.description || `Telegram API returned status ${response.status}`,
+      };
+    }
+
+    return {
+      ok: true,
+      bot: {
+        id: data.result.id,
+        isBot: data.result.is_bot,
+        firstName: data.result.first_name,
+        username: data.result.username,
+        canJoinGroups: data.result.can_join_groups,
+        canReadAllGroupMessages: data.result.can_read_all_group_messages,
+        supportsInlineQueries: data.result.supports_inline_queries,
+      },
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Failed to connect to Telegram API.",
+    };
+  }
+}
+
+/** Registers a webhook with Telegram setWebhook API. */
+export async function registerTelegramWebhook(
+  botToken: string,
+  webhookUrl: string,
+  secretToken?: string,
+): Promise<{ ok: true; description?: string } | { ok: false; error: string }> {
+  try {
+    const bodyPayload: Record<string, unknown> = {
+      url: webhookUrl,
+      allowed_updates: ["message"],
+    };
+    if (secretToken && secretToken.trim().length > 0) {
+      bodyPayload.secret_token = secretToken.trim();
+    }
+
+    const response = await fetch(`${TELEGRAM_API_BASE_URL}/bot${botToken}/setWebhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(TELEGRAM_REQUEST_TIMEOUT_MS),
+      body: JSON.stringify(bodyPayload),
+    });
+
+    const data = (await response.json()) as {
+      ok: boolean;
+      result?: boolean;
+      description?: string;
+    };
+
+    if (!response.ok || !data.ok) {
+      return {
+        ok: false,
+        error: data.description || `Telegram setWebhook returned status ${response.status}`,
+      };
+    }
+
+    return {
+      ok: true,
+      description: data.description || "Webhook registered successfully.",
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Failed to register webhook with Telegram.",
+    };
+  }
+}
+
+/** Queries current webhook status from Telegram getWebhookInfo API. */
+export async function getTelegramWebhookInfo(
+  botToken: string,
+): Promise<{ ok: true; info: TelegramWebhookInfo } | { ok: false; error: string }> {
+  try {
+    const response = await fetch(`${TELEGRAM_API_BASE_URL}/bot${botToken}/getWebhookInfo`, {
+      method: "GET",
+      signal: AbortSignal.timeout(TELEGRAM_REQUEST_TIMEOUT_MS),
+    });
+
+    const data = (await response.json()) as {
+      ok: boolean;
+      result?: {
+        url: string;
+        has_custom_certificate: boolean;
+        pending_update_count: number;
+        ip_address?: string;
+        last_error_date?: number;
+        last_error_message?: string;
+        max_connections?: number;
+        allowed_updates?: string[];
+      };
+      description?: string;
+    };
+
+    if (!response.ok || !data.ok || !data.result) {
+      return {
+        ok: false,
+        error: data.description || `Telegram API returned status ${response.status}`,
+      };
+    }
+
+    return {
+      ok: true,
+      info: {
+        url: data.result.url,
+        hasCustomCertificate: data.result.has_custom_certificate,
+        pendingUpdateCount: data.result.pending_update_count,
+        ipAddress: data.result.ip_address,
+        lastErrorDate: data.result.last_error_date,
+        lastErrorMessage: data.result.last_error_message,
+        maxConnections: data.result.max_connections,
+        allowedUpdates: data.result.allowed_updates,
+      },
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Failed to query webhook status.",
+    };
+  }
+}
+
+/** Deletes the registered webhook from Telegram. */
+export async function deleteTelegramWebhook(
+  botToken: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const response = await fetch(`${TELEGRAM_API_BASE_URL}/bot${botToken}/deleteWebhook`, {
+      method: "POST",
+      signal: AbortSignal.timeout(TELEGRAM_REQUEST_TIMEOUT_MS),
+    });
+
+    const data = (await response.json()) as {
+      ok: boolean;
+      description?: string;
+    };
+
+    if (!response.ok || !data.ok) {
+      return {
+        ok: false,
+        error: data.description || `Failed to delete webhook (${response.status})`,
+      };
+    }
+
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Failed to delete webhook.",
+    };
+  }
 }
 
 function truncateForTelegram(message: string) {
@@ -87,9 +302,9 @@ export async function sendRawTelegramMessage(
  */
 export async function sendTelegramNotification(
   notification: TelegramNotification,
-  opts?: { chatId?: string | null },
+  opts?: { chatId?: string | null; botToken?: string | null; userId?: string },
 ): Promise<TelegramResult> {
-  const botToken = telegramBotToken();
+  const botToken = opts?.botToken ?? (await getEffectiveTelegramBotToken(opts?.userId));
   if (!botToken) {
     return {
       ok: false,
@@ -139,7 +354,7 @@ export async function notifyAiActionResult(args: {
         Model: args.model,
       },
     },
-    { chatId },
+    { chatId, userId: user.id },
   );
 
   if (!result.ok && !result.notConfigured) {

@@ -1,6 +1,6 @@
 import { and, eq, isNull, isNotNull, lte, ne } from "drizzle-orm";
 import { db, schema } from "@/server/db/client";
-import { sendTelegramNotification, telegramBotToken } from "@/server/notifications/telegram";
+import { sendTelegramNotification } from "@/server/notifications/telegram";
 import { formatDateKey } from "@/server/calendar/service";
 import { createNotification } from "@/server/notifications/service";
 
@@ -76,7 +76,7 @@ async function checkDueTaskReminders() {
           Due: row.dueDate?.toISOString(),
         },
       },
-      { chatId: row.chatId },
+      { chatId: row.chatId, userId: row.userId },
     );
 
     if (result.ok) {
@@ -141,7 +141,7 @@ async function checkDailyNoteNudge() {
         title: "📝 Daily note",
         body: "You haven't started today's daily note yet.",
       },
-      { chatId: row.chatId },
+      { chatId: row.chatId, userId: row.userId },
     );
     if (result.ok) nudgedToday.set(row.userId, todayKey);
   }
@@ -168,8 +168,6 @@ declare global {
 export function startNotificationScheduler() {
   if (globalThis.__inkestSchedulerStarted) return;
   globalThis.__inkestSchedulerStarted = true;
-
-  if (!telegramBotToken()) return;
 
   setInterval(() => void tick(), CHECK_INTERVAL_MS);
 }

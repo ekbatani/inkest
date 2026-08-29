@@ -32,6 +32,17 @@ function isAllowedPersonalAiBaseUrl(value: string): boolean {
 }
 
 export const superFocusTrackingModeEnum = z.enum(["pointer", "auto"]);
+export const telegramSettingsSchema = z
+  .object({
+    botToken: z.string().optional(),
+    botUsername: z.string().optional(),
+    botName: z.string().optional(),
+    webhookUrl: z.string().url().optional().or(z.literal("")),
+    webhookSecret: z.string().optional(),
+    webhookConfiguredAt: z.number().optional(),
+  })
+  .partial();
+
 export const aiProviderSettingsSchema = z
   .object({
     provider: z.enum(AI_PROVIDER_IDS).optional(),
@@ -131,6 +142,7 @@ export const userSettingsSchema = z.object({
       dailyNoteNudge: z.boolean().optional(),
     })
     .optional(),
+  telegram: telegramSettingsSchema.optional(),
   agentHarness: z
     .object({
       enabled: z.boolean().optional(),
@@ -166,6 +178,7 @@ export const DEFAULTS: UserSettings = {
   },
   theme: { preference: "system", palette: "paper", font: "sans" },
   googleCalendar: {},
+  telegram: {},
   superFocus: { trackingMode: "pointer", radius: 1 },
   tts: { rate: 1 },
   notifications: {
@@ -191,6 +204,10 @@ function mergeWithDefaults(raw: UserSettings | null): UserSettings {
     googleCalendar: {
       ...DEFAULTS.googleCalendar,
       ...raw.googleCalendar,
+    },
+    telegram: {
+      ...DEFAULTS.telegram,
+      ...raw.telegram,
     },
     superFocus: { ...DEFAULTS.superFocus, ...raw.superFocus },
     tts: { ...DEFAULTS.tts, ...raw.tts },
@@ -258,6 +275,34 @@ export async function getUserSettings(userId?: string): Promise<UserSettings> {
       };
     }
   }
+  if (settings.telegram?.botToken) {
+    try {
+      settings.telegram = {
+        ...settings.telegram,
+        botToken: decryptSecret(settings.telegram.botToken),
+      };
+      needsMigration ||= shouldReencryptSecret(storedSettings.telegram?.botToken ?? "");
+    } catch {
+      settings.telegram = {
+        ...settings.telegram,
+        botToken: "",
+      };
+    }
+  }
+  if (settings.telegram?.webhookSecret) {
+    try {
+      settings.telegram = {
+        ...settings.telegram,
+        webhookSecret: decryptSecret(settings.telegram.webhookSecret),
+      };
+      needsMigration ||= shouldReencryptSecret(storedSettings.telegram?.webhookSecret ?? "");
+    } catch {
+      settings.telegram = {
+        ...settings.telegram,
+        webhookSecret: "",
+      };
+    }
+  }
   if (needsMigration) {
     const migrated: UserSettings = {
       ...settings,
@@ -273,6 +318,17 @@ export async function getUserSettings(userId?: string): Promise<UserSettings> {
               : undefined,
           }
         : settings.googleCalendar,
+      telegram: settings.telegram
+        ? {
+            ...settings.telegram,
+            botToken: settings.telegram.botToken
+              ? encryptSecret(settings.telegram.botToken)
+              : undefined,
+            webhookSecret: settings.telegram.webhookSecret
+              ? encryptSecret(settings.telegram.webhookSecret)
+              : undefined,
+          }
+        : settings.telegram,
     };
     await db
       .update(schema.users)
@@ -300,6 +356,10 @@ export async function updateUserSettings(patch: Partial<UserSettings>): Promise<
       ...current.googleCalendar,
       ...parsedPatch.googleCalendar,
     },
+    telegram: {
+      ...current.telegram,
+      ...parsedPatch.telegram,
+    },
     superFocus: { ...current.superFocus, ...parsedPatch.superFocus },
     tts: { ...current.tts, ...parsedPatch.tts },
     notifications: { ...current.notifications, ...parsedPatch.notifications },
@@ -319,6 +379,17 @@ export async function updateUserSettings(patch: Partial<UserSettings>): Promise<
             : undefined,
         }
       : next.googleCalendar,
+    telegram: next.telegram
+      ? {
+          ...next.telegram,
+          botToken: next.telegram.botToken
+            ? encryptSecret(next.telegram.botToken)
+            : undefined,
+          webhookSecret: next.telegram.webhookSecret
+            ? encryptSecret(next.telegram.webhookSecret)
+            : undefined,
+        }
+      : next.telegram,
   };
 
   await db

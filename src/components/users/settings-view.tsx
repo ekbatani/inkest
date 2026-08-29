@@ -100,6 +100,7 @@ interface SettingsViewProps {
   settings: UserSettings;
   telegramStatus: {
     linked: boolean;
+    chatId?: string | null;
   };
   aiConfiguration: {
     source: "user" | "instance" | "unavailable";
@@ -275,8 +276,10 @@ export function SettingsView({
           {activeCategory === "notifications" && (
             <div className="flex flex-col gap-6">
               <NotificationsSection
-                key={`notifications:${telegramStatus.linked}`}
+                key={`notifications:${telegramStatus.linked}:${settings.telegram?.botToken ? "set" : "unset"}:${settings.telegram?.webhookUrl || ""}`}
                 initialLinked={telegramStatus.linked}
+                initialChatId={telegramStatus.chatId}
+                telegramSettings={settings.telegram}
                 inApp={settings.notifications?.inApp}
                 aiResults={settings.notifications?.aiResults}
                 taskDueReminders={settings.notifications?.taskDueReminders}

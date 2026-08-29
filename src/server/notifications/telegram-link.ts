@@ -34,17 +34,29 @@ export async function generateTelegramLinkCode(): Promise<{
   return { code, expiresAt };
 }
 
-export async function getTelegramLinkStatus(): Promise<{ linked: boolean }> {
-  const user = await getCurrentUser();
-  if (!user) return { linked: false };
+export async function getTelegramLinkStatus(userId?: string): Promise<{
+  linked: boolean;
+  chatId: string | null;
+}> {
+  let targetUserId = userId;
+  if (!targetUserId) {
+    try {
+      const user = await getCurrentUser();
+      if (!user) return { linked: false, chatId: null };
+      targetUserId = user.id;
+    } catch {
+      return { linked: false, chatId: null };
+    }
+  }
 
   const rows = await db
     .select({ chatId: schema.users.telegramChatId })
     .from(schema.users)
-    .where(eq(schema.users.id, user.id))
+    .where(eq(schema.users.id, targetUserId))
     .limit(1);
 
-  return { linked: !!rows[0]?.chatId };
+  const chatId = rows[0]?.chatId ?? null;
+  return { linked: !!chatId, chatId };
 }
 
 export async function unlinkTelegram(): Promise<void> {
@@ -61,7 +73,7 @@ export async function unlinkTelegram(): Promise<void> {
 export async function consumeTelegramLinkCode(
   code: string,
   chatId: string,
-): Promise<{ ok: true } | { ok: false }> {
+): Promise<{ ok: true; userId: string } | { ok: false }> {
   try {
     const rows = await db
       .update(schema.users)
@@ -73,13 +85,12 @@ export async function consumeTelegramLinkCode(
       .where(and(eq(schema.users.telegramLinkCode, code), gt(schema.users.telegramLinkCodeExpiresAt, new Date())))
       .returning({ id: schema.users.id });
     if (!rows[0]) return { ok: false };
+    return { ok: true, userId: rows[0].id };
   } catch {
     // Most likely the unique constraint on telegramChatId — this chat is already linked
     // to a different Inkest account.
     return { ok: false };
   }
-
-  return { ok: true };
 }
 
 export async function getTelegramChatIdForUser(userId: string): Promise<string | null> {

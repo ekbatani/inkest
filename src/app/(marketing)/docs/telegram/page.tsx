@@ -26,14 +26,14 @@ export default function TelegramDocsPage() {
         </p>
       </div>
 
-      {/* Admin Bot Creation */}
+      {/* Bot Creation & Token */}
       <section id="setup" className="surface-card flex flex-col gap-5 p-6 scroll-mt-20">
         <div className="flex items-center gap-3">
           <div className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
             1
           </div>
           <h2 className="text-base font-semibold text-foreground">
-            Create the Bot (Instance Admin)
+            Create Your Bot on Telegram
           </h2>
         </div>
 
@@ -48,36 +48,19 @@ export default function TelegramDocsPage() {
             >
               @BotFather
             </a>
-            . Send the command <code>/newbot</code>, follow the prompts to choose a name and username, and copy the HTTP API token.
-          </p>
-
-          <p>
-            Add the token to your server environment variables and restart Inkest:
-          </p>
-          <CopyCodeBlock code="TELEGRAM_BOT_TOKEN=123456789:ABCdefGhIJKlmNoPQRstuVWXyz" />
-
-          <p>
-            Register your webhook by running this curl command (replace <code>&lt;TOKEN&gt;</code>, <code>&lt;YOUR_DOMAIN&gt;</code>, and <code>&lt;SECRET&gt;</code>):
-          </p>
-          <CopyCodeBlock
-            code={`curl -F "url=https://<YOUR_DOMAIN>/api/telegram/webhook" \\
-  -F "secret_token=<YOUR_TELEGRAM_WEBHOOK_SECRET>" \\
-  "https://api.telegram.org/bot<TOKEN>/setWebhook"`}
-          />
-          <p className="text-xs text-muted-foreground">
-            Make sure <code>TELEGRAM_WEBHOOK_SECRET</code> is set on the server matching the secret passed in the webhook URL.
+            . Send the command <code>/newbot</code>, follow the prompts to choose a name and username (e.g. <code>my_inkest_bot</code>), and copy the HTTP API token.
           </p>
         </div>
       </section>
 
-      {/* User Account Linking */}
-      <section id="linking" className="surface-card flex flex-col gap-5 p-6 scroll-mt-20">
+      {/* In-App Webhook Setup */}
+      <section id="webhook" className="surface-card flex flex-col gap-5 p-6 scroll-mt-20">
         <div className="flex items-center gap-3">
           <div className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
             2
           </div>
           <h2 className="text-base font-semibold text-foreground">
-            Link Your Account (Every User)
+            Save Bot Token & Register Webhook (In-App)
           </h2>
         </div>
 
@@ -88,16 +71,45 @@ export default function TelegramDocsPage() {
               href="/settings?tab=notifications"
               className="font-medium text-primary underline underline-offset-4"
             >
-              Settings → Notifications
-            </Link>{" "}
-            and click <strong className="text-foreground">Generate linking code</strong>.
+              Settings → Notifications & Services
+            </Link>
+            .
+          </p>
+          <ol className="list-decimal pl-4 flex flex-col gap-2">
+            <li>
+              Paste your HTTP API token in the <strong>Bot API Token</strong> field and click <strong>Save Bot Token</strong>.
+            </li>
+            <li>
+              Under <strong>Webhook Registration</strong>, click <strong>Register Webhook</strong>. Inkest will securely register your endpoint with Telegram&apos;s servers directly.
+            </li>
+          </ol>
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3.5 text-xs text-emerald-800 dark:text-emerald-300">
+            ✨ <strong>Zero terminal setup:</strong> You do not need to run manual <code>curl</code> commands or edit server environment variables. Everything is configured and verified directly in the UI.
+          </div>
+        </div>
+      </section>
+
+      {/* User Account Linking */}
+      <section id="linking" className="surface-card flex flex-col gap-5 p-6 scroll-mt-20">
+        <div className="flex items-center gap-3">
+          <div className="flex size-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+            3
+          </div>
+          <h2 className="text-base font-semibold text-foreground">
+            Pair Your Telegram Account
+          </h2>
+        </div>
+
+        <div className="flex flex-col gap-4 text-sm text-muted-foreground pl-10">
+          <p>
+            In <Link href="/settings?tab=notifications" className="font-medium text-primary underline underline-offset-4">Settings → Notifications</Link>, click <strong>Generate Pairing Code</strong>.
           </p>
           <p>
-            Open a private chat with your Telegram bot and send:
+            Click the <strong>Open in Telegram & Press Start</strong> button to launch Telegram with your one-time code preloaded, or manually message your bot:
           </p>
           <CopyCodeBlock code="/start <YOUR_CODE>" />
           <p className="text-xs text-muted-foreground">
-            Linking codes are single-use and expire after 15 minutes. Once linked, the bot securely binds your Telegram chat ID to your Inkest user account.
+            Linking codes expire after 15 minutes. Once paired, Inkest securely binds your Telegram chat ID to your workspace.
           </p>
         </div>
       </section>

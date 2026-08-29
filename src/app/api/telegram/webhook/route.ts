@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { consumeTelegramLinkCode } from "@/server/notifications/telegram-link";
-import { sendRawTelegramMessage, telegramBotToken } from "@/server/notifications/telegram";
+import {
+  getEffectiveTelegramBotToken,
+  sendRawTelegramMessage,
+  telegramBotToken,
+} from "@/server/notifications/telegram";
+import { getUserSettings } from "@/server/users/settings-service";
 
 const START_WITH_CODE_RE = /^\/start(?:@[\w_]+)?\s+([A-Za-z0-9]{4,10})\s*$/;
 const START_RE = /^\/start(?:@[\w_]+)?\s*$/;
@@ -15,17 +20,40 @@ type TelegramUpdate = {
 // Always ack with 200 quickly — Telegram retries (and eventually disables) webhooks that
 // don't respond promptly, so we never want a slow/failed downstream call to surface here.
 export async function POST(request: NextRequest) {
-  const botToken = telegramBotToken();
-  if (!botToken) return NextResponse.json({ ok: true });
+  const uid = request.nextUrl.searchParams.get("uid")?.trim();
+  const headerSecret = request.headers.get("x-telegram-bot-api-secret-token")?.trim();
 
-  const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
-  if (!webhookSecret) {
-    return NextResponse.json({ error: "Telegram webhook secret is not configured." }, { status: 503 });
+  let botToken: string | null = null;
+
+  if (uid) {
+    // Per-user webhook routing
+    try {
+      const userSettings = await getUserSettings(uid);
+      const expectedSecret =
+        userSettings.telegram?.webhookSecret?.trim() ||
+        process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
+
+      if (expectedSecret && headerSecret !== expectedSecret) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      botToken = userSettings.telegram?.botToken?.trim() || (await getEffectiveTelegramBotToken(uid));
+    } catch {
+      return NextResponse.json({ error: "Invalid user endpoint" }, { status: 400 });
+    }
+  } else {
+    // Instance-wide webhook routing
+    const instanceSecret = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
+    if (instanceSecret) {
+      if (headerSecret !== instanceSecret) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+    botToken = telegramBotToken();
   }
 
-  const header = request.headers.get("x-telegram-bot-api-secret-token");
-  if (header !== webhookSecret) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!botToken) {
+    return NextResponse.json({ ok: true });
   }
 
   let update: TelegramUpdate;
@@ -42,8 +70,12 @@ export async function POST(request: NextRequest) {
     const codeMatch = text.match(START_WITH_CODE_RE);
     if (codeMatch) {
       const result = await consumeTelegramLinkCode(codeMatch[1].toUpperCase(), String(chatId));
+      const targetToken = result.ok
+        ? (await getEffectiveTelegramBotToken(result.userId)) || botToken
+        : botToken;
+
       await sendRawTelegramMessage(
-        botToken,
+        targetToken,
         String(chatId),
         result.ok
           ? "✅ Telegram is now linked to your Inkest account."
