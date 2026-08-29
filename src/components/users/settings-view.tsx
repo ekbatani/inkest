@@ -8,6 +8,7 @@ import {
   Bell,
   Archive,
   BookOpen,
+  Users,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,9 @@ import {
   DangerZoneSection,
   HelpGuidesSection,
 } from "@/components/users/settings-sections";
+import { UserManagementView } from "@/components/admin/user-management-view";
 import type { UserSettings } from "@/server/users/settings-service";
+import type { AdminUserListResult } from "@/server/users/admin-service";
 
 export type SettingsCategory =
   | "account"
@@ -32,6 +35,7 @@ export type SettingsCategory =
   | "ai"
   | "notifications"
   | "data"
+  | "users"
   | "help";
 
 interface CategoryMeta {
@@ -89,6 +93,7 @@ const CATEGORIES: CategoryMeta[] = [
 
 interface SettingsViewProps {
   user: {
+    id?: string;
     email: string;
     name?: string | null;
   } | null;
@@ -100,6 +105,8 @@ interface SettingsViewProps {
     source: "user" | "instance" | "unavailable";
   };
   initialTab?: string;
+  isAdmin?: boolean;
+  initialUsersData?: AdminUserListResult | null;
 }
 
 export function SettingsView({
@@ -108,13 +115,36 @@ export function SettingsView({
   telegramStatus,
   aiConfiguration,
   initialTab,
+  isAdmin = false,
+  initialUsersData,
 }: SettingsViewProps) {
+  const normalizedInitialTab =
+    initialTab === "admin-users" || initialTab === "user-management"
+      ? "users"
+      : initialTab;
+
+  const categories = React.useMemo(() => {
+    if (!isAdmin) return CATEGORIES;
+    return [
+      ...CATEGORIES.slice(0, 5),
+      {
+        id: "users" as SettingsCategory,
+        label: "User Management (Admin)",
+        shortLabel: "Users",
+        description: "Instance user accounts, privileges, security, and workspaces",
+        icon: Users,
+      },
+      ...CATEGORIES.slice(5),
+    ];
+  }, [isAdmin]);
+
   const [activeCategory, setActiveCategory] = React.useState<SettingsCategory>(() => {
-    const valid = CATEGORIES.some((c) => c.id === initialTab);
-    return valid ? (initialTab as SettingsCategory) : "account";
+    const valid = categories.some((c) => c.id === normalizedInitialTab);
+    return valid ? (normalizedInitialTab as SettingsCategory) : "account";
   });
 
-  const activeMeta = CATEGORIES.find((c) => c.id === activeCategory) ?? CATEGORIES[0];
+  const activeMeta =
+    categories.find((c) => c.id === activeCategory) ?? categories[0];
 
   return (
     <div className="flex w-full flex-col gap-8">
@@ -143,7 +173,7 @@ export function SettingsView({
             aria-label="Settings Categories"
             className="flex flex-row gap-1.5 overflow-x-auto pb-2 scrollbar-none lg:flex-col lg:overflow-visible lg:pb-0"
           >
-            {CATEGORIES.map((category) => {
+            {categories.map((category) => {
               const Icon = category.icon;
               const isActive = activeCategory === category.id;
               return (
@@ -260,6 +290,23 @@ export function SettingsView({
             <div className="flex flex-col gap-6">
               <ExportBackupSection />
               <DangerZoneSection />
+            </div>
+          )}
+
+          {/* User Management Category (Admin Only) */}
+          {activeCategory === "users" && isAdmin && (
+            <div className="flex flex-col gap-6">
+              {initialUsersData ? (
+                <UserManagementView
+                  initialData={initialUsersData}
+                  currentUserId={user?.id ?? ""}
+                  embedded={true}
+                />
+              ) : (
+                <div className="rounded-2xl border border-border/80 bg-card p-8 text-center text-muted-foreground">
+                  <p className="text-sm">No user management data available or unauthorized.</p>
+                </div>
+              )}
             </div>
           )}
 

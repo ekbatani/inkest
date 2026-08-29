@@ -23,7 +23,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         Skip to main content
       </a>
       <SidebarToggleWrapper
-        sidebar={<Sidebar notesTree={notesTree} isAdmin={isAdminUser} />}
+        sidebar={<Sidebar notesTree={notesTree} />}
         aiSidebar={<AiChatSidebar />}
       >
         <Topbar

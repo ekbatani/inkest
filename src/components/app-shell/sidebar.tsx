@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { LogoMark } from "@/components/brand/logo-mark";
 import {
   mainNav,
-  adminNav,
   settingsNav,
   type NavItem,
 } from "@/components/app-shell/nav-items";
@@ -54,18 +53,13 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar({
   notesTree = [],
-  isAdmin = false,
   onNavigate,
 }: {
   notesTree?: NoteTreeNode[];
-  isAdmin?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-
-  const navItemsToRender = isAdmin
-    ? [...adminNav, ...settingsNav]
-    : settingsNav;
+  const navItemsToRender = settingsNav;
 
   return (
     <div className="flex h-full flex-col">

@@ -12,6 +12,7 @@ import {
   Strikethrough,
   Code2,
   List,
+  Users,
 } from "lucide-react";
 import {
   Dialog,
@@ -29,7 +30,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { mainNav, adminNav, settingsNav } from "@/components/app-shell/nav-items";
+import { mainNav, settingsNav } from "@/components/app-shell/nav-items";
 import {
   searchNotesAction,
   listRecentNotesAction,
@@ -130,9 +131,10 @@ export function CommandMenu({ open, onOpenChange, isAdmin = false }: Props) {
 
   const showNotesGroup = query.trim().length >= 2;
   const noteItems = showNotesGroup ? results : recent;
-  const navItemsToRender = isAdmin
-    ? [...mainNav, ...adminNav, ...settingsNav]
-    : [...mainNav, ...settingsNav];
+  const adminNavItems = isAdmin
+    ? [{ label: "User Management (Admin)", href: "/settings?tab=users", icon: Users }]
+    : [];
+  const navItemsToRender = [...mainNav, ...settingsNav, ...adminNavItems];
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

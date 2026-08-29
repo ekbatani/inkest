@@ -14,12 +14,12 @@ import {
 } from "@/components/ui/sheet";
 import { Sidebar } from "@/components/app-shell/sidebar";
 import { CommandMenu } from "@/components/app-shell/command-menu";
-import { mainNav, adminNav, settingsNav } from "@/components/app-shell/nav-items";
+import { mainNav, settingsNav } from "@/components/app-shell/nav-items";
 import type { NoteTreeNode } from "@/server/notes/service";
 import type { InboxNotification } from "@/server/notifications/service";
 
 function getRouteLabel(pathname: string) {
-  const navItem = [...mainNav, ...adminNav, ...settingsNav].find(
+  const navItem = [...mainNav, ...settingsNav].find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
 
@@ -103,7 +103,6 @@ export function Topbar({
             <SheetTitle className="sr-only">Navigation</SheetTitle>
             <Sidebar
               notesTree={notesTree}
-              isAdmin={isAdmin}
               onNavigate={() => setMobileNavOpen(false)}
             />
           </SheetContent>

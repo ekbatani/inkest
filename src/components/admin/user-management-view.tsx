@@ -55,11 +55,13 @@ import {
 interface UserManagementViewProps {
   initialData: AdminUserListResult;
   currentUserId: string;
+  embedded?: boolean;
 }
 
 export function UserManagementView({
   initialData,
   currentUserId,
+  embedded = false,
 }: UserManagementViewProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -227,7 +229,12 @@ export function UserManagementView({
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6">
+    <div
+      className={cn(
+        "w-full space-y-6",
+        !embedded && "mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6",
+      )}
+    >
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

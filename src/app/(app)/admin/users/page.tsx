@@ -1,8 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { isCloudDeployment } from "@/server/config/deployment";
 import { requireAdminUser, AdminAccessError } from "@/server/auth/admin";
-import { listUsersAdmin } from "@/server/users/admin-service";
-import { UserManagementView } from "@/components/admin/user-management-view";
 
 export const metadata = {
   title: "User Management | Admin | Inkest",
@@ -15,9 +13,8 @@ export default async function AdminUsersPage() {
     notFound();
   }
 
-  let currentUser;
   try {
-    currentUser = await requireAdminUser();
+    await requireAdminUser();
   } catch (err: unknown) {
     if (err instanceof AdminAccessError) {
       if (err.code === "UNAUTHENTICATED") {
@@ -30,14 +27,6 @@ export default async function AdminUsersPage() {
     notFound();
   }
 
-  const initialData = await listUsersAdmin();
-
-  return (
-    <div className="w-full min-h-full py-6">
-      <UserManagementView
-        initialData={initialData}
-        currentUserId={currentUser.id}
-      />
-    </div>
-  );
+  // Redirect to Settings -> User Management tab
+  redirect("/settings?tab=users");
 }
