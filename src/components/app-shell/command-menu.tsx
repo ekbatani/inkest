@@ -29,7 +29,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { mainNav, settingsNav } from "@/components/app-shell/nav-items";
+import { mainNav, adminNav, settingsNav } from "@/components/app-shell/nav-items";
 import {
   searchNotesAction,
   listRecentNotesAction,
@@ -42,9 +42,10 @@ import type { MarkdownFormat } from "@/components/editor/markdown-editor-utils";
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  isAdmin?: boolean;
 };
 
-export function CommandMenu({ open, onOpenChange }: Props) {
+export function CommandMenu({ open, onOpenChange, isAdmin = false }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const noteMatch = pathname?.match(/^\/notes\/([^/]+)$/);
@@ -73,8 +74,6 @@ export function CommandMenu({ open, onOpenChange }: Props) {
     if (next) {
       void loadRecent();
     } else {
-      // Reset search state when the menu closes. Done outside of an effect
-      // so it is not a setState-in-effect call.
       setQuery("");
       setResults([]);
       setLoading(false);
@@ -131,6 +130,9 @@ export function CommandMenu({ open, onOpenChange }: Props) {
 
   const showNotesGroup = query.trim().length >= 2;
   const noteItems = showNotesGroup ? results : recent;
+  const navItemsToRender = isAdmin
+    ? [...mainNav, ...adminNav, ...settingsNav]
+    : [...mainNav, ...settingsNav];
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -192,92 +194,82 @@ export function CommandMenu({ open, onOpenChange }: Props) {
             )}
 
             <>
-                <CommandSeparator />
-                <CommandGroup heading="Navigate">
-                  {mainNav.map((item) => (
-                    <CommandItem
-                      key={item.href}
-                      value={`${item.label} navigate go to`}
-                      onSelect={() => go(item.href)}
-                    >
-                      <item.icon className="size-4" />
-                      <span>{item.label}</span>
-                    </CommandItem>
-                  ))}
-                  {settingsNav.map((item) => (
-                    <CommandItem
-                      key={item.href}
-                      value={`${item.label} navigate go to`}
-                      onSelect={() => go(item.href)}
-                    >
-                      <item.icon className="size-4" />
-                      <span>{item.label}</span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-                <CommandGroup heading="Actions">
-                  {currentNoteId && (
-                    <CommandItem
-                      value="ask ai summarize explain note"
-                      onSelect={() => {
-                        const noteId = currentNoteId;
-                        handleOpenChange(false);
-                        window.dispatchEvent(
-                          new CustomEvent("inkest:ask-ai", { detail: { noteId } }),
-                        );
-                      }}
-                    >
-                      <Sparkles className="size-4" />
-                      <span>Ask AI…</span>
-                    </CommandItem>
-                  )}
+              <CommandSeparator />
+              <CommandGroup heading="Navigate">
+                {navItemsToRender.map((item) => (
                   <CommandItem
-                    value="new note create"
-                    onSelect={() => go("/notes/new")}
+                    key={item.href}
+                    value={`${item.label} navigate go to`}
+                    onSelect={() => go(item.href)}
                   >
-                    <Search className="size-4" />
-                    <span>New note</span>
+                    <item.icon className="size-4" />
+                    <span>{item.label}</span>
                   </CommandItem>
-                  <CommandItem
-                    value="new project create"
-                    onSelect={() => go("/projects")}
-                  >
-                    <Search className="size-4" />
-                    <span>New project</span>
-                  </CommandItem>
-                  <CommandItem
-                    value="daily note today"
-                    onSelect={() => go("/daily")}
-                  >
-                    <Search className="size-4" />
-                    <span>Open today’s daily note</span>
-                  </CommandItem>
-                </CommandGroup>
+                ))}
+              </CommandGroup>
+              <CommandGroup heading="Actions">
                 {currentNoteId && (
-                  <CommandGroup heading="Format current note">
-                    <CommandItem value="format bold current note" onSelect={() => formatCurrentNote("bold")}>
-                      <Bold className="size-4" />
-                      <span>Bold</span>
-                    </CommandItem>
-                    <CommandItem value="format italic current note" onSelect={() => formatCurrentNote("italic")}>
-                      <Italic className="size-4" />
-                      <span>Italic</span>
-                    </CommandItem>
-                    <CommandItem value="format strikethrough current note" onSelect={() => formatCurrentNote("strikethrough")}>
-                      <Strikethrough className="size-4" />
-                      <span>Strikethrough</span>
-                    </CommandItem>
-                    <CommandItem value="format inline code current note" onSelect={() => formatCurrentNote("inline-code")}>
-                      <Code2 className="size-4" />
-                      <span>Inline code</span>
-                    </CommandItem>
-                    <CommandItem value="format bulleted list current note" onSelect={() => formatCurrentNote("bullet-list")}>
-                      <List className="size-4" />
-                      <span>Bulleted list</span>
-                    </CommandItem>
-                  </CommandGroup>
+                  <CommandItem
+                    value="ask ai summarize explain note"
+                    onSelect={() => {
+                      const noteId = currentNoteId;
+                      handleOpenChange(false);
+                      window.dispatchEvent(
+                        new CustomEvent("inkest:ask-ai", { detail: { noteId } }),
+                      );
+                    }}
+                  >
+                    <Sparkles className="size-4" />
+                    <span>Ask AI…</span>
+                  </CommandItem>
                 )}
-              </>
+                <CommandItem
+                  value="new note create"
+                  onSelect={() => go("/notes/new")}
+                >
+                  <Search className="size-4" />
+                  <span>New note</span>
+                </CommandItem>
+                <CommandItem
+                  value="new project create"
+                  onSelect={() => go("/projects")}
+                >
+                  <Search className="size-4" />
+                  <span>New project</span>
+                </CommandItem>
+                <CommandItem
+                  value="daily note today"
+                  onSelect={() => go("/daily")}
+                >
+                  <Search className="size-4" />
+                  <span>Open today’s daily note</span>
+                </CommandItem>
+              </CommandGroup>
+              {currentNoteId && (
+                <CommandGroup heading="Format current note">
+                  <CommandItem value="format bold current note" onSelect={() => formatCurrentNote("bold")}>
+                    <Bold className="size-4" />
+                    <span>Bold</span>
+                  </CommandItem>
+                  <CommandItem value="format italic current note" onSelect={() => formatCurrentNote("italic")}>
+                    <Italic className="size-4" />
+                    <span>Italic</span>
+                  </CommandItem>
+                  <CommandItem value="format strikethrough current note" onSelect={() => formatCurrentNote("strikethrough")}>
+                    <Strikethrough className="size-4" />
+                    <span>Strikethrough</span>
+                  </CommandItem>
+                  <CommandItem value="format inline code current note" onSelect={() => formatCurrentNote("inline-code")}>
+                    <Code2 className="size-4" />
+                    <span>Inline code</span>
+                  </CommandItem>
+                  <CommandItem value="format bulleted list current note" onSelect={() => formatCurrentNote("bullet-list")}>
+                    <List className="size-4" />
+                    <span>Bulleted list</span>
+                  </CommandItem>
+                </CommandGroup>
+              )}
+            </>
           </CommandList>
         </Command>
       </DialogContent>

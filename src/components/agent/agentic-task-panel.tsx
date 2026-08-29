@@ -36,8 +36,6 @@ interface AgenticTaskPanelProps {
 
 export function AgenticTaskPanel({
   noteId,
-  noteTitle,
-  noteContent,
   editorRef,
 }: AgenticTaskPanelProps) {
   const [goal, setGoal] = React.useState("");

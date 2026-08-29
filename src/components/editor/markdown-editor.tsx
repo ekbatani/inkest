@@ -28,10 +28,17 @@ import { containsArabicScript } from "@/lib/text/rtl";
 import {
   getHeadingAnchorId,
   resolveNoteHref,
+  parseWikiToken,
+  isImageAsset,
   WIKI_RE,
   type WikiLinkTarget,
 } from "@/lib/markdown/wiki";
 import { applyMarkdownFormatToView } from "@/components/editor/markdown-editor-utils";
+import { InsertLinkDialog } from "@/components/editor/insert-link-dialog";
+import {
+  LinkPreviewPopover,
+  type ActiveLinkInfo,
+} from "@/components/editor/link-preview-popover";
 import {
   search,
   openSearchPanel,
@@ -91,7 +98,39 @@ const markdownFormattingKeymap = keymap.of([
       return true;
     },
   },
+  {
+    key: "Mod-k",
+    run: (view) => {
+      const sel = view.state.selection.main;
+      const selectedText = view.state.sliceDoc(sel.from, sel.to);
+      window.dispatchEvent(
+        new CustomEvent("inkest:open-insert-link-dialog", {
+          detail: {
+            prefilledQuery: selectedText,
+            replaceRange:
+              sel.from !== sel.to ? { from: sel.from, to: sel.to } : undefined,
+          },
+        }),
+      );
+      return true;
+    },
+  },
+  {
+    key: "[",
+    run: (view) => {
+      const sel = view.state.selection.main;
+      if (sel.from === sel.to) return false;
+      const selectedText = view.state.sliceDoc(sel.from, sel.to);
+      const insert = `[[${selectedText}]]`;
+      view.dispatch({
+        changes: { from: sel.from, to: sel.to, insert },
+        selection: { anchor: sel.from + insert.length },
+      });
+      return true;
+    },
+  },
 ]);
+
 
 const customSearchKeymap = keymap.of([
   {
@@ -200,13 +239,31 @@ function looksLikeMarkdown(text: string) {
   return false;
 }
 
+function extractDocumentHeadings(docText: string) {
+  const headings: { title: string; anchor: string; level: number }[] = [];
+  const lines = docText.split("\n");
+  for (const line of lines) {
+    const match = line.match(/^\s{0,3}(#{1,6})\s+(.+)$/);
+    if (match) {
+      const level = match[1].length;
+      const rawTitle = match[2].replace(/[`*_~]/g, "").trim();
+      headings.push({
+        title: rawTitle,
+        anchor: getHeadingAnchorId(rawTitle),
+        level,
+      });
+    }
+  }
+  return headings;
+}
+
 function getTargetDetail(t: WikiLinkTarget): string {
   if (t.type === "project") return "Project";
-  if (t.type === "daily") return "Daily";
+  if (t.type === "daily") return "Daily note";
   if (t.type === "asset") {
     if (t.mimeType?.startsWith("image/")) return "Image asset";
-    if (t.mimeType?.includes("pdf")) return "PDF asset";
-    return "Asset";
+    if (t.mimeType?.includes("pdf")) return "PDF document";
+    return "Asset attachment";
   }
   return t.slug !== t.title.toLowerCase() ? t.slug : "Note";
 }
@@ -224,7 +281,28 @@ function createWikiLinkCompletionSource(targets: WikiLinkTarget[]) {
     if (!word) return null;
 
     const isEmbed = word.text.startsWith("!");
-    const query = word.text.replace(/^!?\[\[/, "").toLowerCase();
+    const rawQuery = word.text.replace(/^!?\[\[/, "");
+    const query = rawQuery.toLowerCase().trim();
+
+    // 1. Heading completion: [[# or [[Note#
+    if (rawQuery.includes("#")) {
+      const hashIdx = rawQuery.indexOf("#");
+      const headingQuery = rawQuery.slice(hashIdx + 1).toLowerCase().trim();
+      const headings = extractDocumentHeadings(context.state.doc.toString());
+
+      return {
+        from: word.from + (isEmbed ? 3 : 2) + hashIdx + 1,
+        options: headings
+          .filter((h) => !headingQuery || h.title.toLowerCase().includes(headingQuery))
+          .map((h) => ({
+            label: h.title,
+            detail: `H${h.level} Heading`,
+            apply: `${h.title}]]`,
+            type: "text",
+            boost: 3,
+          })),
+      };
+    }
 
     return {
       from: word.from + (isEmbed ? 3 : 2),
@@ -234,16 +312,25 @@ function createWikiLinkCompletionSource(targets: WikiLinkTarget[]) {
             t.title.toLowerCase().includes(query) ||
             t.slug.toLowerCase().includes(query),
         )
-        .map((t) => ({
-          label: t.title,
-          detail: getTargetDetail(t),
-          apply: `${t.title}]]`,
-          type: getCompletionType(t),
-          boost: t.title.toLowerCase().startsWith(query) ? 2 : 1,
-        })),
+        .map((t) => {
+          const isImage = isImageAsset(t);
+          const isTargetAsset = t.type === "asset";
+          const boost =
+            (isEmbed && (isImage || isTargetAsset) ? 4 : 1) *
+            (t.title.toLowerCase().startsWith(query) ? 2 : 1);
+
+          return {
+            label: t.title,
+            detail: getTargetDetail(t),
+            apply: `${t.title}]]`,
+            type: getCompletionType(t),
+            boost,
+          };
+        }),
     };
   };
 }
+
 
 async function uploadAndInsertFile(
   file: File,
@@ -639,19 +726,17 @@ function buildInlineDecorations(linkableNotes: WikiLinkTarget[]) {
           const inner = match[2].trim();
           if (!inner) continue;
 
-          const sectionIndex = inner.indexOf("#");
-          const noteName =
-            sectionIndex === -1 ? inner : inner.slice(0, sectionIndex).trim();
-          const href = resolveNoteHref(inner, linkableNotes);
+          const { targetName, section } = parseWikiToken(inner);
+          const href = resolveNoteHref(section ? `${targetName}#${section}` : targetName, linkableNotes);
 
           const leadingTrim = match[2].length - match[2].trimStart().length;
           const contentFrom = openFrom + (isEmbed ? 3 : 2) + leadingTrim;
           const contentTo = contentFrom + inner.length;
           const closeTo = openFrom + match[0].length;
 
-          const isUnresolved = !href || href === inner || href === noteName;
+          const isUnresolved = !href || href === inner || href === targetName;
           const targetHref = isUnresolved
-            ? `/notes/new?title=${encodeURIComponent(noteName)}`
+            ? `/notes/new?title=${encodeURIComponent(targetName)}`
             : href;
 
           addLinkDecoration(
@@ -675,6 +760,41 @@ function buildInlineDecorations(linkableNotes: WikiLinkTarget[]) {
   };
 }
 
+function findLinkTokenAtPos(state: EditorState, pos: number) {
+  const line = state.doc.lineAt(pos);
+  const text = line.text;
+  const lineOffset = pos - line.from;
+
+  for (const match of text.matchAll(WIKI_RE)) {
+    if (match.index === undefined) continue;
+    const start = match.index;
+    const end = start + match[0].length;
+    if (lineOffset >= start && lineOffset <= end) {
+      return {
+        from: line.from + start,
+        to: line.from + end,
+        rawText: match[0],
+      };
+    }
+  }
+
+  for (const match of text.matchAll(MARKDOWN_LINK_RE)) {
+    if (match.index === undefined) continue;
+    const start = match.index;
+    const end = start + match[0].length;
+    if (lineOffset >= start && lineOffset <= end) {
+      return {
+        from: line.from + start,
+        to: line.from + end,
+        rawText: match[0],
+      };
+    }
+  }
+
+  return null;
+}
+
+
 export function MarkdownEditor({
   value,
   onChange,
@@ -689,6 +809,41 @@ export function MarkdownEditor({
 }: Props) {
   const [editorValue, setEditorValue] = React.useState(value);
   const lastEmittedValueRef = React.useRef(value);
+
+  // Link management state
+  const [createdTargets, setCreatedTargets] = React.useState<WikiLinkTarget[]>([]);
+  const targets = React.useMemo(() => {
+    if (createdTargets.length === 0) return linkableNotes;
+    const createdIds = new Set(createdTargets.map((t) => t.id));
+    return [...createdTargets, ...linkableNotes.filter((t) => !createdIds.has(t.id))];
+  }, [linkableNotes, createdTargets]);
+
+  const [insertLinkOpen, setInsertLinkOpen] = React.useState(false);
+  const [insertLinkQuery, setInsertLinkQuery] = React.useState("");
+  const [insertLinkRange, setInsertLinkRange] = React.useState<{ from: number; to: number } | undefined>(undefined);
+  const [activeLinkInfo, setActiveLinkInfo] = React.useState<ActiveLinkInfo | null>(null);
+
+  const handleTargetCreated = React.useCallback((newTarget: WikiLinkTarget) => {
+    setCreatedTargets((prev) => [newTarget, ...prev.filter((t) => t.id !== newTarget.id)]);
+  }, []);
+
+  React.useEffect(() => {
+    const onOpenDialog = (e: Event) => {
+      const detail = (
+        e as CustomEvent<{
+          prefilledQuery?: string;
+          replaceRange?: { from: number; to: number };
+        }>
+      ).detail;
+      setInsertLinkQuery(detail?.prefilledQuery ?? "");
+      setInsertLinkRange(detail?.replaceRange);
+      setInsertLinkOpen(true);
+    };
+
+    window.addEventListener("inkest:open-insert-link-dialog", onOpenDialog);
+    return () =>
+      window.removeEventListener("inkest:open-insert-link-dialog", onOpenDialog);
+  }, []);
 
   // Sync external changes (e.g. Undo, Redo, Version Restore, Note switch) down to CodeMirror state.
   // Ignore echo prop updates that match the last value emitted by CodeMirror.
@@ -736,7 +891,7 @@ export function MarkdownEditor({
       }),
       customSearchKeymap,
       autocompletion({
-        override: [createWikiLinkCompletionSource(linkableNotes)],
+        override: [createWikiLinkCompletionSource(targets)],
         defaultKeymap: true,
       }),
       syntaxHighlighting(fencedCodeHighlightStyle),
@@ -749,9 +904,46 @@ export function MarkdownEditor({
         ...(spellcheckLanguage === "auto" ? {} : { lang: spellcheckLanguage }),
       }),
       EditorView.decorations.of(buildLineDecorations),
-      EditorView.decorations.of(buildInlineDecorations(linkableNotes)),
+      EditorView.decorations.of(buildInlineDecorations(targets)),
       EditorView.domEventHandlers({
-        click: (event, view) => handleEditorLinkClick(event, view, onOpenLink),
+        click: (event, view) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) return false;
+
+          const linkNode = target.closest<HTMLElement>("[data-inknest-link-href]");
+          const href = linkNode?.dataset.inknestLinkHref?.trim();
+          if (!linkNode || !href) {
+            setActiveLinkInfo(null);
+            return false;
+          }
+
+          event.preventDefault();
+          event.stopPropagation();
+
+          // If holding Cmd/Ctrl or Alt, navigate directly
+          if (event.metaKey || event.ctrlKey || event.altKey) {
+            return handleEditorLinkClick(event, view, onOpenLink);
+          }
+
+          // Otherwise show rich contextual preview card
+          const rect = linkNode.getBoundingClientRect();
+          const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+          const token = pos !== null ? findLinkTokenAtPos(view.state, pos) : null;
+
+          setActiveLinkInfo({
+            href,
+            rawText: token?.rawText || linkNode.textContent || href,
+            from: token?.from ?? (pos ?? 0),
+            to: token?.to ?? (pos ?? 0),
+            coords: {
+              x: rect.left,
+              y: rect.top,
+              width: rect.width,
+              height: rect.height,
+            },
+          });
+          return true;
+        },
         paste: (event, view) => {
           const files = event.clipboardData?.files;
           if (files && files.length > 0) {
@@ -1195,7 +1387,7 @@ export function MarkdownEditor({
     ],
     [
       editorFontFamily,
-      linkableNotes,
+      targets,
       onOpenLink,
       onLargeMarkdownPaste,
       spellcheck,
@@ -1206,7 +1398,7 @@ export function MarkdownEditor({
   const dir = direction === "auto" ? undefined : direction;
 
   return (
-    <div className={cn("h-full", usesRtlFont && "rtl-vazir", className)} dir={dir}>
+    <div className={cn("relative h-full", usesRtlFont && "rtl-vazir", className)} dir={dir}>
       <CodeMirror
         ref={editorRef}
         value={editorValue}
@@ -1226,7 +1418,27 @@ export function MarkdownEditor({
         }}
         style={{ height: "100%" }}
       />
+
+      <InsertLinkDialog
+        open={insertLinkOpen}
+        onOpenChange={setInsertLinkOpen}
+        editorRef={editorRef}
+        linkableNotes={targets}
+        currentNoteContent={editorValue}
+        prefilledQuery={insertLinkQuery}
+        replaceRange={insertLinkRange}
+        onTargetCreated={handleTargetCreated}
+      />
+
+      <LinkPreviewPopover
+        activeLink={activeLinkInfo}
+        onClose={() => setActiveLinkInfo(null)}
+        editorRef={editorRef}
+        linkableNotes={targets}
+        onOpenLink={onOpenLink}
+      />
     </div>
   );
 }
+
 

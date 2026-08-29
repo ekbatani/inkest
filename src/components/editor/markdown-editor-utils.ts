@@ -7,10 +7,10 @@ import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import type { EditorView } from "@codemirror/view";
 
 export function insertTextAtCursor(
-  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  ref: React.RefObject<ReactCodeMirrorRef | null> | undefined | null,
   text: string,
 ) {
-  const view = ref.current?.view;
+  const view = ref?.current?.view;
   if (!view) return;
   const sel = view.state.selection.main;
   view.dispatch({
@@ -175,8 +175,10 @@ export function applyMarkdownFormatToView(
   view.focus();
 }
 
-export function getSelectedEditorText(ref: React.RefObject<ReactCodeMirrorRef | null>) {
-  const view = ref.current?.view;
+export function getSelectedEditorText(
+  ref?: React.RefObject<ReactCodeMirrorRef | null> | null,
+) {
+  const view = ref?.current?.view;
   if (!view) return null;
   const docLen = view.state.doc.length;
   const sel = view.state.selection.main;
@@ -187,10 +189,10 @@ export function getSelectedEditorText(ref: React.RefObject<ReactCodeMirrorRef | 
 }
 
 export function replaceEntireEditorContent(
-  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  ref: React.RefObject<ReactCodeMirrorRef | null> | undefined | null,
   text: string,
 ) {
-  const view = ref.current?.view;
+  const view = ref?.current?.view;
   if (!view) return;
   const docLen = view.state.doc.length;
   view.dispatch({
@@ -201,10 +203,10 @@ export function replaceEntireEditorContent(
 }
 
 export function replaceSelectedEditorText(
-  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  ref: React.RefObject<ReactCodeMirrorRef | null> | undefined | null,
   text: string,
 ) {
-  const view = ref.current?.view;
+  const view = ref?.current?.view;
   if (!view) return;
   const docLen = view.state.doc.length;
   const sel = view.state.selection.main;
@@ -218,10 +220,10 @@ export function replaceSelectedEditorText(
 }
 
 export function appendTextToEditor(
-  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  ref: React.RefObject<ReactCodeMirrorRef | null> | undefined | null,
   text: string,
 ) {
-  const view = ref.current?.view;
+  const view = ref?.current?.view;
   if (!view) return;
   const docLen = view.state.doc.length;
   const separator = docLen > 0 ? "\n\n" : "";
@@ -234,10 +236,10 @@ export function appendTextToEditor(
 }
 
 export function prependTextToEditor(
-  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  ref: React.RefObject<ReactCodeMirrorRef | null> | undefined | null,
   text: string,
 ) {
-  const view = ref.current?.view;
+  const view = ref?.current?.view;
   if (!view) return;
   const docLen = view.state.doc.length;
   const separator = docLen > 0 ? "\n\n" : "";
@@ -250,7 +252,7 @@ export function prependTextToEditor(
 }
 
 export function applyGentlePatch(
-  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  ref: React.RefObject<ReactCodeMirrorRef | null> | undefined | null,
   patchedText: string,
   targetScope: "selection" | "note" = "note",
 ) {
@@ -262,10 +264,10 @@ export function applyGentlePatch(
 }
 
 export function openFindAndReplace(
-  ref: React.RefObject<ReactCodeMirrorRef | null>,
+  ref: React.RefObject<ReactCodeMirrorRef | null> | undefined | null,
   options?: { replace?: boolean },
 ) {
-  const view = ref.current?.view;
+  const view = ref?.current?.view;
   if (!view) return;
 
   // Import dynamically or execute command
@@ -280,4 +282,113 @@ export function openFindAndReplace(
     }
   });
 }
+
+export function getSelectedRangeAndText(
+  ref?: React.RefObject<ReactCodeMirrorRef | null>,
+): {
+  from: number;
+  to: number;
+  text: string;
+} | null {
+  const view = ref?.current?.view;
+  if (!view) return null;
+  const sel = view.state.selection.main;
+  const text = view.state.sliceDoc(sel.from, sel.to);
+  return {
+    from: sel.from,
+    to: sel.to,
+    text,
+  };
+}
+
+export function insertWikiLink(
+  ref?: React.RefObject<ReactCodeMirrorRef | null>,
+  options?: {
+    target: string;
+    section?: string;
+    alias?: string;
+    isEmbed?: boolean;
+    replaceRange?: { from: number; to: number };
+  },
+) {
+  const view = ref?.current?.view;
+  if (!view || !options) return;
+
+  const { target, section, alias, isEmbed, replaceRange } = options;
+  const prefix = isEmbed ? "!" : "";
+  const sec = section?.trim() ? `#${section.trim()}` : "";
+  const al = alias?.trim() && alias.trim() !== target.trim() ? `|${alias.trim()}` : "";
+  const insert = `${prefix}[[${target.trim()}${sec}${al}]]`;
+
+  const sel = view.state.selection.main;
+  const from = replaceRange ? replaceRange.from : sel.from;
+  const to = replaceRange ? replaceRange.to : sel.to;
+
+  view.dispatch({
+    changes: { from, to, insert },
+    selection: { anchor: from + insert.length },
+  });
+  view.focus();
+}
+
+export function insertMarkdownLink(
+  ref?: React.RefObject<ReactCodeMirrorRef | null>,
+  options?: {
+    label: string;
+    href: string;
+    isEmbed?: boolean;
+    replaceRange?: { from: number; to: number };
+  },
+) {
+  const view = ref?.current?.view;
+  if (!view || !options) return;
+
+  const { label, href, isEmbed, replaceRange } = options;
+  const prefix = isEmbed ? "!" : "";
+  const insert = `${prefix}[${label.trim()}](${href.trim()})`;
+
+  const sel = view.state.selection.main;
+  const from = replaceRange ? replaceRange.from : sel.from;
+  const to = replaceRange ? replaceRange.to : sel.to;
+
+  view.dispatch({
+    changes: { from, to, insert },
+    selection: { anchor: from + insert.length },
+  });
+  view.focus();
+}
+
+export function unlinkRange(
+  ref?: React.RefObject<ReactCodeMirrorRef | null>,
+  range?: { from: number; to: number; plainText: string },
+) {
+  const view = ref?.current?.view;
+  if (!view || !range) return;
+
+  view.dispatch({
+    changes: { from: range.from, to: range.to, insert: range.plainText },
+    selection: { anchor: range.from + range.plainText.length },
+  });
+  view.focus();
+}
+
+
+export function triggerOpenLinkDialog(
+  ref?: React.RefObject<ReactCodeMirrorRef | null>,
+  options?: { prefilledQuery?: string; replaceRange?: { from: number; to: number } },
+) {
+  const selected = ref ? getSelectedRangeAndText(ref) : null;
+  const query = options?.prefilledQuery ?? selected?.text ?? "";
+  const range = options?.replaceRange ?? (selected && selected.from !== selected.to ? { from: selected.from, to: selected.to } : undefined);
+
+  window.dispatchEvent(
+    new CustomEvent("inkest:open-insert-link-dialog", {
+      detail: {
+        prefilledQuery: query,
+        replaceRange: range,
+      },
+    }),
+  );
+}
+
 

@@ -8,8 +8,10 @@ import { MermaidRenderer } from "@/components/markdown/mermaid-renderer";
 import {
   getHeadingAnchorId,
   resolveNoteHref,
+  parseWikiToken,
   type WikiLinkTarget,
 } from "@/lib/markdown/wiki";
+
 import type { DocumentBlock } from "@/lib/document-engine/types";
 
 interface Props {
@@ -332,19 +334,21 @@ function renderInlineMarkdown(
         </em>,
       );
     } else if ((token.startsWith("[[") || token.startsWith("![[")) && token.endsWith("]]")) {
-      const isEmbed = token.startsWith("!");
-      const target = isEmbed ? token.slice(3, -2).trim() : token.slice(2, -2).trim();
+      const parsed = parseWikiToken(token);
+      const isEmbed = parsed.isEmbed;
+      const target = parsed.section ? `${parsed.targetName}#${parsed.section}` : parsed.targetName;
       const href = resolveNoteHref(target, linkableNotes);
-      const isUnresolved = !href || href === target;
-      const targetUrl = isUnresolved ? `/notes/new?title=${encodeURIComponent(target)}` : href;
+      const isUnresolved = !href || href === target || href === parsed.targetName;
+      const targetUrl = isUnresolved ? `/notes/new?title=${encodeURIComponent(parsed.targetName)}` : href;
+      const label = parsed.alias || target;
 
-      if (isEmbed && href?.startsWith("/api/attachments/") && /\.(png|jpe?g|webp|gif|svg|avif)$/i.test(target)) {
+      if (isEmbed && href?.startsWith("/api/attachments/") && /\.(png|jpe?g|webp|gif|svg|avif)$/i.test(parsed.targetName)) {
         parts.push(
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
             key={keyIdx}
             src={href}
-            alt={target}
+            alt={label}
             className="my-2 max-h-96 max-w-full rounded-xl border border-border/60 shadow-xs"
             loading="lazy"
           />,
@@ -358,7 +362,7 @@ function renderInlineMarkdown(
             rel="noopener noreferrer"
             className="text-primary underline underline-offset-3 hover:text-primary/80 inline-flex items-center gap-1 font-medium"
           >
-            {isEmbed ? `📎 ${target}` : target}
+            {isEmbed ? `📎 ${label}` : label}
           </a>,
         );
       } else if (isUnresolved) {
@@ -368,7 +372,7 @@ function renderInlineMarkdown(
             href={targetUrl}
             className="text-amber-500 hover:text-amber-600 underline decoration-dashed underline-offset-3 font-medium transition-colors"
           >
-            {target} ↗
+            {label} ↗
           </Link>,
         );
       } else if (href?.startsWith("/")) {
@@ -378,7 +382,7 @@ function renderInlineMarkdown(
             href={href}
             className="text-primary hover:text-primary/80 underline underline-offset-3 font-medium transition-colors"
           >
-            {isEmbed && href.startsWith("/projects/") ? `📁 ${target}` : isEmbed ? `📝 ${target}` : target}
+            {isEmbed && href.startsWith("/projects/") ? `📁 ${label}` : isEmbed ? `📝 ${label}` : label}
           </Link>,
         );
       } else {
@@ -390,7 +394,7 @@ function renderInlineMarkdown(
             rel="noopener noreferrer"
             className="text-primary underline underline-offset-3 hover:text-primary/80"
           >
-            {target}
+            {label}
           </a>,
         );
       }

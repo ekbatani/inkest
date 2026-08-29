@@ -22,7 +22,9 @@ import {
   MoreHorizontal,
   History,
   Search,
+  Link2,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,8 +68,10 @@ import type { GoogleCalendarEvent } from "@/server/db/schema";
 import {
   applyMarkdownFormat,
   openFindAndReplace,
+  triggerOpenLinkDialog,
   type MarkdownFormat,
 } from "@/components/editor/markdown-editor-utils";
+
 import { DocumentPersistenceManager } from "@/lib/document-engine/storage/persistence-manager";
 
 // Dynamically imported so CodeMirror and the react-markdown preview
@@ -784,9 +788,26 @@ export function NoteEditor({
 
           {/* Insert Tools */}
           <div className="flex items-center gap-0.5">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => triggerOpenLinkDialog(editorRef)}
+                    aria-label="Insert link"
+                    className="text-muted-foreground hover:text-foreground"
+                  />
+                }
+              >
+                <Link2 className="size-4" />
+              </TooltipTrigger>
+              <TooltipContent>Insert link (⌘K / Ctrl+K)</TooltipContent>
+            </Tooltip>
             <AttachmentUploadButton editorRef={editorRef} iconOnly />
             <SpeechToTextButton editorRef={editorRef} iconOnly />
           </div>
+
 
           <div className="hidden h-4 w-px bg-border/60 sm:block" />
 

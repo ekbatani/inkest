@@ -70,6 +70,12 @@ database.
 - Validate external and form input with Zod at the boundary.
 - AI is opt-in per action. Persist action metadata for traceability, and treat
   provider keys, OAuth tokens, and Telegram secrets as sensitive configuration.
+- Deployment environment isolation: Inkest defaults to Self-Hosted mode where
+  administrative cross-user management is strictly prohibited, inaccessible (`/admin/users` returns 404),
+  and unrendered in navigation. In Cloud mode (`INKEST_DEPLOYMENT_ENV=cloud`), administrative
+  privileges are strictly restricted to authenticated, unsuspended administrators defined by database
+  role or `ADMIN_EMAILS` whitelist. Cross-user mutations enforce self-protection invariants.
+
 
 ## Content and AI contracts
 

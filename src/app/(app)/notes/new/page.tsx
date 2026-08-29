@@ -1,24 +1,26 @@
 import { createNote } from "@/server/notes/service";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export default async function NewNotePage({
   searchParams,
 }: {
-  searchParams: Promise<{ parent?: string; as?: string }>;
+  searchParams: Promise<{ parent?: string; as?: string; title?: string }>;
 }) {
-  const { parent, as } = await searchParams;
+  const { parent, as, title } = await searchParams;
   const parentId =
     parent && typeof parent === "string" ? parent : null;
   const isTask = as === "task";
   const isProject = as === "project";
+  const defaultTitle = isProject ? "New subproject" : isTask ? "New task" : "Untitled";
+  const noteTitle =
+    typeof title === "string" && title.trim() ? title.trim() : defaultTitle;
+
   const note = await createNote({
-    title: isProject ? "New subproject" : isTask ? "New task" : "Untitled",
+    title: noteTitle,
     parentId,
     type: isProject ? "project" : "note",
     status: isTask ? "todo" : "none",
   });
-  revalidatePath("/", "layout");
   redirect(isProject ? `/projects/${note.id}` : `/notes/${note.id}?focus=title`);
 }
 

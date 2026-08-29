@@ -38,6 +38,12 @@ the first `id:base64-32-byte-key` entry encrypts new values and subsequent
 entries allow a staged rotation. The complete rotation, migration, and rollback
 procedure is documented in [Architecture](ARCHITECTURE.md#stored-credential-encryption-and-rotation).
 
+Set `INKEST_DEPLOYMENT_ENV=cloud` (or `INKEST_CLOUD=true`) only for managed multi-tenant
+cloud instances where administrative user management is required. Configure `ADMIN_EMAILS`
+with a comma-separated list of administrative email addresses for initial admin bootstrapping.
+Self-hosted deployments leave these unset (defaulting to self-hosted isolation).
+
+
 ## Verification
 
 Run the smallest relevant checks before handing off a change:

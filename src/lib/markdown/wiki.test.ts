@@ -3,6 +3,8 @@ import {
   transformWikiLinks,
   resolveNoteHref,
   getHeadingAnchorId,
+  parseWikiToken,
+  formatWikiLink,
   type WikiLinkTarget,
 } from "./wiki";
 
@@ -84,9 +86,24 @@ Unresolved: [[Future Milestone]].
     );
   });
 
+  it("handles aliases in wiki links ([[Target|Alias]] and [[Target#Section|Alias]])", () => {
+    const input = `
+See [[System Architecture|Arch Specs]] and [[Q3 Product Launch#Roadmap|Q3 Milestone]].
+Also check [[Technical Spec.pdf|Download Technical Spec]].
+Unresolved: [[Missing Note|Placeholder Name]].
+`;
+    const transformed = transformWikiLinks(input, targets);
+
+    expect(transformed).toContain("[Arch Specs](/notes/note-123)");
+    expect(transformed).toContain("[Q3 Milestone](/projects/proj-456#roadmap)");
+    expect(transformed).toContain("[Download Technical Spec](/api/attachments/asset-102)");
+    expect(transformed).toContain("[Placeholder Name ↗](/notes/new?title=Missing%20Note)");
+  });
+
   it("handles asset and note embeds (![[...]])", () => {
     const input = `
 ![[Architecture Diagram.png]]
+![[Architecture Diagram.png|System Topology Diagram]]
 ![[Technical Spec.pdf]]
 ![[System Architecture]]
 ![[Q3 Product Launch]]
@@ -94,6 +111,7 @@ Unresolved: [[Future Milestone]].
     const transformed = transformWikiLinks(input, targets);
 
     expect(transformed).toContain("![Architecture Diagram.png](/api/attachments/asset-101)");
+    expect(transformed).toContain("![System Topology Diagram](/api/attachments/asset-101)");
     expect(transformed).toContain("[📎 Technical Spec.pdf](/api/attachments/asset-102)");
     expect(transformed).toContain("[📝 System Architecture](/notes/note-123)");
     expect(transformed).toContain("[📁 Q3 Product Launch](/projects/proj-456)");
@@ -111,6 +129,46 @@ Unresolved: [[Future Milestone]].
     expect(transformed).toContain("[System Architecture](/notes/note-123)");
   });
 
+  it("parses wiki tokens accurately with parseWikiToken", () => {
+    expect(parseWikiToken("[[Note]]")).toEqual({
+      targetName: "Note",
+      section: "",
+      alias: "",
+      isEmbed: false,
+    });
+    expect(parseWikiToken("[[Note|My Custom Alias]]")).toEqual({
+      targetName: "Note",
+      section: "",
+      alias: "My Custom Alias",
+      isEmbed: false,
+    });
+    expect(parseWikiToken("[[Note#Database|DB Section]]")).toEqual({
+      targetName: "Note",
+      section: "Database",
+      alias: "DB Section",
+      isEmbed: false,
+    });
+    expect(parseWikiToken("![[image.png|Alt Text]]")).toEqual({
+      targetName: "image.png",
+      section: "",
+      alias: "Alt Text",
+      isEmbed: true,
+    });
+  });
+
+  it("formats wiki links accurately with formatWikiLink", () => {
+    expect(formatWikiLink({ target: "My Note" })).toBe("[[My Note]]");
+    expect(formatWikiLink({ target: "My Note", alias: "Custom Label" })).toBe(
+      "[[My Note|Custom Label]]",
+    );
+    expect(
+      formatWikiLink({ target: "My Note", section: "Architecture", alias: "Arch" }),
+    ).toBe("[[My Note#Architecture|Arch]]");
+    expect(
+      formatWikiLink({ target: "diagram.png", alias: "Diagram", isEmbed: true }),
+    ).toBe("![[diagram.png|Diagram]]");
+  });
+
   it("generates consistent heading anchor IDs", () => {
     expect(getHeadingAnchorId("My Heading")).toBe("my-heading");
     expect(getHeadingAnchorId("Heading with **bold** and `code`")).toBe(
@@ -118,3 +176,4 @@ Unresolved: [[Future Milestone]].
     );
   });
 });
+

@@ -1,6 +1,6 @@
 import { slugify } from "@/lib/slug";
 
-// Transform `[[Wiki Link]]`, `[[Wiki Link#Section]]`, and `![[Asset Embed]]` tokens
+// Transform `[[Wiki Link]]`, `[[Wiki Link|Alias]]`, `[[Wiki Link#Section|Alias]]`, and `![[Asset Embed]]` tokens
 // in Markdown into real links to internal notes, projects, or assets.
 
 export type WikiLinkTarget = {
@@ -10,6 +10,10 @@ export type WikiLinkTarget = {
   type?: "note" | "daily" | "project" | "asset" | string;
   mimeType?: string;
   url?: string;
+  sizeBytes?: number;
+  updatedAt?: Date | string;
+  status?: string;
+  excerpt?: string;
 };
 
 export type NormalizedTarget = {
@@ -21,6 +25,10 @@ export type NormalizedTarget = {
   type?: string;
   mimeType?: string;
   url?: string;
+  sizeBytes?: number;
+  updatedAt?: Date | string;
+  status?: string;
+  excerpt?: string;
 };
 
 export function normalizeTargets(map: WikiLinkTarget[]): NormalizedTarget[] {
@@ -33,7 +41,67 @@ export function normalizeTargets(map: WikiLinkTarget[]): NormalizedTarget[] {
     type: t.type,
     mimeType: t.mimeType,
     url: t.url,
+    sizeBytes: t.sizeBytes,
+    updatedAt: t.updatedAt,
+    status: t.status,
+    excerpt: t.excerpt,
   }));
+}
+
+export type ParsedWikiToken = {
+  targetName: string;
+  section: string;
+  alias: string;
+  isEmbed: boolean;
+};
+
+export function parseWikiToken(raw: string): ParsedWikiToken {
+  let isEmbed = false;
+  let text = (raw ?? "").trim();
+  if (text.startsWith("!")) {
+    isEmbed = true;
+    text = text.slice(1).trim();
+  }
+  if (text.startsWith("[[") && text.endsWith("]]")) {
+    text = text.slice(2, -2).trim();
+  }
+
+  // Handle pipe for alias: [[Target#Section|Alias]]
+  const pipeIndex = text.indexOf("|");
+  let targetAndSection = text;
+  let alias = "";
+  if (pipeIndex !== -1) {
+    targetAndSection = text.slice(0, pipeIndex).trim();
+    alias = text.slice(pipeIndex + 1).trim();
+  }
+
+  // Handle hash for section heading: [[Target#Section]]
+  const hashIndex = targetAndSection.indexOf("#");
+  let targetName = targetAndSection;
+  let section = "";
+  if (hashIndex !== -1) {
+    targetName = targetAndSection.slice(0, hashIndex).trim();
+    section = targetAndSection.slice(hashIndex + 1).trim();
+  }
+
+  return {
+    targetName,
+    section,
+    alias,
+    isEmbed,
+  };
+}
+
+export function formatWikiLink(options: {
+  target: string;
+  section?: string;
+  alias?: string;
+  isEmbed?: boolean;
+}): string {
+  const prefix = options.isEmbed ? "!" : "";
+  const sec = options.section?.trim() ? `#${options.section.trim()}` : "";
+  const al = options.alias?.trim() && options.alias.trim() !== options.target.trim() ? `|${options.alias.trim()}` : "";
+  return `${prefix}[[${options.target.trim()}${sec}${al}]]`;
 }
 
 export function resolveTarget(
@@ -102,16 +170,11 @@ export function resolveTargetHref(
 }
 
 export function splitLinkedTarget(input: string) {
-  const trimmed = input.trim();
-  const hashIndex = trimmed.indexOf("#");
-
-  if (hashIndex === -1) {
-    return { name: trimmed, section: "" };
-  }
-
+  const parsed = parseWikiToken(input);
   return {
-    name: trimmed.slice(0, hashIndex).trim(),
-    section: trimmed.slice(hashIndex + 1).trim(),
+    name: parsed.targetName,
+    section: parsed.section,
+    alias: parsed.alias,
   };
 }
 
@@ -144,8 +207,8 @@ export function resolveNoteHref(input: string, targets: WikiLinkTarget[]): strin
     return trimmed;
   }
 
-  const { name, section } = splitLinkedTarget(trimmed);
-  const target = resolveTarget(name, normalizeTargets(targets));
+  const { targetName, section } = parseWikiToken(trimmed);
+  const target = resolveTarget(targetName, normalizeTargets(targets));
 
   if (!target) return trimmed;
 
@@ -170,12 +233,16 @@ export function transformWikiLinks(
       return line;
     }
     if (inFence) return line;
-    return line.replace(WIKI_RE, (whole, isEmbed: string, inner: string) => {
+    return line.replace(WIKI_RE, (whole, isEmbedStr: string, inner: string) => {
       const trimmed = (inner ?? "").trim();
       if (!trimmed) return whole;
-      const { name, section } = splitLinkedTarget(trimmed);
+
+      const isEmbed = Boolean(isEmbedStr);
+      const { targetName, section, alias } = parseWikiToken(trimmed);
+      const name = targetName;
       const target = resolveTarget(name, normalized);
-      const label = section ? `${name}#${section}` : name;
+      const defaultLabel = section ? `${name}#${section}` : name;
+      const label = alias || defaultLabel;
 
       if (!target) {
         if (isEmbed) {
@@ -188,10 +255,10 @@ export function transformWikiLinks(
 
       if (isEmbed) {
         if (target.type === "asset" && isImageAsset(target)) {
-          return `![${name}](${href})`;
+          return `![${label}](${href})`;
         }
         if (target.type === "asset") {
-          return `[📎 ${name}](${href})`;
+          return `[📎 ${label}](${href})`;
         }
         if (target.type === "project") {
           return `[📁 ${label}](${href})`;
@@ -204,4 +271,5 @@ export function transformWikiLinks(
   });
   return out.join("\n");
 }
+
 

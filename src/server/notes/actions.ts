@@ -163,3 +163,39 @@ export async function listRecentNotesAction(): Promise<NoteSearchHit[]> {
     updatedAt: n.updatedAt,
   }));
 }
+
+export async function getLinkableTargetsAction(): Promise<import("@/lib/markdown/wiki").WikiLinkTarget[]> {
+  const { listNotes } = await import("./service");
+  const { listAttachmentsForUser } = await import("@/server/attachments/service");
+  const [notes, attachments] = await Promise.all([
+    listNotes({ limit: 1000 }),
+    listAttachmentsForUser(250),
+  ]);
+
+  return [
+    ...notes.map((x) => ({
+      id: x.id,
+      slug: x.slug,
+      title: x.title,
+      type: x.type as "note" | "daily" | "project",
+      status: x.status,
+      updatedAt: x.updatedAt,
+      excerpt: (x.excerpt || x.contentMd || "")
+        .replace(/[#*`>\-\[\]()!]/g, "")
+        .replace(/\n+/g, " ")
+        .trim()
+        .slice(0, 100),
+    })),
+    ...attachments.map((a) => ({
+      id: a.id,
+      slug: a.fileName,
+      title: a.originalName,
+      type: "asset" as const,
+      mimeType: a.mimeType,
+      sizeBytes: a.sizeBytes,
+      updatedAt: a.createdAt,
+      url: `/api/attachments/${a.id}`,
+    })),
+  ];
+}
+

@@ -156,7 +156,11 @@ export function Topbar({
         </div>
       </header>
 
-      <CommandMenu open={commandOpen} onOpenChange={setCommandOpen} />
+      <CommandMenu
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        isAdmin={isAdmin}
+      />
     </>
   );
 }

@@ -9,6 +9,7 @@ import {
   Heading2,
   Highlighter,
   Italic,
+  Link2,
   List,
   ListOrdered,
   MessageSquarePlus,
@@ -38,6 +39,7 @@ import {
 import {
   applyMarkdownFormat,
   openFindAndReplace,
+  triggerOpenLinkDialog,
   type MarkdownFormat,
 } from "@/components/editor/markdown-editor-utils";
 import { cn } from "@/lib/utils";
@@ -51,6 +53,11 @@ type Props = {
 export function MarkdownFormatToolbar({ editorRef, className, onAction }: Props) {
   const apply = (format: MarkdownFormat) => {
     applyMarkdownFormat(editorRef, format);
+    onAction?.();
+  };
+
+  const openLinkDialog = () => {
+    triggerOpenLinkDialog(editorRef);
     onAction?.();
   };
 
@@ -69,6 +76,7 @@ export function MarkdownFormatToolbar({ editorRef, className, onAction }: Props)
     window.dispatchEvent(new CustomEvent("inkest:ask-ai"));
     onAction?.();
   };
+
 
   return (
     <div
@@ -139,6 +147,9 @@ export function MarkdownFormatToolbar({ editorRef, className, onAction }: Props)
       <ToolButton label="Comment" onClick={addComment}>
         <MessageSquarePlus className="size-3.5" />
       </ToolButton>
+      <ToolButton label="Link (⌘K / Ctrl+K)" onClick={openLinkDialog}>
+        <Link2 className="size-3.5" />
+      </ToolButton>
 
       <ToolButton
         label="Find and replace (⌘F)"
@@ -149,6 +160,7 @@ export function MarkdownFormatToolbar({ editorRef, className, onAction }: Props)
       >
         <Search className="size-3.5" />
       </ToolButton>
+
 
       <div className="mx-0.5 h-4 w-px bg-border/60" />
 
