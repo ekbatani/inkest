@@ -6,6 +6,7 @@ import { getAiProvider } from "./provider";
 import { getUserSettings } from "@/server/users/settings-service";
 import { randomId } from "@/lib/slug";
 import { type CitationItem, getGroundedContext, persistCitations } from "./retrieval-service";
+import { stripReasoningTags } from "./json-engine";
 
 export type AiActionResult<T = string> =
   | {
@@ -133,10 +134,11 @@ export async function runTextAction(args: {
   const eventId = randomId();
 
   try {
-    const output = await provider.complete(
+    const rawOutput = await provider.complete(
       limitPromptToInputBudget(finalPrompt, settings.ai?.maxInputTokens ?? 8_000),
       args.systemPrompt,
     );
+    const output = stripReasoningTags(rawOutput);
 
     await db.insert(schema.aiEvents).values({
       id: eventId,
@@ -231,11 +233,24 @@ export async function runJsonAction<T>(args: {
   const eventId = randomId();
 
   try {
-    const raw = await provider.completeJson(
-      limitPromptToInputBudget(finalPrompt, settings.ai?.maxInputTokens ?? 8_000),
-      args.systemPrompt,
+    const promptWithBudget = limitPromptToInputBudget(
+      finalPrompt,
+      settings.ai?.maxInputTokens ?? 8_000,
     );
-    const parsed = args.parse(raw);
+
+    const raw = await provider.completeJson(promptWithBudget, args.systemPrompt);
+    let parsed = args.parse(raw);
+
+    // Fallback: If completeJson produced output that failed parsing, attempt standard complete
+    if (parsed === null) {
+      try {
+        const rawFallback = await provider.complete(promptWithBudget, args.systemPrompt);
+        parsed = args.parse(rawFallback);
+      } catch {
+        // Keep parsed as null
+      }
+    }
+
     if (parsed === null) {
       return { ok: false, error: "AI returned invalid JSON." };
     }

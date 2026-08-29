@@ -3,6 +3,7 @@ import {
   buildAiSystemPrompt,
   buildAiUserPrompt,
   createSchemaParser,
+  normalizeQuickCaptureNote,
   QuickCaptureNoteSchema,
 } from "./specs";
 
@@ -16,6 +17,6 @@ export async function createNoteFromPrompt(prompt: string) {
     promptToModel: buildAiUserPrompt("create-note-from-prompt", {
       prompt: trimmedPrompt,
     }),
-    parse: createSchemaParser(QuickCaptureNoteSchema),
+    parse: createSchemaParser(QuickCaptureNoteSchema, normalizeQuickCaptureNote),
   });
 }

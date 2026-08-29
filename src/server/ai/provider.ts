@@ -169,17 +169,48 @@ export async function getAiProvider(userId?: string): Promise<AiProvider | null>
       return response.choices[0]?.message?.content ?? "";
     },
     completeJson: async (prompt: string, systemPrompt: string) => {
-      const response = await client.chat.completions.create({
-        model,
-        messages: [
-          { role: "system", content: applyUserControls(systemPrompt) },
-          { role: "user", content: prompt },
-        ],
-        temperature,
-        max_completion_tokens: maxOutputTokens,
-        response_format: { type: "json_object" },
-      });
-      return response.choices[0]?.message?.content ?? "";
+      try {
+        const response = await client.chat.completions.create({
+          model,
+          messages: [
+            { role: "system", content: applyUserControls(systemPrompt) },
+            { role: "user", content: prompt },
+          ],
+          temperature,
+          max_completion_tokens: maxOutputTokens,
+          response_format: { type: "json_object" },
+        });
+        return response.choices[0]?.message?.content ?? "";
+      } catch (err) {
+        // If the provider rejects response_format (e.g. 400/422 or "response_format" not supported),
+        // fallback to standard completion where our json-engine will extract and repair the JSON.
+        const errorMessage = err instanceof Error ? err.message.toLowerCase() : "";
+        const isFormatError =
+          errorMessage.includes("response_format") ||
+          errorMessage.includes("json_object") ||
+          errorMessage.includes("unsupported parameter") ||
+          errorMessage.includes("schema") ||
+          errorMessage.includes("400") ||
+          errorMessage.includes("422");
+
+        if (isFormatError) {
+          try {
+            const fallbackResponse = await client.chat.completions.create({
+              model,
+              messages: [
+                { role: "system", content: applyUserControls(systemPrompt) },
+                { role: "user", content: prompt },
+              ],
+              temperature,
+              max_completion_tokens: maxOutputTokens,
+            });
+            return fallbackResponse.choices[0]?.message?.content ?? "";
+          } catch {
+            throw err;
+          }
+        }
+        throw err;
+      }
     },
     embed: async (texts: string[]): Promise<number[][]> => {
       if (texts.length === 0) return [];

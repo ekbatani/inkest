@@ -4,6 +4,7 @@ import {
   buildAiUserPrompt,
   createSchemaParser,
   MermaidSchema,
+  normalizeMermaid,
   renderMermaidMarkdown,
 } from "./specs";
 
@@ -28,7 +29,7 @@ export async function generateMermaid(args: {
       selectedText: args.selectedText,
       promptHint: args.promptHint,
     }),
-    parse: createSchemaParser(MermaidSchema),
+    parse: createSchemaParser(MermaidSchema, normalizeMermaid),
   });
 
   return result.ok

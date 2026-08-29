@@ -1,8 +1,10 @@
+import { z } from "zod";
 import { getAiProvider } from "@/server/ai/provider";
 import { AGENT_TOOLS, executeAgentTool } from "./tools";
 import { randomId } from "@/lib/slug";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
+import { parseAndValidateAiJson } from "@/server/ai/json-engine";
 
 export interface AgentStepTrace {
   step: number;
@@ -31,13 +33,15 @@ export interface AgentLoopResult {
   provider: string;
 }
 
-interface StepDecision {
-  thought: string;
-  tool?: string;
-  arguments?: Record<string, unknown>;
-  isComplete: boolean;
-  finalAnswer?: string;
-}
+const StepDecisionSchema = z.object({
+  thought: z.string().default("Analyzing workspace context..."),
+  tool: z.string().nullable().optional(),
+  arguments: z.record(z.string(), z.unknown()).optional(),
+  isComplete: z.boolean().default(false),
+  finalAnswer: z.string().optional(),
+});
+
+type StepDecision = z.infer<typeof StepDecisionSchema>;
 
 export async function runAutonomousAgentLoop(args: {
   noteId?: string;
@@ -120,29 +124,31 @@ ${conversationHistory}
 
 Decide your next action. Respond ONLY with the JSON schema described.`;
 
-    let decision: StepDecision;
+    let decision: StepDecision | null = null;
     try {
       const rawJson = await provider.completeJson(prompt, systemPrompt);
-      decision = JSON.parse(rawJson) as StepDecision;
-    } catch (parseError) {
-      // Fallback: try raw completion and attempt JSON extraction
+      decision = parseAndValidateAiJson(rawJson, StepDecisionSchema);
+    } catch {
+      // Fallback below
+    }
+
+    if (!decision) {
       try {
         const rawText = await provider.complete(prompt, systemPrompt);
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          decision = JSON.parse(jsonMatch[0]) as StepDecision;
-        } else {
-          throw parseError;
-        }
+        decision = parseAndValidateAiJson(rawText, StepDecisionSchema);
       } catch {
-        steps.push({
-          step: stepIndex,
-          thought: "Failed to parse model response into structured action.",
-          status: "error",
-          timestamp: new Date().toISOString(),
-        });
-        break;
+        // Fallback failed
       }
+    }
+
+    if (!decision) {
+      steps.push({
+        step: stepIndex,
+        thought: "Failed to parse model response into structured action.",
+        status: "error",
+        timestamp: new Date().toISOString(),
+      });
+      break;
     }
 
     const currentStep: AgentStepTrace = {

@@ -4,6 +4,7 @@ import {
   buildAiUserPrompt,
   createSchemaParser,
   ExtractTasksSchema,
+  normalizeExtractTasks,
 } from "./specs";
 import { getUserSettings } from "@/server/users/settings-service";
 
@@ -41,6 +42,6 @@ export async function extractTasks(args: {
       timingPrompt,
       promptHint: args.promptHint?.trim() || undefined,
     }),
-    parse: createSchemaParser(ExtractTasksSchema),
+    parse: createSchemaParser(ExtractTasksSchema, normalizeExtractTasks),
   });
 }

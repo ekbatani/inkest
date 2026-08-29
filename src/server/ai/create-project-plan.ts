@@ -3,6 +3,7 @@ import {
   buildAiSystemPrompt,
   buildAiUserPrompt,
   createSchemaParser,
+  normalizeProjectPlan,
   ProjectPlanSchema,
   renderProjectPlanMarkdown,
 } from "./specs";
@@ -36,7 +37,7 @@ export async function createProjectPlan(args: {
       timingPrompt,
       promptHint: args.promptHint?.trim() || undefined,
     }),
-    parse: createSchemaParser(ProjectPlanSchema),
+    parse: createSchemaParser(ProjectPlanSchema, normalizeProjectPlan),
   });
 
   return result.ok
