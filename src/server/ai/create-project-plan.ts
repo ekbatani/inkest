@@ -30,6 +30,8 @@ export async function createProjectPlan(args: {
     action: "create-project-plan",
     systemPrompt: buildAiSystemPrompt("create-project-plan"),
     inputForAudit: full,
+    // Grounding pulls in linked notes so plans can reference existing material.
+    enableGrounding: true,
     promptToModel: buildAiUserPrompt("create-project-plan", {
       noteTitle: args.noteTitle,
       noteContent: args.noteContent,

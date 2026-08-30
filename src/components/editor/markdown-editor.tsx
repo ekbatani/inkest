@@ -7,11 +7,9 @@ import { css } from "@codemirror/lang-css";
 import { html } from "@codemirror/lang-html";
 import { javascript } from "@codemirror/lang-javascript";
 import {
-  ensureSyntaxTree,
   HighlightStyle,
   LanguageDescription,
   syntaxHighlighting,
-  syntaxTree,
 } from "@codemirror/language";
 import {
   Decoration,
@@ -34,6 +32,7 @@ import {
   type WikiLinkTarget,
 } from "@/lib/markdown/wiki";
 import { applyMarkdownFormatToView } from "@/components/editor/markdown-editor-utils";
+import { findFencedBlocks } from "@/components/editor/fenced-blocks";
 import { InsertLinkDialog } from "@/components/editor/insert-link-dialog";
 import {
   LinkPreviewPopover,
@@ -574,30 +573,14 @@ function blockContainingLine(
 }
 
 function findVisibleFencedBlocks(view: EditorView) {
-  const blocks: { from: number; to: number }[] = [];
   const docLen = view.state.doc.length;
-  if (docLen === 0) return blocks;
-  const rawEnd = view.visibleRanges.at(-1)?.to ?? view.viewport.to;
-  const visibleEnd = Math.min(Math.max(0, rawEnd), docLen);
-  // The language parser can still be catching up when the editor first mounts.
-  // Resolve the visible tree now so an initially visible fenced block gets its
-  // non-blocking surface decoration without waiting for a later transaction.
-  const tree = ensureSyntaxTree(view.state, visibleEnd, 20) ?? syntaxTree(view.state);
-
-  tree.iterate({
-    enter: (node) => {
-      if (node.name !== "FencedCode") return;
-      if (
-        view.visibleRanges.some(
-          (range) => node.from <= Math.min(range.to, docLen) && node.to >= Math.min(range.from, docLen),
-        )
-      ) {
-        blocks.push({ from: node.from, to: node.to });
-      }
-    },
-  });
-
-  return blocks;
+  if (docLen === 0) return [];
+  const blocks = findFencedBlocks(view.state.doc);
+  return blocks.filter((block) =>
+    view.visibleRanges.some(
+      (range) => block.from <= Math.min(range.to, docLen) && block.to >= Math.min(range.from, docLen),
+    ),
+  );
 }
 
 function buildLineDecorations(view: EditorView) {

@@ -42,15 +42,26 @@ It is designed to be self-hosted, portable, and pleasant to use every day.
 - Per-project sharing: the owner adds other accounts by email as read-only
   viewers or editors. Sharing covers the project's whole subtree, including
   attached files; members see the project in their own Projects list.
-- Markdown-checkbox synchronization, manual tasks, and a kanban view.
+- Markdown-checkbox synchronization, manual tasks, a kanban view for task
+  notes, and a lightweight per-project checklist. Checking a box always
+  completes a task; workflow statuses set in the planner (`doing`, `canceled`)
+  are preserved when a box is unchecked.
 - Dashboard views for recent notes, projects, and upcoming tasks.
+- Planner buckets for overdue, today, upcoming, and unplanned tasks, with an
+  actionable weekly review and an optional AI recap of the week.
+- Opt-in morning briefing notification (in-app and Telegram) summarizing
+  overdue tasks, today's tasks, and project deadlines; AI-polished when a
+  provider is configured, plain digest otherwise.
 - Calendar page and optional Google Calendar connection.
 
 ### AI and notifications
 
 - User-invoked actions: summarize, improve writing, extract tasks, create a
   project plan, generate Mermaid, explain a selection, and translate a
-  selection.
+  selection. Extracted tasks are reviewed in a dialog and can be saved into
+  any project (or a new project/subproject) with chosen priorities and dates.
+- Chat assistant grounded in workspace retrieval; on project pages it also
+  receives the project's live checklist, task board, and subproject state.
 - Configurable OpenAI-compatible providers, including OpenAI, OpenRouter,
   opencode, NVIDIA Build, Ollama, and a custom endpoint.
 - In-product setup help and optional Telegram linking/notifications.

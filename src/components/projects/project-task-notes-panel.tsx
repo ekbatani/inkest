@@ -211,23 +211,41 @@ function TaskNotesList({
               </div>
             </div>
             {canEdit && (
-              <Select
-                value={taskNote.status}
-                onValueChange={(value) =>
-                  onUpdate(taskNote.id, { status: value as TaskStatus })
-                }
-              >
-                <SelectTrigger size="sm" className="w-[9rem]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_COLUMNS.map((column) => (
-                    <SelectItem key={column.id} value={column.id}>
-                      {column.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={taskNote.priority}
+                  onValueChange={(value) =>
+                    onUpdate(taskNote.id, { priority: value as TaskNote["priority"] })
+                  }
+                >
+                  <SelectTrigger size="sm" className="w-[8rem]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No priority</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={taskNote.status}
+                  onValueChange={(value) =>
+                    onUpdate(taskNote.id, { status: value as TaskStatus })
+                  }
+                >
+                  <SelectTrigger size="sm" className="w-[9rem]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_COLUMNS.map((column) => (
+                      <SelectItem key={column.id} value={column.id}>
+                        {column.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
           </div>
         </li>
@@ -408,18 +426,25 @@ function TaskNoteCard({
       </div>
 
       <div className="ml-6 flex flex-wrap items-center gap-2">
-        {taskNote.priority !== "none" && (
-          <div
-            className="inline-flex items-center gap-1 text-[10px]"
-            style={{ color: PRIORITY_COLORS[taskNote.priority] }}
-          >
-            <span
-              className="size-1.5 rounded-full"
-              style={{ backgroundColor: PRIORITY_COLORS[taskNote.priority] }}
-            />
-            {taskNote.priority}
-          </div>
-        )}
+        <select
+          aria-label={`Priority for ${taskNote.title || "task"}`}
+          value={taskNote.priority}
+          onChange={(event) =>
+            onUpdate(taskNote.id, { priority: event.target.value as TaskNote["priority"] })
+          }
+          // Native select: Radix portals fight the card's drag listeners, and
+          // stopping propagation keeps dnd-kit from hijacking the interaction.
+          onPointerDown={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+          className="h-5 rounded border bg-background px-1 text-[10px]"
+          style={{ color: PRIORITY_COLORS[taskNote.priority] }}
+        >
+          <option value="none">No priority</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
         {taskNote.dueDate && (
           <Badge variant="outline" className="text-[10px]">
             {formatRelativeDate(taskNote.dueDate)}

@@ -2,11 +2,29 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { CheckCircle2, Sparkles, ArrowRight, ArrowLeft, Trophy, Check } from "lucide-react";
+import dynamic from "next/dynamic";
+import {
+  CheckCircle2,
+  Sparkles,
+  ArrowRight,
+  ArrowLeft,
+  Trophy,
+  Check,
+  ListTodo,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { PlannerData } from "@/server/tasks/planner-service";
 import { updateTaskAction } from "@/server/tasks/actions";
+import { summarizeWeeklyReviewAction } from "@/server/ai/review-actions";
+
+// The recap is rendered only on demand; keep the markdown stack out of the
+// review page's initial bundle.
+const MarkdownPreview = dynamic(
+  () => import("@/components/markdown/markdown-preview").then((m) => m.MarkdownPreview),
+  { ssr: false },
+);
 
 interface Props {
   data: PlannerData;
@@ -15,9 +33,15 @@ interface Props {
 export function ReviewWizard({ data }: Props) {
   const [step, setStep] = React.useState<"overdue" | "unplanned" | "wins" | "complete">("overdue");
   const [overdueList, setOverdueList] = React.useState(data.overdue);
-  const unplannedList = data.unplanned;
+  const [unplannedList, setUnplannedList] = React.useState(data.unplanned);
+  const [recapStatus, setRecapStatus] = React.useState<"idle" | "loading" | "done" | "error">("idle");
+  const [recapText, setRecapText] = React.useState("");
+  const [recapError, setRecapError] = React.useState("");
 
-  const handleResolveOverdue = async (taskId: string, action: "done" | "today" | "next_week") => {
+  const resolveTask = async (
+    taskId: string,
+    action: "done" | "today" | "next_week",
+  ) => {
     try {
       if (action === "done") {
         await updateTaskAction(taskId, { status: "done" });
@@ -28,10 +52,31 @@ export function ReviewWizard({ data }: Props) {
         nextWeek.setDate(nextWeek.getDate() + 7);
         await updateTaskAction(taskId, { dueDate: nextWeek });
       }
-      setOverdueList((prev) => prev.filter((t) => t.id !== taskId));
       toast.success("Task updated!");
     } catch {
       toast.error("Failed to update task.");
+    }
+  };
+
+  const handleResolveOverdue = async (taskId: string, action: "done" | "today" | "next_week") => {
+    await resolveTask(taskId, action);
+    setOverdueList((prev) => prev.filter((t) => t.id !== taskId));
+  };
+
+  const handleResolveUnplanned = async (taskId: string, action: "done" | "today" | "next_week") => {
+    await resolveTask(taskId, action);
+    setUnplannedList((prev) => prev.filter((t) => t.id !== taskId));
+  };
+
+  const generateRecap = async () => {
+    setRecapStatus("loading");
+    const result = await summarizeWeeklyReviewAction();
+    if (result.ok) {
+      setRecapText(result.output);
+      setRecapStatus("done");
+    } else {
+      setRecapError(result.error);
+      setRecapStatus("error");
     }
   };
 
@@ -75,13 +120,13 @@ export function ReviewWizard({ data }: Props) {
                     <p className="text-muted-foreground">From: {t.noteTitle}</p>
                   </div>
                   <div className="flex gap-1.5">
-                    <Button variant="outline" size="sm" onClick={() => handleResolveOverdue(t.id, "done")}>
+                    <Button variant="outline" size="sm" onClick={() => void handleResolveOverdue(t.id, "done")}>
                       Done
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleResolveOverdue(t.id, "today")}>
+                    <Button variant="outline" size="sm" onClick={() => void handleResolveOverdue(t.id, "today")}>
                       Today
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleResolveOverdue(t.id, "next_week")}>
+                    <Button variant="outline" size="sm" onClick={() => void handleResolveOverdue(t.id, "next_week")}>
                       Next Week
                     </Button>
                   </div>
@@ -104,15 +149,39 @@ export function ReviewWizard({ data }: Props) {
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-foreground">Step 2: Review Unplanned Goals</h2>
             <p className="text-xs text-muted-foreground">
-              Ensure active goals have concrete next actions so they do not sit idle.
+              Give every active goal a deadline or complete it, so nothing sits idle without a next step.
             </p>
           </div>
 
-          <div className="surface-card p-6 text-sm">
-            <p className="text-muted-foreground">
-              Found <strong className="text-foreground">{unplannedList.length}</strong> active tasks/goals missing explicit deadlines or next actions.
-            </p>
-          </div>
+          {unplannedList.length === 0 ? (
+            <div className="surface-card-dashed p-8 text-center space-y-2">
+              <ListTodo className="mx-auto size-8 text-primary" />
+              <p className="text-sm font-medium text-foreground">Every goal has a plan!</p>
+              <p className="text-xs text-muted-foreground">Nothing is waiting for a next action.</p>
+            </div>
+          ) : (
+            <div className="surface-card overflow-hidden divide-y divide-border/70">
+              {unplannedList.map((t) => (
+                <div key={t.id} className="flex items-center justify-between gap-3 p-4 text-xs">
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground">{t.title}</p>
+                    <p className="text-muted-foreground">From: {t.noteTitle}</p>
+                  </div>
+                  <div className="flex shrink-0 gap-1.5">
+                    <Button variant="outline" size="sm" onClick={() => void handleResolveUnplanned(t.id, "done")}>
+                      Done
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => void handleResolveUnplanned(t.id, "today")}>
+                      Today
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => void handleResolveUnplanned(t.id, "next_week")}>
+                      Next Week
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="flex justify-between">
             <Button variant="outline" size="sm" onClick={() => setStep("overdue")} className="gap-1.5 rounded-xl">
@@ -141,6 +210,43 @@ export function ReviewWizard({ data }: Props) {
             <p className="text-xs text-muted-foreground">Great progress this week!</p>
           </div>
 
+          <div className="surface-card space-y-3 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <Sparkles className="size-4 text-primary" /> AI weekly recap
+                </h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  A short coach-style recap of your planner: momentum, risks, and focus for next week.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => void generateRecap()}
+                disabled={recapStatus === "loading"}
+              >
+                {recapStatus === "loading" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4 text-primary" />
+                )}
+                {recapStatus === "done" ? "Regenerate" : "Generate recap"}
+              </Button>
+            </div>
+            {recapStatus === "error" && (
+              <p className="rounded-xl border border-destructive/25 bg-destructive/5 p-3 text-xs text-destructive">
+                {recapError}
+              </p>
+            )}
+            {recapStatus === "done" && (
+              <div className="rounded-xl border bg-background/80 p-4 text-sm">
+                <MarkdownPreview content={recapText} />
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-between">
             <Button variant="outline" size="sm" onClick={() => setStep("unplanned")} className="gap-1.5 rounded-xl">
               <ArrowLeft className="size-4" /> Back
@@ -166,4 +272,3 @@ export function ReviewWizard({ data }: Props) {
     </div>
   );
 }
-

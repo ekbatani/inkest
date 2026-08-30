@@ -16,6 +16,7 @@ import {
   listProjectTaskNotes,
   listParentCandidates,
 } from "@/server/notes/service";
+import { listTasks } from "@/server/tasks/service";
 import { listAttachmentsForUser } from "@/server/attachments/service";
 import { getProjectShareInfo } from "@/server/projects/service";
 import type { WikiLinkTarget } from "@/lib/markdown/wiki";
@@ -34,6 +35,7 @@ import { ProjectShareMenu } from "@/components/projects/project-share-dialog";
 import { NoteStatusBadge } from "@/components/notes/note-status-badge";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import { ProjectTaskNotesPanel } from "@/components/projects/project-task-notes-panel";
+import { TasksPanel } from "@/components/tasks/tasks-panel";
 import { ProjectContextSync } from "@/components/projects/project-context-sync";
 import { formatRelativeDate, formatDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -73,9 +75,10 @@ export default async function ProjectDetailPage({
     ? (rawTab as Tab)
     : "overview";
 
-  const [taskNotes, childNotes, linkableTargets, parentCandidates, parentProject] = await Promise.all([
+  const [taskNotes, childNotes, projectTasks, linkableTargets, parentCandidates, parentProject] = await Promise.all([
     listProjectTaskNotes(id),
     listNotes({ parentId: id, limit: 100 }),
+    listTasks(id),
     Promise.all([
       listNotes({ limit: 500 }),
       listAttachmentsForUser(100),
@@ -228,9 +231,9 @@ export default async function ProjectDetailPage({
             >
               <Icon className="size-3.5" />
               {t.label}
-              {t.id === "tasks" && taskNotes.length > 0 && (
+              {t.id === "tasks" && taskNotes.length + projectTasks.length > 0 && (
                 <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  {taskNotes.length}
+                  {taskNotes.length + projectTasks.length}
                 </span>
               )}
               {t.id === "notes" && referenceNotes.length > 0 && (
@@ -254,11 +257,28 @@ export default async function ProjectDetailPage({
             />
           )}
           {tab === "tasks" && (
-            <ProjectTaskNotesPanel
-              projectId={note.id}
-              initialTaskNotes={taskNotes}
-              canEdit={canEdit}
-            />
+            <div className="flex flex-col gap-10">
+              <ProjectTaskNotesPanel
+                projectId={note.id}
+                initialTaskNotes={taskNotes}
+                canEdit={canEdit}
+              />
+              {canEdit && (
+                <section className="flex flex-col gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                      Checklist
+                    </h2>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Lightweight tasks attached to this project — added by hand,
+                      synced from markdown checkboxes, or extracted by AI from
+                      your notes.
+                    </p>
+                  </div>
+                  <TasksPanel noteId={note.id} initialTasks={projectTasks} />
+                </section>
+              )}
+            </div>
           )}
           {tab === "notes" && <NotesTab childNotes={referenceNotes} projectId={id} canEdit={canEdit} />}
           {tab === "timeline" && (

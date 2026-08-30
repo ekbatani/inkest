@@ -10,6 +10,7 @@ import {
   Target,
   ListTodo,
   BookOpen,
+  CalendarClock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -231,7 +232,7 @@ export function PlannerView({
             </div>
           ) : (
             <div className="surface-card overflow-hidden divide-y divide-border/70 min-h-[160px]">
-              {data.unplanned.slice(0, 5).map((task) => (
+              {data.unplanned.map((task) => (
                 <TaskRow
                   key={task.id}
                   task={task}
@@ -247,6 +248,30 @@ export function PlannerView({
           )}
         </section>
       </div>
+
+      {/* Upcoming (Next 7 Days) Section */}
+      {data.upcoming.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <CalendarClock className="size-4 text-muted-foreground" />
+            <h2 className="section-label">Upcoming Next 7 Days ({data.upcoming.length})</h2>
+          </div>
+          <div className="surface-card overflow-hidden divide-y divide-border/70">
+            {data.upcoming.map((task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                onComplete={handleCompleteTask}
+                onEditCue={(t) => {
+                  setEditingTaskId(t.id);
+                  setNextActionInput(t.nextAction || "");
+                  setIfThenInput(t.ifThenCue || "");
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
       </>
       )}
 

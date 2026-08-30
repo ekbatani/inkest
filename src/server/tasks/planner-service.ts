@@ -1,6 +1,7 @@
-import { eq, and, ne, gte, isNull, desc, asc } from "drizzle-orm";
+import { eq, and, ne, gte, isNull, asc } from "drizzle-orm";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
+import { priorityRankSql } from "@/server/tasks/service";
 import type { Task } from "@/server/db/schema";
 
 export type TaskWithNoteTitle = Task & { noteTitle: string };
@@ -38,7 +39,7 @@ export async function getPlannerData(): Promise<PlannerData> {
         isNull(schema.notes.deletedAt),
       ),
     )
-    .orderBy(asc(schema.tasks.dueDate), desc(schema.tasks.priority));
+    .orderBy(asc(schema.tasks.dueDate), asc(priorityRankSql));
 
   const mapped: TaskWithNoteTitle[] = allActiveRows.map((r) => ({
     ...r.task,

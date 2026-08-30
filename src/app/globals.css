@@ -2717,6 +2717,9 @@ html.dark[data-palette="midnight"] {
 }
 
 /* AI capabilities */
+.marketing-shell section[id] {
+  scroll-margin-top: 5rem;
+}
 .ai-section {
   position: relative;
   overflow: hidden;
@@ -2995,7 +2998,7 @@ html.dark[data-palette="midnight"] {
   display: grid;
   gap: 0.9rem;
   padding: 1.1rem;
-  min-height: 17rem;
+  min-height: 14rem;
   align-content: start;
 }
 .ai-demo-q {

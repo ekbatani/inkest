@@ -1,5 +1,9 @@
 "use server";
 
+import { and, asc, eq, isNull, ne } from "drizzle-orm";
+import { db, schema } from "@/server/db/client";
+import { getCurrentUser } from "@/server/auth";
+import { resolveProjectAccess } from "@/server/projects/access";
 import { runTextAction, type AiActionResult } from "./runner";
 import { summarizeNote } from "./summarize-note";
 import { improveWriting } from "./improve-writing";
@@ -144,6 +148,110 @@ export async function searchContextItemsAction(query: string): Promise<{
   }
 }
 
+const CHECKLIST_PROMPT_CAP = 12;
+const TASK_NOTE_PROMPT_CAP = 8;
+
+/**
+ * Live project state for the AI chat. When the current page is a project the
+ * assistant should see its real checklist, task-note board, and subprojects —
+ * not just the note markdown. Access follows the same project-share rules as
+ * the project page. Best-effort: any failure just omits the block.
+ */
+async function buildProjectContextBlock(noteId: string | undefined): Promise<string> {
+  if (!noteId) return "";
+  try {
+    const user = await getCurrentUser();
+    if (!user) return "";
+    const access = await resolveProjectAccess(noteId, user.id);
+    if (!access || access.note.type !== "project") return "";
+    const project = access.note;
+
+    const [subprojects, checklist, taskNotes] = await Promise.all([
+      db
+        .select({
+          title: schema.notes.title,
+          status: schema.notes.status,
+          dueDate: schema.notes.dueDate,
+        })
+        .from(schema.notes)
+        .where(
+          and(
+            eq(schema.notes.parentId, project.id),
+            eq(schema.notes.type, "project"),
+            isNull(schema.notes.deletedAt),
+          ),
+        )
+        .orderBy(asc(schema.notes.dueDate))
+        .limit(20),
+      db
+        .select({
+          title: schema.tasks.title,
+          status: schema.tasks.status,
+          priority: schema.tasks.priority,
+          dueDate: schema.tasks.dueDate,
+        })
+        .from(schema.tasks)
+        .where(eq(schema.tasks.noteId, project.id))
+        .orderBy(asc(schema.tasks.status), asc(schema.tasks.dueDate))
+        .limit(50),
+      db
+        .select({
+          title: schema.notes.title,
+          status: schema.notes.status,
+          dueDate: schema.notes.dueDate,
+        })
+        .from(schema.notes)
+        .where(
+          and(
+            eq(schema.notes.parentId, project.id),
+            isNull(schema.notes.deletedAt),
+            ne(schema.notes.type, "project"),
+            ne(schema.notes.status, "none"),
+          ),
+        )
+        .orderBy(asc(schema.notes.status), asc(schema.notes.dueDate))
+        .limit(50),
+    ]);
+
+    const openChecklist = checklist.filter((t) => t.status !== "done" && t.status !== "canceled");
+    const doneChecklist = checklist.length - openChecklist.length;
+    const boardColumns = { todo: 0, doing: 0, paused: 0, done: 0 } as Record<string, number>;
+    for (const taskNote of taskNotes) {
+      if (taskNote.status in boardColumns) boardColumns[taskNote.status] += 1;
+    }
+
+    const lines: string[] = [
+      `Live Project Context for "${project.title}":`,
+      `- Project status: ${project.status}, priority: ${project.priority}${project.dueDate ? `, due ${project.dueDate.toISOString().slice(0, 10)}` : ""}`,
+      `- Checklist: ${openChecklist.length} open / ${doneChecklist} finished`,
+      ...openChecklist
+        .slice(0, CHECKLIST_PROMPT_CAP)
+        .map(
+          (t) =>
+            `  - [${t.status}${t.priority !== "none" ? ` · ${t.priority}` : ""}] ${t.title}${t.dueDate ? ` (due ${t.dueDate.toISOString().slice(0, 10)})` : ""}`,
+        ),
+      `- Task-note board: ${boardColumns.todo} to do, ${boardColumns.doing} in progress, ${boardColumns.paused} paused, ${boardColumns.done} done`,
+      ...taskNotes
+        .filter((n) => n.status !== "done")
+        .slice(0, TASK_NOTE_PROMPT_CAP)
+        .map((n) => `  - Open task note (${n.status}): ${n.title}`),
+    ];
+    if (subprojects.length > 0) {
+      lines.push(
+        `- Subprojects: ${subprojects
+          .map(
+            (s) =>
+              `${s.title} (${s.status}${s.dueDate ? `, due ${s.dueDate.toISOString().slice(0, 10)}` : ""})`,
+          )
+          .join("; ")}`,
+      );
+    }
+    return lines.join("\n");
+  } catch {
+    return "";
+  }
+}
+
 export async function runAiChatPromptAction(args: {
   noteId?: string;
   noteTitle?: string;
@@ -213,7 +321,9 @@ export async function runAiChatPromptAction(args: {
         .join("\n\n");
   }
 
-  const promptToModel = `${contextBlock}${attachedContextBlock}${conversationBlock}\n\nUser Request / Instruction:\n${args.userPrompt}`.trim();
+  const projectContextBlock = await buildProjectContextBlock(args.noteId);
+
+  const promptToModel = `${contextBlock}${projectContextBlock ? `\n\n${projectContextBlock}` : ""}${attachedContextBlock}${conversationBlock}\n\nUser Request / Instruction:\n${args.userPrompt}`.trim();
 
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
@@ -230,6 +340,7 @@ export async function runAiChatPromptAction(args: {
     `- **Vault**: Encrypted zero-knowledge secret items (passwords, tokens, keys).\n\n` +
     `RESPONSE GUIDELINES:\n` +
     `- Answer questions or follow instructions based on the note context, referenced items (@notes, @projects, @vault secrets), workspace knowledge, and selection provided.\n` +
+    `- When a 'Live Project Context' block is present, treat it as the authoritative current state of that project's checklist, task board, and subprojects.\n` +
     `- When generating tasks, checklists, or project plans, output concrete actionable items in markdown checklist format: \`- [ ] Task title\` with optional timing and priority.\n` +
     `- When drafting or gently editing note content, present clean Markdown ready for easy insertion or replacement.\n` +
     `- If the user's request has ambiguities or multiple possible directions, conclude with a concise '### ❓ Clarifications & Follow-up' section with 2-3 specific choices to confirm.\n` +

@@ -1,8 +1,9 @@
-import { eq, and, asc, ne, isNull } from "drizzle-orm";
+import { eq, and, asc, ne, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
 import { getWorkspaceForUser } from "@/server/auth/users";
+import { resolveProjectAccess } from "@/server/projects/access";
 import { randomId } from "@/lib/slug";
 import { createTaskSchema, updateTaskSchema } from "./validation";
 import type { Task } from "@/server/db/schema";
@@ -15,21 +16,29 @@ async function getContext() {
   return { user, workspace };
 }
 
-async function assertOwnsNote(noteId: string, userId: string) {
-  const rows = await db
-    .select({ id: schema.notes.id })
-    .from(schema.notes)
-    .where(
-      and(eq(schema.notes.id, noteId), eq(schema.notes.userId, userId)),
-    )
-    .limit(1);
-  return Boolean(rows[0]);
+/**
+ * Tasks live under a note, so access follows the note's project chain: the
+ * owner and project members (viewer/editor) can read, only owner/editor can
+ * mutate — mirroring the task-note board on the project page.
+ */
+async function getNoteAccess(noteId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("UNAUTHORIZED");
+  const access = await resolveProjectAccess(noteId, user.id);
+  if (!access) return null;
+  return { user, role: access.role };
 }
 
+function assertCanEdit(role: "owner" | "editor" | "viewer") {
+  if (role === "viewer") throw new Error("FORBIDDEN");
+}
+
+/** High-priority tasks sort before medium/low regardless of alphabetical TEXT order. */
+export const priorityRankSql = sql`CASE ${schema.tasks.priority} WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 ELSE 3 END`;
+
 export async function listTasks(noteId: string): Promise<Task[]> {
-  const { user } = await getContext();
-  const ok = await assertOwnsNote(noteId, user.id);
-  if (!ok) return [];
+  const access = await getNoteAccess(noteId);
+  if (!access) return [];
 
   const rows = await db
     .select()
@@ -42,16 +51,16 @@ export async function listTasks(noteId: string): Promise<Task[]> {
 export async function createTask(
   input: z.input<typeof createTaskSchema>,
 ): Promise<Task> {
-  const { user } = await getContext();
   const parsed = createTaskSchema.parse(input);
-  const ok = await assertOwnsNote(parsed.noteId, user.id);
-  if (!ok) throw new Error("NOTE_NOT_FOUND");
+  const access = await getNoteAccess(parsed.noteId);
+  if (!access) throw new Error("NOTE_NOT_FOUND");
+  assertCanEdit(access.role);
 
   const id = randomId("task");
   await db.insert(schema.tasks).values({
     id,
     noteId: parsed.noteId,
-    userId: user.id,
+    userId: access.user.id,
     title: parsed.title,
     description: parsed.description ?? null,
     status: parsed.status,
@@ -74,11 +83,25 @@ export async function createTask(
   return rows[0];
 }
 
+async function getTaskById(id: string) {
+  const rows = await db
+    .select()
+    .from(schema.tasks)
+    .where(eq(schema.tasks.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function updateTask(
   id: string,
   input: z.infer<typeof updateTaskSchema>,
 ): Promise<Task | null> {
-  const { user } = await getContext();
+  const task = await getTaskById(id);
+  if (!task) return null;
+  const access = await getNoteAccess(task.noteId);
+  if (!access) throw new Error("FORBIDDEN");
+  assertCanEdit(access.role);
+
   const parsed = updateTaskSchema.parse(input);
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -99,7 +122,7 @@ export async function updateTask(
     .update(schema.tasks)
     .set(updates)
     .where(
-      and(eq(schema.tasks.id, id), eq(schema.tasks.userId, user.id)),
+      and(eq(schema.tasks.id, id), eq(schema.tasks.noteId, task.noteId)),
     );
 
   const rows = await db
@@ -111,10 +134,15 @@ export async function updateTask(
 }
 
 export async function deleteTask(id: string): Promise<void> {
-  const { user } = await getContext();
+  const task = await getTaskById(id);
+  if (!task) return;
+  const access = await getNoteAccess(task.noteId);
+  if (!access) throw new Error("FORBIDDEN");
+  assertCanEdit(access.role);
+
   await db
     .delete(schema.tasks)
-    .where(and(eq(schema.tasks.id, id), eq(schema.tasks.userId, user.id)));
+    .where(and(eq(schema.tasks.id, id), eq(schema.tasks.noteId, task.noteId)));
 }
 
 export type TaskWithNote = Task & { noteTitle: string };
@@ -139,7 +167,7 @@ export async function listUpcomingTasks(
         isNull(schema.notes.deletedAt),
       ),
     )
-    .orderBy(asc(schema.tasks.dueDate), asc(schema.tasks.createdAt))
+    .orderBy(asc(schema.tasks.dueDate), asc(priorityRankSql), asc(schema.tasks.createdAt))
     .limit(limit);
 
   return rows.map((r) => ({ ...r.task, noteTitle: r.noteTitle }));
@@ -170,13 +198,29 @@ export function parseMarkdownCheckboxes(content: string): ParsedCheckbox[] {
 }
 
 /**
+ * Pure reconciliation rule for a markdown-sourced task's status:
+ * checking a box always completes it; unchecking reopens it, except that
+ * workflow statuses markdown cannot express (`doing`, `canceled`) survive.
+ */
+export function reconcileMarkdownStatus(
+  checked: boolean,
+  current: Task["status"],
+): Task["status"] {
+  if (checked) return "done";
+  return current === "doing" || current === "canceled" ? current : "todo";
+}
+
+/**
  * Sync markdown checkbox rows into the tasks table. Strategy:
- * - Resolve each checkbox line by `sourceLine` exact match; reuse existing row if title hasn't changed (status keeps manual edits unless checkbox's checked state is newer).
- * - For markdown checkboxes whose checked state changed, push status to done/todo accordingly, but respect manual overrides by tracking lastSeen state when row was inserted.
+ * - Resolve each checkbox line by `sourceLine` exact match; reuse existing row if title hasn't changed.
+ * - Checking a box always completes the task. Unchecking reopens it — unless
+ *   the row carries a manual/AI workflow status (`doing`, `paused`,
+ *   `canceled`), which markdown cannot express and therefore must not clobber.
+ *   Statuses only snap back to `todo` from `done` (reopen).
  *
- * For MVP we use a simpler reconciliation:
- *   - Delete prior task rows for this note whose source === "markdown" and whose sourceLine is no longer present OR whose title differs.
- *   - Upsert (by sourceLine) task rows from current markdown: status=done if checked else todo.
+ * Housekeeping:
+ *   - Delete prior task rows for this note whose source === "markdown" and whose sourceLine is no longer present.
+ *   - Upsert (by sourceLine) task rows from current markdown.
  *   - Manual tasks (source !== "markdown") are left untouched.
  *
  * Returns the number of markdown tasks after sync.
@@ -185,9 +229,9 @@ export async function syncMarkdownTasks(
   noteId: string,
   content: string,
 ): Promise<number> {
-  const { user } = await getContext();
-  const ok = await assertOwnsNote(noteId, user.id);
-  if (!ok) throw new Error("NOTE_NOT_FOUND");
+  const access = await getNoteAccess(noteId);
+  if (!access) throw new Error("NOTE_NOT_FOUND");
+  assertCanEdit(access.role);
 
   const parsed = parseMarkdownCheckboxes(content);
 
@@ -205,13 +249,7 @@ export async function syncMarkdownTasks(
     const status: Task["status"] = cb.checked ? "done" : "todo";
     if (existingRow) {
       seenLineIds.add(existingRow.id);
-      // Update title and status; allow switching todo/doing ↔ done from markdown.
-      const newStatus: Task["status"] =
-        status === "done"
-          ? "done"
-          : existingRow.status === "canceled"
-            ? "canceled"
-            : status;
+      const newStatus = reconcileMarkdownStatus(cb.checked, existingRow.status);
       await db
         .update(schema.tasks)
         .set({
@@ -226,7 +264,7 @@ export async function syncMarkdownTasks(
       await db.insert(schema.tasks).values({
         id,
         noteId,
-        userId: user.id,
+        userId: access.user.id,
         title: cb.title,
         status,
         priority: "none",

@@ -3,6 +3,12 @@ import { db, schema } from "@/server/db/client";
 import { sendTelegramNotification } from "@/server/notifications/telegram";
 import { formatDateKey } from "@/server/calendar/service";
 import { createNotification } from "@/server/notifications/service";
+import {
+  formatBriefingDigest,
+  getDailyBriefingData,
+  getCompletedThisWeekCount,
+} from "@/server/tasks/briefing-service";
+import { generateMorningBriefingText } from "@/server/ai/briefing";
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -110,6 +116,83 @@ async function checkDueTaskReminders() {
 const nudgedToday = new Map<string, string>();
 const projectDeadlineNudged = new Map<string, string>();
 const weeklyReviewNudged = new Map<string, string>();
+const briefingSent = new Map<string, string>();
+
+/**
+ * Daily morning digest of overdue/today tasks and project deadlines. The AI
+ * polish is best-effort: when no provider is configured (or generation fails)
+ * the static digest is delivered instead, so the briefing never blocks.
+ */
+async function checkMorningBriefing() {
+  const now = new Date();
+  const hour = now.getHours();
+  if (hour < 5 || hour >= 10) return;
+
+  const todayKey = formatDateKey(now);
+
+  const rows = await db
+    .select({
+      userId: schema.users.id,
+      chatId: schema.users.telegramChatId,
+      settings: schema.users.settings,
+    })
+    .from(schema.users);
+
+  for (const row of rows) {
+    const prefs = parseNotificationPrefs(row.settings);
+    if (prefs.dailyMorningBriefing !== true) continue;
+    if (briefingSent.get(row.userId) === todayKey) continue;
+
+    const [briefing, completedCount] = await Promise.all([
+      getDailyBriefingData(row.userId),
+      getCompletedThisWeekCount(row.userId),
+    ]);
+    const hasContent =
+      briefing.overdueCount > 0 ||
+      briefing.dueTodayCount > 0 ||
+      briefing.projectDeadlines.length > 0 ||
+      completedCount > 0;
+    if (!hasContent) {
+      briefingSent.set(row.userId, todayKey);
+      continue;
+    }
+
+    const digest = formatBriefingDigest(briefing, completedCount);
+    const aiText = await generateMorningBriefingText(
+      row.userId,
+      digest,
+      todayKey,
+    );
+    const body = aiText ?? digest;
+
+    if (prefs.inApp !== false) {
+      await createNotification({
+        userId: row.userId,
+        type: "morning_briefing",
+        title: "🌅 Morning briefing",
+        body,
+        href: "/planner",
+        dedupeKey: `morning-briefing:${row.userId}:${todayKey}`,
+      });
+    }
+
+    if (prefs.telegramPush !== false && row.chatId) {
+      await sendTelegramNotification(
+        {
+          title: "🌅 Morning briefing",
+          body,
+          metadata: {
+            "Tasks due today": String(briefing.dueTodayCount),
+            Overdue: String(briefing.overdueCount),
+          },
+        },
+        { chatId: row.chatId, userId: row.userId },
+      );
+    }
+
+    briefingSent.set(row.userId, todayKey);
+  }
+}
 
 async function checkProjectDeadlineReminders() {
   const now = new Date();
@@ -299,6 +382,11 @@ async function tick() {
     await checkProjectDeadlineReminders();
   } catch (err) {
     console.warn("[scheduler] project deadline reminder check failed:", err);
+  }
+  try {
+    await checkMorningBriefing();
+  } catch (err) {
+    console.warn("[scheduler] morning briefing check failed:", err);
   }
   try {
     await checkDailyNoteNudge();

@@ -186,6 +186,23 @@ export function NoteDetailsPopover({
                   </Select>
                 </CompactField>
 
+                <CompactField label="Priority">
+                  <Select
+                    value={metadata.priority}
+                    onValueChange={(v) => v && onChange("priority", v)}
+                  >
+                    <SelectTrigger className="h-8.5 w-full rounded-xl border-border/70 bg-background text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No priority</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </CompactField>
+
                 <DueDatePicker
                   value={metadata.dueDate}
                   onChange={(d) => onChange("dueDate", d)}

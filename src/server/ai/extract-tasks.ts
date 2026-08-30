@@ -34,6 +34,9 @@ export async function extractTasks(args: {
     action: "extract-tasks",
     systemPrompt: buildAiSystemPrompt("extract-tasks"),
     inputForAudit,
+    // Grounding lets extraction see sibling/linked notes (e.g. a project's
+    // reference notes) so extracted tasks aren't limited to one note's text.
+    enableGrounding: true,
     promptToModel: buildAiUserPrompt("extract-tasks", {
       noteTitle: args.noteTitle,
       noteContent: args.noteContent,

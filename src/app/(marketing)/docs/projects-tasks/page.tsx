@@ -33,10 +33,11 @@ export default function ProjectsTasksPage() {
         <div className="flex flex-col gap-3 text-sm text-muted-foreground">
           <p>
             Create projects for high-level goals, client deliverables, software sprints, or writing projects.
-            Each project features customizable status columns (e.g. <em>To Do</em>, <em>In Progress</em>, <em>Done</em>) with smooth drag-and-drop organization.
+            Each project features status columns (<em>To Do</em>, <em>In Progress</em>, <em>Paused</em>, <em>Done</em>) with smooth drag-and-drop organization.
           </p>
           <p>
             You can switch between visual Kanban board views and compact List views depending on your workflow preference.
+            Alongside the board of task notes, every project has a lightweight checklist for quick tasks — added by hand, synced from markdown checkboxes, or extracted by AI.
           </p>
         </div>
       </section>

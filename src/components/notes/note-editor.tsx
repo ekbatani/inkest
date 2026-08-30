@@ -94,6 +94,16 @@ const SuperFocusReader = dynamic(
   () => import("@/components/notes/super-focus-reader").then((m) => m.SuperFocusReader),
   { ssr: false },
 );
+// The AI panel and focus timer are opt-in tools; keep them out of the editor's
+// initial chunk and load them on first render of the toolbar.
+const AiPanel = dynamic(
+  () => import("@/components/ai/ai-panel").then((m) => m.AiPanel),
+  { ssr: false },
+);
+const FocusTimer = dynamic(
+  () => import("@/components/notes/focus-timer").then((m) => m.FocusTimer),
+  { ssr: false },
+);
 
 type NoteSnapshot = {
   title: string;
@@ -1013,6 +1023,13 @@ export function NoteEditor({
 
           <div className="h-4 w-px bg-border/60" />
 
+          {/* Focus timer */}
+          <div className="hidden lg:flex items-center">
+            <FocusTimer />
+          </div>
+
+          <div className="hidden h-4 w-px bg-border/60 lg:block" />
+
           {/* Insert Tools */}
           <div className="flex items-center gap-0.5">
             <Tooltip>
@@ -1129,6 +1146,8 @@ export function NoteEditor({
               </span>
             </span>
           )}
+
+          <AiPanel noteId={note.id} editorRef={editorRef} />
 
           <NoteDetailsPopover
             note={note}
