@@ -719,6 +719,93 @@ export const documentIndexState = sqliteTable("document_index_state", {
     .default(sql`(unixepoch())`),
 });
 
+// ── payments ─────────────────────────────────────────────────────────────
+// One row per top-up attempt. `status` follows the payment until a terminal
+// state; confirmation is the single point where credits are granted, guarded
+// by the conditional pending→confirmed transition in the billing service.
+export const payments = sqliteTable(
+  "payments",
+  {
+    id: idCol(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    provider: text("provider", { enum: ["cryptomus", "manual"] }).notNull(),
+    providerInvoiceId: text("provider_invoice_id"),
+    status: text("status", {
+      enum: [
+        "pending",
+        "awaiting_confirmation",
+        "confirmed",
+        "failed",
+        "canceled",
+        "expired",
+        "rejected",
+      ],
+    })
+      .notNull()
+      .default("pending"),
+    amountUsd: real("amount_usd").notNull(),
+    // Credit rate is locked in at invoice creation so later rate changes
+    // cannot retroactively change what a pending payment is worth.
+    credits: real("credits").notNull(),
+    paidAmount: real("paid_amount"),
+    paidAsset: text("paid_asset"),
+    paidNetwork: text("paid_network"),
+    walletAddress: text("wallet_address"),
+    txHash: text("tx_hash"),
+    metadataJson: text("metadata_json"),
+    confirmedAt: integer("confirmed_at", { mode: "timestamp" }),
+    expiresAt: integer("expires_at", { mode: "timestamp" }),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`(unixepoch())`),
+  },
+  (table) => [
+    // NULL provider_invoice_id rows (manual payments) never collide: SQLite
+    // unique indexes treat NULLs as distinct.
+    uniqueIndex("payments_provider_invoice_uq").on(table.providerInvoiceId),
+    index("payments_user_idx").on(table.userId, table.createdAt),
+    index("payments_status_idx").on(table.status, table.createdAt),
+  ],
+);
+
+// ── credit_ledger ────────────────────────────────────────────────────────
+// Append-only credit history. Balance is SUM(delta) for the user. The unique
+// (paymentId, reason) pair makes webhook retries and duplicate confirmations
+// safe: a payment can grant credits exactly once (NULL paymentId rows, e.g.
+// admin grants, are always allowed since SQLite treats NULLs as distinct).
+export const creditLedger = sqliteTable(
+  "credit_ledger",
+  {
+    id: idCol(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    delta: real("delta").notNull(),
+    reason: text("reason", { enum: ["payment", "admin_grant"] }).notNull(),
+    paymentId: text("payment_id").references(() => payments.id, {
+      onDelete: "set null",
+    }),
+    note: text("note"),
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("credit_ledger_payment_reason_uq").on(
+      table.paymentId,
+      table.reason,
+    ),
+    index("credit_ledger_user_idx").on(table.userId, table.createdAt),
+  ],
+);
+
 // ── Type exports ─────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -756,5 +843,9 @@ export type BlockRelationEntity = typeof blockRelations.$inferSelect;
 export type NewBlockRelation = typeof blockRelations.$inferInsert;
 export type DocumentIndexStateEntity = typeof documentIndexState.$inferSelect;
 export type NewDocumentIndexState = typeof documentIndexState.$inferInsert;
+export type Payment = typeof payments.$inferSelect;
+export type NewPayment = typeof payments.$inferInsert;
+export type CreditLedgerEntry = typeof creditLedger.$inferSelect;
+export type NewCreditLedgerEntry = typeof creditLedger.$inferInsert;
 
 

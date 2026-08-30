@@ -1,5 +1,6 @@
 import {
   Calendar,
+  CreditCard,
   LayoutDashboard,
   NotebookPen,
   FolderKanban,
@@ -37,4 +38,5 @@ export const adminNav: NavItem[] = [
 
 export const settingsNav: NavItem[] = [
   { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Billing", href: "/billing", icon: CreditCard },
 ];

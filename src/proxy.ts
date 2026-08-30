@@ -18,6 +18,7 @@ export const config = {
     "/tags/:path*",
     "/archive/:path*",
     "/settings/:path*",
+    "/billing/:path*",
     "/onboarding/:path*",
   ],
 };

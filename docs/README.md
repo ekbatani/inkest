@@ -20,6 +20,7 @@ This directory contains the durable documentation, task logs, architecture decis
 | **[PRODUCT.md](PRODUCT.md)** | Product vision, positioning, taxonomy, core capabilities, and release gates |
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | Application boundaries, data layers, authorization, security, and AI contracts |
 | **[OPERATIONS.md](OPERATIONS.md)** | Environment configuration, performance budgets, monitoring, and operations baseline |
+| **[billing.md](billing.md)** | Crypto payment providers, credit ledger, webhook security model, and operator configuration |
 
 ---
 

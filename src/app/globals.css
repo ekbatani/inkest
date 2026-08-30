@@ -2747,44 +2747,106 @@ html.dark[data-palette="midnight"] {
 }
 .ai-capabilities {
   display: grid;
-  gap: 0.7rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
   margin-top: 2.4rem;
 }
 .ai-capability {
+  position: relative;
   display: flex;
-  gap: 0.9rem;
-  padding: 0.9rem 1rem;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 0.95rem;
   border: 1px solid var(--mk-line);
   border-radius: 0.8rem;
   background: color-mix(in oklab, var(--mk-panel) 55%, transparent);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
   transition:
     border-color 0.25s,
     background 0.25s,
-    transform 0.25s;
+    transform 0.25s,
+    box-shadow 0.25s;
 }
 .ai-capability:hover {
   border-color: var(--mk-line-strong);
   background: color-mix(in oklab, var(--mk-panel-2) 70%, transparent);
   transform: translateY(-2px);
 }
+.ai-capability:focus-visible {
+  outline: 2px solid var(--mk-indigo-bright);
+  outline-offset: 2px;
+}
+.ai-capability[aria-pressed="true"] {
+  border-color: color-mix(in oklab, var(--mk-indigo) 48%, transparent);
+  background: color-mix(
+    in oklab,
+    var(--mk-indigo) 10%,
+    color-mix(in oklab, var(--mk-panel-2) 70%, transparent)
+  );
+  box-shadow: 0 16px 36px -22px color-mix(in oklab, var(--mk-indigo) 65%, transparent);
+}
+.ai-capability[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0.9rem;
+  top: -1px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--mk-violet-bright) 75%, transparent),
+    transparent
+  );
+}
 .ai-capability > svg {
   flex: none;
   width: 1.1rem;
   height: 1.1rem;
   margin-top: 0.15rem;
+  color: var(--mk-faint);
+  transition: color 0.25s;
+}
+.ai-capability:hover > svg,
+.ai-capability[aria-pressed="true"] > svg {
   color: var(--mk-indigo-bright);
+}
+.ai-capability-text {
+  display: block;
+  min-width: 0;
+  padding-inline-end: 1.5rem;
 }
 .ai-capability strong {
   display: block;
   font-size: 0.8rem;
   letter-spacing: -0.01em;
 }
-.ai-capability span {
+.ai-capability-text > span {
   display: block;
   margin-top: 0.15rem;
   font-size: 0.68rem;
   line-height: 1.5;
   color: var(--mk-muted);
+}
+.ai-capability-index {
+  position: absolute;
+  top: 0.65rem;
+  inset-inline-end: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--mk-faint);
+  opacity: 0.65;
+  transition:
+    color 0.25s,
+    opacity 0.25s;
+}
+.ai-capability[aria-pressed="true"] .ai-capability-index {
+  color: var(--mk-violet-bright);
+  opacity: 1;
 }
 .ai-providers {
   display: flex;
@@ -2873,6 +2935,62 @@ html.dark[data-palette="midnight"] {
   background: currentColor;
   box-shadow: 0 0 0 3px color-mix(in oklab, #34d399 20%, transparent);
 }
+/* Context-pack pipeline: the static retrieval layer feeding every answer */
+.ai-demo-pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.1rem;
+  border-bottom: 1px dashed var(--mk-line);
+  background: color-mix(in oklab, var(--mk-panel) 40%, transparent);
+}
+.ai-demo-pipeline-label {
+  margin-inline-end: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mk-faint);
+}
+.ai-demo-pipeline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.22rem 0.5rem;
+  border: 1px solid var(--mk-line);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  font-weight: 600;
+  color: var(--mk-muted);
+  background: color-mix(in oklab, var(--mk-panel-2) 60%, transparent);
+}
+.ai-demo-pipeline-chip svg {
+  width: 0.58rem;
+  height: 0.58rem;
+  color: var(--mk-indigo-bright);
+}
+.ai-demo-pipeline-chip--out {
+  color: var(--mk-violet-bright);
+  border-color: color-mix(in oklab, var(--mk-violet) 35%, transparent);
+  background: color-mix(in oklab, var(--mk-violet) 10%, transparent);
+}
+.ai-demo-pipeline-chip--out svg {
+  color: var(--mk-violet-bright);
+}
+.ai-demo-pipeline-arrow {
+  display: inline-flex;
+  color: var(--mk-faint);
+}
+.ai-demo-pipeline-arrow svg {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+[dir="rtl"] .ai-demo-pipeline-arrow svg {
+  transform: scaleX(-1);
+}
 .ai-demo-body {
   display: grid;
   gap: 0.9rem;
@@ -2924,10 +3042,11 @@ html.dark[data-palette="midnight"] {
 .ai-demo-tools {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.6rem;
   font-family: var(--font-mono);
-  font-size: 0.55rem;
-  color: var(--mk-faint);
+  font-size: 0.58rem;
+  color: var(--mk-muted);
 }
 .ai-demo-tools span {
   display: inline-flex;
@@ -2938,6 +3057,13 @@ html.dark[data-palette="midnight"] {
   width: 0.65rem;
   height: 0.65rem;
   color: #34d399;
+}
+.ai-demo-tools-label {
+  padding-inline-end: 0.45rem;
+  border-inline-end: 1px dashed var(--mk-line);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--mk-violet-bright);
 }
 .ai-demo-input {
   display: flex;
@@ -3692,6 +3818,9 @@ html.dark[data-palette="midnight"] {
     overflow-x: auto;
     padding-bottom: 0.5rem;
   }
+  .ai-capabilities {
+    grid-template-columns: 1fr;
+  }
   .workflow-moment {
     grid-template-columns: 2.8rem 2.6rem 1fr;
     gap: 0.7rem;
@@ -4065,6 +4194,8 @@ html.dark[data-palette="midnight"] {
   .marketing-footer-top-btn,
   .philosophy-principle,
   .ai-capability,
+  .ai-capability > svg,
+  .ai-capability-index,
   .product-ai-step,
   .product-ai-cite,
   .ai-demo-cite {
