@@ -9,8 +9,18 @@ const rootDir = path.resolve(__dirname, "..");
 const outDir = path.join(rootDir, "out");
 const tauriIconsDir = path.join(rootDir, "src-tauri", "icons");
 const publicDir = path.join(rootDir, "public");
+const dataDir = path.join(rootDir, "data");
+const storageDir = path.join(rootDir, "storage");
 
-// 1. Ensure `out` directory exists for Capacitor and Tauri
+// 1. Ensure `data` and `storage` directories exist
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+if (!fs.existsSync(storageDir)) {
+  fs.mkdirSync(storageDir, { recursive: true });
+}
+
+// 2. Ensure `out` directory exists for Capacitor and Tauri
 if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }
@@ -91,6 +101,14 @@ if (sourceIcon) {
     }
   }
   console.log("Populated src-tauri/icons with application icons.");
+}
+
+// 4. Run database migrations to ensure local schema is ready for static build collection
+try {
+  const { execSync } = await import("node:child_process");
+  execSync("bun scripts/migrate.mjs", { stdio: "inherit", cwd: rootDir });
+} catch (err) {
+  console.warn("Database migration step warning:", err?.message || err);
 }
 
 console.log("Native assets preparation completed successfully.");

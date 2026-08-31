@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { createClient } from "@libsql/client";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 
@@ -5,6 +7,17 @@ const url = process.env.DATABASE_URL ?? "file:./data/local.db";
 const authToken = process.env.DATABASE_AUTH_TOKEN || undefined;
 const MIGRATIONS_TABLE = "__drizzle_migrations";
 const MIGRATIONS_FOLDER = "./drizzle";
+
+if (url.startsWith("file:")) {
+  const rawPath = url.replace(/^file:\/\//, "").replace(/^file:/, "");
+  const resolvedPath = path.isAbsolute(rawPath)
+    ? rawPath
+    : path.resolve(process.cwd(), rawPath);
+  const dir = path.dirname(resolvedPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
 
 const client = createClient({ url, authToken });
 

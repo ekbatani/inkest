@@ -47,3 +47,8 @@ next-env.d.ts
 *.db
 *.db-shm
 *.db-wal
+/src-tauri/target
+/desktop-release
+/release-android
+/release-ios
+/dist

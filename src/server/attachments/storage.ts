@@ -60,7 +60,7 @@ function assertSafeStoragePath(storagePath: string) {
 
 function getLocalFilePath(storagePath: string) {
   assertSafeStoragePath(storagePath);
-  const root = path.resolve(LOCAL_STORAGE_ROOT);
+  const root = path.resolve(process.cwd(), LOCAL_STORAGE_ROOT);
   const filePath = path.resolve(root, ...storagePath.split("/"));
   if (!filePath.startsWith(`${root}${path.sep}`)) {
     throw new Error("Invalid attachment storage path.");
