@@ -14,6 +14,7 @@ import {
 
 function revalidateBilling() {
   revalidatePath("/billing");
+  revalidatePath("/settings");
 }
 
 export async function getBillingOverviewAction() {

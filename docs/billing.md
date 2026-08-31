@@ -14,7 +14,8 @@ src/server/billing/
   service.ts    User-scoped service layer (auth guard, idempotent confirm, ledger)
   actions.ts    "use server" actions (zod-validated boundary)
 src/app/api/billing/webhook/route.ts   Provider webhook (signature = auth)
-src/app/(app)/billing/page.tsx         Billing page (authenticated)
+src/app/(app)/billing/page.tsx         Billing route (redirects to /settings?tab=billing)
+src/app/(app)/settings/page.tsx        Settings page (hosts Billing & Credits tab)
 src/components/billing/billing-view.tsx  UI: balance, top-up, history, admin panel
 ```
 

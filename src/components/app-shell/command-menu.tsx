@@ -17,6 +17,7 @@ import {
   CalendarDays,
   FilePlus2,
   FolderPlus,
+  CreditCard,
 } from "lucide-react";
 import {
   Dialog,
@@ -203,7 +204,10 @@ export function CommandMenu({ open, onOpenChange, isAdmin = false }: Props) {
   const adminNavItems = isAdmin
     ? [{ label: "User Management (Admin)", href: "/settings?tab=users", icon: Users }]
     : [];
-  const navItemsToRender = [...mainNav, ...settingsNav, ...adminNavItems];
+  const billingNavItems = [
+    { label: "Billing & Credits", href: "/settings?tab=billing", icon: CreditCard },
+  ];
+  const navItemsToRender = [...mainNav, ...settingsNav, ...billingNavItems, ...adminNavItems];
 
   const renderHit = (hit: NoteSearchHit) => (
     <CommandItem

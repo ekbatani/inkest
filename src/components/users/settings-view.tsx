@@ -9,6 +9,7 @@ import {
   Archive,
   BookOpen,
   Users,
+  CreditCard,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,15 +26,18 @@ import {
   DangerZoneSection,
   HelpGuidesSection,
 } from "@/components/users/settings-sections";
+import { BillingView } from "@/components/billing/billing-view";
 import { UserManagementView } from "@/components/admin/user-management-view";
 import type { UserSettings } from "@/server/users/settings-service";
 import type { AdminUserListResult } from "@/server/users/admin-service";
+import type { BillingOverview } from "@/server/billing/service";
 
 export type SettingsCategory =
   | "account"
   | "appearance"
   | "ai"
   | "notifications"
+  | "billing"
   | "data"
   | "users"
   | "help";
@@ -76,6 +80,13 @@ const CATEGORIES: CategoryMeta[] = [
     icon: Bell,
   },
   {
+    id: "billing",
+    label: "Billing & Credits",
+    shortLabel: "Billing",
+    description: "Credit balance, crypto top-ups, and payment history",
+    icon: CreditCard,
+  },
+  {
     id: "data",
     label: "Data & Storage",
     shortLabel: "Data & Danger",
@@ -108,6 +119,8 @@ interface SettingsViewProps {
   initialTab?: string;
   isAdmin?: boolean;
   initialUsersData?: AdminUserListResult | null;
+  initialBillingOverview?: BillingOverview | null;
+  highlightedPaymentId?: string | null;
 }
 
 export function SettingsView({
@@ -118,6 +131,8 @@ export function SettingsView({
   initialTab,
   isAdmin = false,
   initialUsersData,
+  initialBillingOverview,
+  highlightedPaymentId,
 }: SettingsViewProps) {
   const normalizedInitialTab =
     initialTab === "admin-users" || initialTab === "user-management"
@@ -126,8 +141,10 @@ export function SettingsView({
 
   const categories = React.useMemo(() => {
     if (!isAdmin) return CATEGORIES;
+    const helpIndex = CATEGORIES.findIndex((c) => c.id === "help");
+    const insertAt = helpIndex >= 0 ? helpIndex : CATEGORIES.length;
     return [
-      ...CATEGORIES.slice(0, 5),
+      ...CATEGORIES.slice(0, insertAt),
       {
         id: "users" as SettingsCategory,
         label: "User Management (Admin)",
@@ -135,7 +152,7 @@ export function SettingsView({
         description: "Instance user accounts, privileges, security, and workspaces",
         icon: Users,
       },
-      ...CATEGORIES.slice(5),
+      ...CATEGORIES.slice(insertAt),
     ];
   }, [isAdmin]);
 
@@ -290,6 +307,16 @@ export function SettingsView({
                 dailyNoteNudge={settings.notifications?.dailyNoteNudge}
                 weeklyReviewPrompt={settings.notifications?.weeklyReviewPrompt}
                 aiResults={settings.notifications?.aiResults}
+              />
+            </div>
+          )}
+
+          {/* Billing & Credits Category */}
+          {activeCategory === "billing" && (
+            <div className="flex flex-col gap-6">
+              <BillingView
+                initialOverview={initialBillingOverview ?? null}
+                highlightedPaymentId={highlightedPaymentId ?? null}
               />
             </div>
           )}

@@ -176,7 +176,7 @@ export async function createPayment(amountUsd: number): Promise<Payment> {
       amountUsd: amount,
       description: `Inkest credit top-up (${credits} credits)`,
       callbackUrl: billingWebhookUrl(),
-      returnUrl: `${appBaseUrl()}/billing?payment=${encodeURIComponent(paymentId)}`,
+      returnUrl: `${appBaseUrl()}/settings?tab=billing&payment=${encodeURIComponent(paymentId)}`,
     });
     const updated = await db
       .update(schema.payments)

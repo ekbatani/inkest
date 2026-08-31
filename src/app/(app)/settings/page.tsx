@@ -4,24 +4,26 @@ import { listUsersAdmin } from "@/server/users/admin-service";
 import { getUserSettings } from "@/server/users/settings-service";
 import { getTelegramLinkStatus } from "@/server/notifications/telegram-link";
 import { getAiConfigurationStatus } from "@/server/ai/provider";
+import { getBillingOverview } from "@/server/billing/service";
 import { SettingsView } from "@/components/users/settings-view";
 
 export const metadata = {
   title: "Settings | Inkest",
-  description: "Account, appearance, AI models, and workspace preferences.",
+  description: "Account, appearance, AI models, billing, and workspace preferences.",
 };
 
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ tab?: string }>;
+  searchParams?: Promise<{ tab?: string; payment?: string }>;
 }) {
   const params = searchParams ? await searchParams : undefined;
   const user = await getCurrentUser();
-  const [settings, telegramStatus, isAdminUser] = await Promise.all([
+  const [settings, telegramStatus, isAdminUser, billingOverview] = await Promise.all([
     getUserSettings(),
     getTelegramLinkStatus(),
     isAdmin().catch(() => false),
+    getBillingOverview().catch(() => null),
   ]);
   const aiConfiguration = getAiConfigurationStatus(settings);
   const initialUsersData = isAdminUser
@@ -38,6 +40,8 @@ export default async function SettingsPage({
         initialTab={params?.tab}
         isAdmin={isAdminUser}
         initialUsersData={initialUsersData}
+        initialBillingOverview={billingOverview}
+        highlightedPaymentId={params?.payment ?? null}
       />
     </div>
   );
