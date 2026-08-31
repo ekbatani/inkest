@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "prepare:native": "bun scripts/prepare-native-assets.mjs",
     "smoke": "bun scripts/release-smoke.mjs",
     "backup:local": "bun scripts/backup-local.mjs",
     "restore:local": "bun scripts/restore-local.mjs",

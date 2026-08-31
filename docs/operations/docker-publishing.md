@@ -38,9 +38,9 @@ the release owner must provide all of the following outside the repository:
 4. A clean-host verification of the immutable version tag, migration startup,
    volume persistence, and the release smoke test.
 
-The GitHub workflow always builds a non-published release candidate. Its publish
+The GitHub workflow builds and publishes release candidates on tag pushes. Its publish
 job cannot run until `DOCKERHUB_NAMESPACE` is configured; it then publishes only
-from `main` and `v*` tags. This keeps registry credentials out of the source
+from `v*` release tags. This keeps registry credentials out of the source
 tree and prevents an accidental first publication.
 
 ## Tags, attestations, and updates

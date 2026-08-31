@@ -2,7 +2,6 @@ name: Build and optionally publish Docker image
 
 on:
   push:
-    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -35,7 +34,7 @@ jobs:
     needs: build
     # Publishing is inert until the release owner configures the Docker Hub
     # namespace repository variable and documented credentials.
-    if: ${{ vars.DOCKERHUB_NAMESPACE != '' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
+    if: ${{ vars.DOCKERHUB_NAMESPACE != '' && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -60,10 +59,10 @@ jobs:
         with:
           images: docker.io/${{ vars.DOCKERHUB_NAMESPACE }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
             type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=sha-,format=short
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest
 
       - name: Build, attest, and push
         uses: docker/build-push-action@v6
