@@ -784,6 +784,142 @@ function buildInlineDecorations(linkableNotes: WikiLinkTarget[]) {
   };
 }
 
+const FENCE_COPY_ICON_HTML =
+  '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="cm-md-fence-icon-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+const FENCE_CHECK_ICON_HTML =
+  '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="cm-md-fence-icon-check"><path d="M20 6 9 17l-5-5"/></svg>';
+
+/**
+ * Live-preview header shown in place of an idle fenced block's opening fence
+ * line. Decorative only: the document text still carries the raw fence, and
+ * the widget disappears (raw source reappears) as soon as the selection
+ * enters the block.
+ */
+class CodeBlockHeaderWidget extends WidgetType {
+  constructor(
+    readonly language: string,
+    readonly code: string,
+  ) {
+    super();
+  }
+
+  eq(widget: CodeBlockHeaderWidget) {
+    return widget.language === this.language && widget.code === this.code;
+  }
+
+  toDOM() {
+    const wrap = document.createElement("div");
+    wrap.className = "cm-md-fence-header";
+    wrap.setAttribute("contenteditable", "false");
+
+    const label = document.createElement("span");
+    label.className = "cm-md-fence-lang";
+    label.textContent = this.language || "text";
+    wrap.appendChild(label);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "cm-md-fence-copy";
+    button.setAttribute("aria-label", "Copy code");
+    button.innerHTML = FENCE_COPY_ICON_HTML + FENCE_CHECK_ICON_HTML;
+    const buttonText = document.createElement("span");
+    buttonText.textContent = "Copy";
+    button.appendChild(buttonText);
+
+    // Keep the editor caret in place; the button must not steal focus.
+    button.addEventListener("mousedown", (event) => event.preventDefault());
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      navigator.clipboard
+        .writeText(this.code)
+        .then(() => {
+          button.classList.add("cm-md-fence-copy-done");
+          buttonText.textContent = "Copied";
+          window.setTimeout(() => {
+            button.classList.remove("cm-md-fence-copy-done");
+            buttonText.textContent = "Copy";
+          }, 2000);
+        })
+        .catch(() => {
+          // Clipboard access can fail (permissions, insecure context).
+        });
+    });
+
+    wrap.appendChild(button);
+    return wrap;
+  }
+
+  ignoreEvent(event: Event) {
+    // The copy button handles its own events; clicking the header body falls
+    // through to the editor, which places the caret and reveals the raw fence.
+    return (
+      event.target instanceof Element &&
+      event.target.closest(".cm-md-fence-copy") !== null
+    );
+  }
+}
+
+/**
+ * Renders idle fenced blocks as cards (language header, tinted body, hidden
+ * fences) so the editor matches the reader's code block presentation. Blocks
+ * whose opening line carries extra fence metadata (e.g. "```lang title=x")
+ * stay raw so that metadata remains visible and editable.
+ */
+function buildFencedBlockDecorations(view: EditorView) {
+  const doc = view.state.doc;
+  if (doc.length === 0) return Decoration.none;
+  const ranges: Range<Decoration>[] = [];
+
+  for (const { from, to } of findVisibleFencedBlocks(view)) {
+    if (selectionTouches(view.state, from, to)) continue;
+
+    const openLine = doc.lineAt(from);
+    const openMatch = /^(\s*)(`{3,}|~{3,})\s*([a-zA-Z0-9_-]*)\s*$/.exec(
+      openLine.text,
+    );
+    if (!openMatch) continue;
+
+    const closeLine = doc.lineAt(to);
+    const marker = openMatch[2];
+    const isClosed =
+      closeLine.number > openLine.number &&
+      new RegExp(`^\\s*\\${marker[0]}{${marker.length},}\\s*$`).test(
+        closeLine.text,
+      );
+
+    let code = doc.sliceString(
+      openLine.to + 1,
+      isClosed ? closeLine.from : doc.length,
+    );
+    if (code.endsWith("\n")) code = code.slice(0, -1);
+
+    ranges.push(Decoration.line({ class: "cm-md-fence-open" }).range(openLine.from));
+    ranges.push(
+      Decoration.replace({
+        widget: new CodeBlockHeaderWidget(openMatch[3], code),
+      }).range(openLine.from, openLine.to),
+    );
+
+    const firstInner = openLine.number + 1;
+    const lastInner = isClosed ? closeLine.number - 1 : doc.lines;
+    for (let n = firstInner; n <= lastInner; n++) {
+      const line = doc.line(n);
+      const classes = ["cm-md-fence-code"];
+      if (n === firstInner) classes.push("cm-md-fence-code-first");
+      if (n === lastInner) classes.push("cm-md-fence-code-last");
+      ranges.push(Decoration.line({ class: classes.join(" ") }).range(line.from));
+    }
+
+    if (isClosed) {
+      ranges.push(Decoration.line({ class: "cm-md-fence-close" }).range(closeLine.from));
+      ranges.push(Decoration.replace({}).range(closeLine.from, closeLine.to));
+    }
+  }
+
+  return ranges.length > 0 ? Decoration.set(ranges, true) : Decoration.none;
+}
+
 function findLinkTokenAtPos(state: EditorState, pos: number) {
   const docLen = state.doc.length;
   if (docLen === 0) return null;
@@ -926,6 +1062,7 @@ export function MarkdownEditor({
       }),
       EditorView.decorations.of(buildLineDecorations),
       EditorView.decorations.of(buildInlineDecorations(targets)),
+      EditorView.decorations.of(buildFencedBlockDecorations),
       EditorView.domEventHandlers({
         click: (event, view) => {
           const target = event.target;
@@ -1418,6 +1555,86 @@ export function MarkdownEditor({
             paddingLeft: "0.85rem",
             color: "color-mix(in oklab, var(--foreground) 78%, transparent)",
             fontStyle: "italic",
+          },
+          ".cm-md-fence-open": {
+            backgroundColor: "color-mix(in oklab, var(--muted) 62%, transparent)",
+            border: "1px solid color-mix(in oklab, var(--border) 75%, transparent)",
+            borderBottom: "none",
+            borderRadius: "0.6rem 0.6rem 0 0",
+            marginTop: "0.4rem",
+            padding: "0.2rem 0.6rem 0.12rem",
+          },
+          ".cm-md-fence-header": {
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "0.5rem",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.72rem",
+            lineHeight: "1.5",
+            fontWeight: "500",
+            color: "var(--muted-foreground)",
+            userSelect: "none",
+          },
+          ".cm-md-fence-copy": {
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.3rem",
+            border: "none",
+            background: "transparent",
+            color: "inherit",
+            font: "inherit",
+            cursor: "pointer",
+            padding: "0.1rem 0.3rem",
+            borderRadius: "0.3rem",
+          },
+          ".cm-md-fence-copy:hover": {
+            color: "var(--foreground)",
+            backgroundColor:
+              "color-mix(in oklab, var(--foreground) 8%, transparent)",
+          },
+          ".cm-md-fence-copy-done": {
+            color: "#10b981",
+          },
+          ".cm-md-fence-icon-check": {
+            display: "none",
+          },
+          ".cm-md-fence-copy-done .cm-md-fence-icon-copy": {
+            display: "none",
+          },
+          ".cm-md-fence-copy-done .cm-md-fence-icon-check": {
+            display: "inline",
+          },
+          ".cm-md-fence-code": {
+            backgroundColor: "color-mix(in oklab, var(--muted) 34%, transparent)",
+            borderInline:
+              "1px solid color-mix(in oklab, var(--border) 75%, transparent)",
+            paddingInline: "0.85rem",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.92em",
+          },
+          ".cm-md-fence-code-first": {
+            paddingTop: "0.25rem",
+          },
+          ".cm-md-fence-code-last": {
+            borderBottom:
+              "1px solid color-mix(in oklab, var(--border) 75%, transparent)",
+            borderRadius: "0 0 0.6rem 0.6rem",
+            paddingBottom: "0.3rem",
+            marginBottom: "0.45rem",
+          },
+          ".cm-md-fence-close": {
+            backgroundColor: "color-mix(in oklab, var(--muted) 34%, transparent)",
+            borderInline:
+              "1px solid color-mix(in oklab, var(--border) 75%, transparent)",
+            borderBottom:
+              "1px solid color-mix(in oklab, var(--border) 75%, transparent)",
+            borderRadius: "0 0 0.6rem 0.6rem",
+            fontSize: "0.5rem",
+            lineHeight: "1",
+            paddingBlock: "0.12rem",
+            marginBottom: "0.45rem",
           },
           ".cm-md-task-checkbox": {
             display: "inline-flex",

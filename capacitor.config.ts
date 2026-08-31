@@ -17,6 +17,7 @@ const config: LocalCapacitorConfig = {
   webDir: "out",
   bundledWebRuntime: false,
   server: {
+    url: "https://inkest.natrademind.com",
     androidScheme: "https",
     cleartext: true,
   },
