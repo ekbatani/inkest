@@ -131,11 +131,13 @@ jobs:
           npx cap sync android
 
       - name: Build Android APK
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME }}
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
-          ./gradlew assembleRelease || true
+          ./gradlew assembleDebug -Dorg.gradle.java.home="$JAVA_HOME"
+          ./gradlew assembleRelease -Dorg.gradle.java.home="$JAVA_HOME" || true
 
       - name: Prepare Android Release Assets
         run: |

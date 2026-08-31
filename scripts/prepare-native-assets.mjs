@@ -75,69 +75,33 @@ if (!fs.existsSync(outIndexPath)) {
   console.log("Created out/index.html fallback.");
 }
 
-// 2. Ensure src-tauri/icons directory exists and copy icon assets
+// 3. Ensure src-tauri/icons directory exists
 if (!fs.existsSync(tauriIconsDir)) {
   fs.mkdirSync(tauriIconsDir, { recursive: true });
 }
 
-const sourceIcon = fs.existsSync(path.join(publicDir, "app-icon.png"))
-  ? path.join(publicDir, "app-icon.png")
-  : fs.existsSync(path.join(publicDir, "logo-square.png"))
-  ? path.join(publicDir, "logo-square.png")
-  : null;
+const mainIcoPath = path.join(tauriIconsDir, "icon.ico");
+if (!fs.existsSync(mainIcoPath) || fs.statSync(mainIcoPath).size < 1000) {
+  const sourceIcon = fs.existsSync(path.join(publicDir, "icon-1024.png"))
+    ? path.join(publicDir, "icon-1024.png")
+    : fs.existsSync(path.join(publicDir, "app-icon.png"))
+    ? path.join(publicDir, "app-icon.png")
+    : null;
 
-function pngToIco(pngBuffer) {
-  const icoHeader = Buffer.alloc(6);
-  icoHeader.writeUInt16LE(0, 0); // Reserved
-  icoHeader.writeUInt16LE(1, 2); // ICO Type: 1
-  icoHeader.writeUInt16LE(1, 4); // Number of images: 1
-
-  const entry = Buffer.alloc(16);
-  entry.writeUInt8(0, 0); // Width: 0 (256px)
-  entry.writeUInt8(0, 1); // Height: 0 (256px)
-  entry.writeUInt8(0, 2); // Color palette count: 0 (>= 8bpp)
-  entry.writeUInt8(0, 3); // Reserved: 0
-  entry.writeUInt16LE(1, 4); // Color planes: 1
-  entry.writeUInt16LE(32, 6); // Bits per pixel: 32
-  entry.writeUInt32LE(pngBuffer.length, 8); // Size of image data
-  entry.writeUInt32LE(22, 12); // Offset of image data (6 + 16 = 22)
-
-  return Buffer.concat([icoHeader, entry, pngBuffer]);
-}
-
-function pngToIcns(pngBuffer) {
-  const tag = Buffer.from("ic08"); // 256x256 PNG block
-  const blockLen = 8 + pngBuffer.length;
-  const blockHeader = Buffer.alloc(8);
-  tag.copy(blockHeader, 0);
-  blockHeader.writeUInt32BE(blockLen, 4);
-
-  const totalLen = 8 + blockLen;
-  const icnsHeader = Buffer.alloc(8);
-  Buffer.from("icns").copy(icnsHeader, 0);
-  icnsHeader.writeUInt32BE(totalLen, 4);
-
-  return Buffer.concat([icnsHeader, blockHeader, pngBuffer]);
-}
-
-if (sourceIcon) {
-  const pngData = fs.readFileSync(sourceIcon);
-
-  // PNG icon targets
-  const pngTargets = ["32x32.png", "128x128.png", "128x128@2x.png"];
-  for (const target of pngTargets) {
-    fs.writeFileSync(path.join(tauriIconsDir, target), pngData);
+  if (sourceIcon) {
+    try {
+      const { execSync } = await import("node:child_process");
+      execSync(`bun x @tauri-apps/cli icon "${sourceIcon}" -o src-tauri/icons`, {
+        stdio: "inherit",
+        cwd: rootDir,
+      });
+      console.log("Generated Tauri icons with official CLI.");
+    } catch (e) {
+      console.warn("Could not run tauri icon generator:", e?.message || e);
+    }
   }
-
-  // Windows 3.00 format ICO
-  const icoData = pngToIco(pngData);
-  fs.writeFileSync(path.join(tauriIconsDir, "icon.ico"), icoData);
-
-  // macOS ICNS format
-  const icnsData = pngToIcns(pngData);
-  fs.writeFileSync(path.join(tauriIconsDir, "icon.icns"), icnsData);
-
-  console.log("Populated src-tauri/icons with compliant ICO, ICNS, and PNG icons.");
+} else {
+  console.log("Found valid multi-resolution Tauri icons.");
 }
 
 // 4. Run database migrations to ensure local schema is ready for static build collection
