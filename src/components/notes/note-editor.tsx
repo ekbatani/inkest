@@ -333,21 +333,28 @@ export function NoteEditor({
     const snapshot = latestContentRef.current;
     if (sameSnapshot(snapshot, lastSyncedSnapshotRef.current)) return;
 
-    const payload = JSON.stringify({
+    const payload = {
       title: snapshot.title,
       contentMd: snapshot.content,
+    };
+    void compressPayload(payload).then((compressed) => {
+      if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
+        const blob = new Blob([compressed as unknown as ArrayBufferView<ArrayBuffer>], {
+          type: "application/octet-stream",
+        });
+        navigator.sendBeacon(`/api/notes/${note.id}/save`, blob);
+      } else {
+        void fetch(`/api/notes/${note.id}/save`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "Content-Encoding": "deflate",
+          },
+          body: new Blob([compressed as unknown as ArrayBufferView<ArrayBuffer>]),
+          keepalive: true,
+        });
+      }
     });
-    if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
-      const blob = new Blob([payload], { type: "application/json" });
-      navigator.sendBeacon(`/api/notes/${note.id}/save`, blob);
-    } else {
-      void fetch(`/api/notes/${note.id}/save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: payload,
-        keepalive: true,
-      });
-    }
   }, [note.id]);
 
   const performSave = React.useCallback(
@@ -410,27 +417,15 @@ export function NoteEditor({
             };
           }
 
-          const jsonStr = JSON.stringify(payload);
-          let res: Response;
-
-          // Only compress when payload is genuinely large (> 32KB)
-          if (jsonStr.length > 32768) {
-            const compressed = await compressPayload(payload);
-            res = await fetch(`/api/notes/${note.id}/save`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/octet-stream",
-                "Content-Encoding": "deflate",
-              },
-              body: new Blob([compressed as unknown as ArrayBufferView<ArrayBuffer>]),
-            });
-          } else {
-            res = await fetch(`/api/notes/${note.id}/save`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: jsonStr,
-            });
-          }
+          const compressed = await compressPayload(payload);
+          const res = await fetch(`/api/notes/${note.id}/save`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/octet-stream",
+              "Content-Encoding": "deflate",
+            },
+            body: new Blob([compressed as unknown as ArrayBufferView<ArrayBuffer>]),
+          });
 
           if (res.status === 409 && attempt === 0) {
             // Base hash mismatch -> retry once with full payload

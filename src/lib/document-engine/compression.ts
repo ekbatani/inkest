@@ -1,6 +1,7 @@
 /**
  * High-performance compression and binary packing utilities for document persistence.
- * Uses browser-native CompressionStream (Deflate/Gzip) with zero external dependencies.
+ * Uses native Web Streams (CompressionStream / DecompressionStream) with Deflate/Gzip
+ * and zero external dependencies for maximum browser and server throughput.
  */
 
 import type { DocumentModel } from "./types";
@@ -10,16 +11,22 @@ import type { DocumentModel } from "./types";
  */
 export async function compressText(text: string): Promise<Uint8Array> {
   const bytes = new TextEncoder().encode(text);
+  if (bytes.length === 0) {
+    return new Uint8Array(0);
+  }
 
   if (typeof CompressionStream !== "undefined") {
-    const cs = new CompressionStream("deflate");
-    const writer = cs.writable.getWriter();
-    writer.write(bytes);
-    writer.close();
-
-    const response = new Response(cs.readable);
-    const arrayBuffer = await response.arrayBuffer();
-    return new Uint8Array(arrayBuffer);
+    try {
+      const cs = new CompressionStream("deflate");
+      const stream = new Blob([bytes as unknown as ArrayBufferView<ArrayBuffer>])
+        .stream()
+        .pipeThrough(cs);
+      const response = new Response(stream);
+      const arrayBuffer = await response.arrayBuffer();
+      return new Uint8Array(arrayBuffer);
+    } catch {
+      return bytes;
+    }
   }
 
   // Fallback: uncompressed bytes
@@ -27,34 +34,45 @@ export async function compressText(text: string): Promise<Uint8Array> {
 }
 
 /**
- * Decompresses a Deflate-compressed Uint8Array back into a UTF-8 string.
+ * Decompresses a Deflate-compressed Uint8Array or ArrayBuffer back into a UTF-8 string.
  */
-export async function decompressText(compressed: Uint8Array): Promise<string> {
+export async function decompressText(
+  compressed: Uint8Array | ArrayBuffer,
+): Promise<string> {
+  const bytes = compressed instanceof Uint8Array ? compressed : new Uint8Array(compressed);
+
+  if (bytes.length === 0) {
+    return "";
+  }
+
   if (typeof DecompressionStream !== "undefined") {
     try {
       const ds = new DecompressionStream("deflate");
-      const writer = ds.writable.getWriter();
-      writer.write(compressed as unknown as ArrayBufferView<ArrayBuffer>);
-      writer.close();
-
-      const response = new Response(ds.readable);
+      const stream = new Blob([bytes as unknown as ArrayBufferView<ArrayBuffer>])
+        .stream()
+        .pipeThrough(ds);
+      const response = new Response(stream);
       const arrayBuffer = await response.arrayBuffer();
       return new TextDecoder().decode(arrayBuffer);
     } catch {
-      // If decompression fails, try plain text decode (e.g. uncompressed fallback)
-      return new TextDecoder().decode(compressed);
+      // If decompression fails (e.g. uncompressed raw bytes), decode as plain text
+      try {
+        return new TextDecoder().decode(bytes);
+      } catch {
+        return "";
+      }
     }
   }
 
-  return new TextDecoder().decode(compressed);
+  return new TextDecoder().decode(bytes);
 }
 
 /**
  * Packs a DocumentModel into a compressed snapshot buffer.
  */
-export async function serializeAndCompressModel(model: DocumentModel): Promise<Uint8Array> {
-  // Only serialize essential fields (source, id, version, stats)
-  // Derived block arrays can be rebuilt or re-parsed in milliseconds on load.
+export async function serializeAndCompressModel(
+  model: DocumentModel,
+): Promise<Uint8Array> {
   const payload = JSON.stringify({
     id: model.id,
     version: model.version,
@@ -69,7 +87,7 @@ export async function serializeAndCompressModel(model: DocumentModel): Promise<U
  * Decompresses and deserializes a snapshot buffer into a DocumentModel.
  */
 export async function decompressAndDeserializeModel(
-  compressed: Uint8Array,
+  compressed: Uint8Array | ArrayBuffer,
   parseFunc: (source: string, id: string, version: number) => DocumentModel,
 ): Promise<DocumentModel> {
   const jsonStr = await decompressText(compressed);
@@ -96,3 +114,48 @@ export async function decompressPayload<T = unknown>(
   return JSON.parse(text) as T;
 }
 
+/**
+ * Converts a Uint8Array into a Base64-encoded string safely in any environment.
+ */
+export function bytesToBase64(bytes: Uint8Array): string {
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(bytes).toString("base64");
+  }
+  let binary = "";
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Converts a Base64-encoded string back into a Uint8Array.
+ */
+export function base64ToBytes(base64: string): Uint8Array {
+  if (typeof Buffer !== "undefined") {
+    return new Uint8Array(Buffer.from(base64, "base64"));
+  }
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/**
+ * Compresses a UTF-8 string into a Base64-encoded string.
+ */
+export async function compressToBase64(text: string): Promise<string> {
+  const compressed = await compressText(text);
+  return bytesToBase64(compressed);
+}
+
+/**
+ * Decompresses a Base64-encoded Deflate string back into a UTF-8 string.
+ */
+export async function decompressFromBase64(base64: string): Promise<string> {
+  const bytes = base64ToBytes(base64);
+  return decompressText(bytes);
+}

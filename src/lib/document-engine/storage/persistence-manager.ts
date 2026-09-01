@@ -1,9 +1,10 @@
 /**
  * High-performance persistence manager.
- * Coordinates in-memory state, non-blocking IndexedDB patch journals, snapshot compaction, and background server sync.
+ * Coordinates in-memory state, non-blocking IndexedDB patch journals, compressed snapshots, and background server sync.
  */
 
 import { documentIndexedDBStore } from "./indexeddb-store";
+import { compressText, decompressText } from "../compression";
 import type { DocumentPatch, TextEdit } from "../types";
 
 const COMPACT_THRESHOLD_PATCHES = 30;
@@ -78,6 +79,13 @@ export class DocumentPersistenceManager {
     contentHash?: string,
   ): Promise<void> {
     const nextVersion = ++this.currentVersion;
+    let compressed: Uint8Array | undefined;
+    try {
+      compressed = await compressText(content);
+    } catch {
+      // Best effort compression
+    }
+
     await documentIndexedDBStore.saveSnapshot(
       this.documentId,
       nextVersion,
@@ -85,6 +93,7 @@ export class DocumentPersistenceManager {
       title,
       false,
       contentHash,
+      compressed,
     );
   }
 
@@ -118,12 +127,21 @@ export class DocumentPersistenceManager {
     if (this.compactTimer) clearTimeout(this.compactTimer);
     this.patchCountSinceSnapshot = 0;
 
+    let compressed: Uint8Array | undefined;
+    try {
+      compressed = await compressText(content);
+    } catch {
+      // Best effort compression
+    }
+
     await documentIndexedDBStore.saveSnapshot(
       this.documentId,
       version,
       content,
       title,
       synced,
+      undefined,
+      compressed,
     );
     await documentIndexedDBStore.prunePatchesUpTo(this.documentId, version);
   }
@@ -145,6 +163,17 @@ export class DocumentPersistenceManager {
     if (!snapshot) return null;
 
     let content = snapshot.content;
+    if (snapshot.compressed && snapshot.compressed.length > 0) {
+      try {
+        const decompressed = await decompressText(snapshot.compressed);
+        if (decompressed && decompressed.length > 0) {
+          content = decompressed;
+        }
+      } catch {
+        content = snapshot.content;
+      }
+    }
+
     let version = snapshot.version;
     const title = snapshot.title;
     const timestamp = snapshot.timestamp;
@@ -159,7 +188,13 @@ export class DocumentPersistenceManager {
       version = patch.targetVersion;
     }
 
-    return { title, content, version, timestamp, synced, contentHash };
+    return {
+      title,
+      content,
+      version,
+      timestamp,
+      synced,
+      contentHash,
+    };
   }
 }
-
