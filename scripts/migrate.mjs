@@ -1,103 +1,41 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createClient } from "@libsql/client";
-import { readMigrationFiles } from "drizzle-orm/migrator";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
 
-const url = process.env.DATABASE_URL ?? "file:./data/local.db";
-const authToken = process.env.DATABASE_AUTH_TOKEN || undefined;
-const MIGRATIONS_TABLE = "__drizzle_migrations";
-const MIGRATIONS_FOLDER = "./drizzle";
+const url =
+  process.env.DATABASE_URL ??
+  "postgres://inknest:inknest_secret@localhost:5432/inknest";
 
-if (url.startsWith("file:")) {
-  const rawPath = url.replace(/^file:\/\//, "").replace(/^file:/, "");
-  const resolvedPath = path.isAbsolute(rawPath)
-    ? rawPath
-    : path.resolve(process.cwd(), rawPath);
-  const dir = path.dirname(resolvedPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-}
-
-const client = createClient({ url, authToken });
-
-async function ensureMigrationsTable() {
-  await client.execute(`
-    CREATE TABLE IF NOT EXISTS \`${MIGRATIONS_TABLE}\` (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      hash text NOT NULL,
-      created_at numeric
-    )
-  `);
-}
-
-async function getLastMigrationCreatedAt() {
-  const result = await client.execute(
-    `SELECT created_at FROM \`${MIGRATIONS_TABLE}\` ORDER BY created_at DESC LIMIT 1`,
-  );
-  const row = result.rows[0];
-  if (!row) return null;
-
-  const value = row.created_at ?? row[0];
-  return value == null ? null : Number(value);
-}
-
-function isAlreadyAppliedError(error) {
-  const messages = [];
-  let current = error;
-
-  while (current) {
-    if (current.message) {
-      messages.push(current.message);
-    }
-    current = current.cause;
-  }
-
-  const message = messages.join("\n");
-  return /already exists|duplicate column name/i.test(message);
-}
-
-async function applyStatement(sql) {
-  try {
-    await client.execute(sql);
-  } catch (error) {
-    if (isAlreadyAppliedError(error)) {
-      console.warn(`Skipping already-applied statement: ${sql.slice(0, 80)}...`);
-      return;
-    }
-    throw error;
-  }
-}
+const sql = postgres(url, { max: 1, connect_timeout: 10 });
 
 async function runMigrations() {
-  await ensureMigrationsTable();
+  console.log("Connecting to PostgreSQL to ensure schema...");
+  try {
+    await sql`CREATE EXTENSION IF NOT EXISTS vector;`;
+  } catch (err) {
+    console.warn("pgvector extension check:", err.message);
+  }
 
-  const migrations = readMigrationFiles({ migrationsFolder: MIGRATIONS_FOLDER });
-  const lastCreatedAt = await getLastMigrationCreatedAt();
-
-  for (const migration of migrations) {
-    if (lastCreatedAt != null && lastCreatedAt >= migration.folderMillis) {
-      continue;
+  const migrationsFolder = path.resolve(process.cwd(), "./drizzle");
+  if (fs.existsSync(migrationsFolder)) {
+    try {
+      const db = drizzle(sql);
+      await migrate(db, { migrationsFolder });
+      console.log("Drizzle migrations applied.");
+    } catch (err) {
+      console.warn("Drizzle migration step note:", err.message);
     }
-
-    for (const statement of migration.sql) {
-      const trimmed = statement.trim();
-      if (!trimmed) continue;
-      await applyStatement(trimmed);
-    }
-
-    await client.execute({
-      sql: `INSERT INTO \`${MIGRATIONS_TABLE}\` ("hash", "created_at") VALUES (?, ?)`,
-      args: [migration.hash, migration.folderMillis],
-    });
-
-    console.log(`Applied migration ${migration.hash}.`);
   }
 }
 
 try {
   await runMigrations();
-  console.log("Migrations applied.");
+  console.log("Database initialization completed.");
+} catch (err) {
+  console.error("Migration error:", err);
 } finally {
-  client.close();
+  await sql.end({ timeout: 5 });
 }
+

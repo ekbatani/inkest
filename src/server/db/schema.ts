@@ -1,23 +1,20 @@
 import {
-  sqliteTable,
+  pgTable,
   text,
   integer,
-  real,
-  blob,
+  doublePrecision,
+  timestamp,
+  boolean,
   index,
   uniqueIndex,
-  type AnySQLiteColumn,
-} from "drizzle-orm/sqlite-core";
-import { sql } from "drizzle-orm";
-
-// Helpers
-const timestamp = (name: string) =>
-  integer(name, { mode: "timestamp" }).default(sql`(unixepoch())`);
+  vector,
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
 
 const idCol = () => text("id").primaryKey();
 
 // ── users ────────────────────────────────────────────────────────────────
-export const users = sqliteTable("users", {
+export const users = pgTable("users", {
   id: idCol(),
   email: text("email").notNull().unique(),
   name: text("name"),
@@ -30,37 +27,41 @@ export const users = sqliteTable("users", {
     .notNull()
     .default("active"),
   // JSON-encoded user settings, parsed by the service: editor prefs, AI
-  // provider overrides, etc. Stored as TEXT since SQLite has no native JSONB.
+  // provider overrides, etc.
   settings: text("settings"),
   // Per-user Telegram link (env-var TELEGRAM_CHAT_ID remains a fallback for
   // single-user self-host deployments that never link an account).
   telegramChatId: text("telegram_chat_id").unique(),
   telegramLinkCode: text("telegram_link_code"),
-  telegramLinkCodeExpiresAt: integer("telegram_link_code_expires_at", {
-    mode: "timestamp",
+  telegramLinkCodeExpiresAt: timestamp("telegram_link_code_expires_at", {
+    withTimezone: true,
   }),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── workspaces ───────────────────────────────────────────────────────────
-export const workspaces = sqliteTable("workspaces", {
+export const workspaces = pgTable("workspaces", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   slug: text("slug").notNull(),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── notes ────────────────────────────────────────────────────────────────
-export const notes = sqliteTable("notes", {
+export const notes = pgTable("notes", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -68,7 +69,7 @@ export const notes = sqliteTable("notes", {
   workspaceId: text("workspace_id")
     .notNull()
     .references(() => workspaces.id, { onDelete: "cascade" }),
-  parentId: text("parent_id").references((): AnySQLiteColumn => notes.id, {
+  parentId: text("parent_id").references((): AnyPgColumn => notes.id, {
     onDelete: "set null",
   }),
   title: text("title").notNull().default("Untitled"),
@@ -89,19 +90,21 @@ export const notes = sqliteTable("notes", {
   priority: text("priority", { enum: ["none", "low", "medium", "high"] })
     .notNull()
     .default("none"),
-  dueDate: integer("due_date", { mode: "timestamp" }),
+  dueDate: timestamp("due_date", { withTimezone: true }),
   sortOrder: integer("sort_order"),
-  pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
-  archived: integer("archived", { mode: "boolean" }).notNull().default(false),
-  deletedAt: integer("deleted_at", { mode: "timestamp" }),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
+  pinned: boolean("pinned").notNull().default(false),
+  archived: boolean("archived").notNull().default(false),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── tags ─────────────────────────────────────────────────────────────────
-export const tags = sqliteTable("tags", {
+export const tags = pgTable("tags", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -112,11 +115,13 @@ export const tags = sqliteTable("tags", {
   name: text("name").notNull(),
   slug: text("slug").notNull(),
   color: text("color"),
-  createdAt: timestamp("created_at").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
-// ── note_tags ────────────────────────────────────────────────────────────
-export const noteTags = sqliteTable("note_tags", {
+// ── note_tags ────────────────────────────────────────────────────
+export const noteTags = pgTable("note_tags", {
   noteId: text("note_id")
     .notNull()
     .references(() => notes.id, { onDelete: "cascade" }),
@@ -125,11 +130,8 @@ export const noteTags = sqliteTable("note_tags", {
     .references(() => tags.id, { onDelete: "cascade" }),
 });
 
-// ── project_members ──────────────────────────────────────────────────────
-// Sharing attaches to the outermost project note in a parent chain; a member
-// gains access to that project's whole subtree. The project owner (the note's
-// userId) is implicit and never has a row here.
-export const projectMembers = sqliteTable(
+// ── project_members ──────────────────────────────────────────────
+export const projectMembers = pgTable(
   "project_members",
   {
     id: idCol(),
@@ -145,7 +147,9 @@ export const projectMembers = sqliteTable(
     addedByUserId: text("added_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("created_at").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     uniqueIndex("project_members_project_user_uq").on(
@@ -158,7 +162,7 @@ export const projectMembers = sqliteTable(
 );
 
 // ── tasks ────────────────────────────────────────────────────────────────
-export const tasks = sqliteTable("tasks", {
+export const tasks = pgTable("tasks", {
   id: idCol(),
   noteId: text("note_id")
     .notNull()
@@ -174,8 +178,8 @@ export const tasks = sqliteTable("tasks", {
   priority: text("priority", { enum: ["none", "low", "medium", "high"] })
     .notNull()
     .default("none"),
-  dueDate: integer("due_date", { mode: "timestamp" }),
-  startDate: integer("start_date", { mode: "timestamp" }),
+  dueDate: timestamp("due_date", { withTimezone: true }),
+  startDate: timestamp("start_date", { withTimezone: true }),
   nextAction: text("next_action"),
   ifThenCue: text("if_then_cue"),
   whenWhereHow: text("when_where_how"),
@@ -183,18 +187,17 @@ export const tasks = sqliteTable("tasks", {
     .notNull()
     .default("manual"),
   sourceLine: integer("source_line"),
-  // Set once a Telegram due-date reminder has been sent, so the scheduler
-  // doesn't re-notify on every pass. Cleared if the due date changes.
-  dueReminderSentAt: integer("due_reminder_sent_at", { mode: "timestamp" }),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
+  dueReminderSentAt: timestamp("due_reminder_sent_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
-// Durable, user-scoped activity items. `dedupeKey` makes scheduler retries and
-// multiple server processes safe: an event can be delivered only once.
-export const notifications = sqliteTable(
+// ── notifications ────────────────────────────────────────────────────────
+export const notifications = pgTable(
   "notifications",
   {
     id: idCol(),
@@ -218,14 +221,21 @@ export const notifications = sqliteTable(
     body: text("body").notNull(),
     href: text("href"),
     dedupeKey: text("dedupe_key").notNull(),
-    readAt: integer("read_at", { mode: "timestamp" }),
-    createdAt: timestamp("created_at").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
-  (table) => [uniqueIndex("notifications_user_dedupe_unique").on(table.userId, table.dedupeKey)],
+  (table) => [
+    uniqueIndex("notifications_user_dedupe_unique").on(
+      table.userId,
+      table.dedupeKey,
+    ),
+  ],
 );
 
 // ── attachments ──────────────────────────────────────────────────────────
-export const attachments = sqliteTable("attachments", {
+export const attachments = pgTable("attachments", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -242,11 +252,13 @@ export const attachments = sqliteTable("attachments", {
   storagePath: text("storage_path").notNull(),
   publicPath: text("public_path"),
   checksum: text("checksum"),
-  createdAt: timestamp("created_at").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── note_versions ────────────────────────────────────────────────────────
-export const noteVersions = sqliteTable("note_versions", {
+export const noteVersions = pgTable("note_versions", {
   id: idCol(),
   noteId: text("note_id")
     .notNull()
@@ -256,11 +268,13 @@ export const noteVersions = sqliteTable("note_versions", {
     .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   contentMd: text("content_md").notNull(),
-  createdAt: timestamp("created_at").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── ai_events ────────────────────────────────────────────────────────────
-export const aiEvents = sqliteTable("ai_events", {
+export const aiEvents = pgTable("ai_events", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -274,11 +288,13 @@ export const aiEvents = sqliteTable("ai_events", {
   outputJson: text("output_json"),
   provider: text("provider").notNull(),
   model: text("model").notNull(),
-  createdAt: timestamp("created_at").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
-// -- google_calendar_connections ---------------------------------------------
-export const googleCalendarConnections = sqliteTable(
+// ── google_calendar_connections ──────────────────────────────────────────
+export const googleCalendarConnections = pgTable(
   "google_calendar_connections",
   {
     id: idCol(),
@@ -295,19 +311,21 @@ export const googleCalendarConnections = sqliteTable(
     refreshToken: text("refresh_token"),
     tokenType: text("token_type"),
     scope: text("scope"),
-    accessTokenExpiresAt: integer("access_token_expires_at", {
-      mode: "timestamp",
+    accessTokenExpiresAt: timestamp("access_token_expires_at", {
+      withTimezone: true,
     }),
-    lastSyncedAt: integer("last_synced_at", { mode: "timestamp" }),
-    createdAt: timestamp("created_at").notNull(),
-    updatedAt: timestamp("updated_at")
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
 );
 
-// -- google_calendar_events --------------------------------------------------
-export const googleCalendarEvents = sqliteTable("google_calendar_events", {
+// ── google_calendar_events ──────────────────────────────────────────────
+export const googleCalendarEvents = pgTable("google_calendar_events", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -329,19 +347,21 @@ export const googleCalendarEvents = sqliteTable("google_calendar_events", {
   location: text("location"),
   htmlLink: text("html_link"),
   status: text("status"),
-  startsAt: integer("starts_at", { mode: "timestamp" }).notNull(),
-  endsAt: integer("ends_at", { mode: "timestamp" }).notNull(),
-  allDay: integer("all_day", { mode: "boolean" }).notNull().default(false),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  allDay: boolean("all_day").notNull().default(false),
   sourceUpdatedAt: text("source_updated_at"),
-  syncedAt: integer("synced_at", { mode: "timestamp" }).notNull(),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
+  syncedAt: timestamp("synced_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── documents ─────────────────────────────────────────────────────────────
-export const documents = sqliteTable("documents", {
+export const documents = pgTable("documents", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -352,7 +372,7 @@ export const documents = sqliteTable("documents", {
   attachmentId: text("attachment_id").references(() => attachments.id, {
     onDelete: "set null",
   }),
-  parentId: text("parent_id").references((): AnySQLiteColumn => notes.id, {
+  parentId: text("parent_id").references((): AnyPgColumn => notes.id, {
     onDelete: "set null",
   }),
   title: text("title").notNull(),
@@ -363,14 +383,16 @@ export const documents = sqliteTable("documents", {
   sizeBytes: integer("size_bytes").notNull(),
   pageCount: integer("page_count"),
   checksum: text("checksum"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── annotations ───────────────────────────────────────────────────────────
-export const annotations = sqliteTable("annotations", {
+export const annotations = pgTable("annotations", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -386,14 +408,16 @@ export const annotations = sqliteTable("annotations", {
   highlightText: text("highlight_text"),
   comment: text("comment"),
   color: text("color").default("yellow"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── citations ─────────────────────────────────────────────────────────────
-export const citations = sqliteTable("citations", {
+export const citations = pgTable("citations", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -411,14 +435,14 @@ export const citations = sqliteTable("citations", {
   }),
   locationPointer: text("location_pointer"), // JSON page/line/range pointer
   quotedText: text("quoted_text"),
-  isBroken: integer("is_broken", { mode: "boolean" })
+  isBroken: boolean("is_broken").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(false),
-  createdAt: timestamp("created_at").notNull(),
+    .defaultNow(),
 });
 
 // ── saved_views ───────────────────────────────────────────────────────────
-export const savedViews = sqliteTable("saved_views", {
+export const savedViews = pgTable("saved_views", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -430,14 +454,16 @@ export const savedViews = sqliteTable("saved_views", {
   icon: text("icon"),
   queryJson: text("query_json").notNull(), // JSON string filter specification
   sortOrder: integer("sort_order"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── journal_entries ───────────────────────────────────────────────────────
-export const journalEntries = sqliteTable("journal_entries", {
+export const journalEntries = pgTable("journal_entries", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -459,17 +485,17 @@ export const journalEntries = sqliteTable("journal_entries", {
   })
     .notNull()
     .default("freeform"),
-  optOutAi: integer("opt_out_ai", { mode: "boolean" })
+  optOutAi: boolean("opt_out_ai").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(true),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
 });
 
 // ── vault_items ───────────────────────────────────────────────────────────
-export const vaultItems = sqliteTable("vault_items", {
+export const vaultItems = pgTable("vault_items", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -486,14 +512,16 @@ export const vaultItems = sqliteTable("vault_items", {
   ciphertext: text("ciphertext").notNull(),
   iv: text("iv").notNull(),
   authTag: text("auth_tag"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── audit_logs ────────────────────────────────────────────────────────────
-export const auditLogs = sqliteTable("audit_logs", {
+export const auditLogs = pgTable("audit_logs", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -506,11 +534,13 @@ export const auditLogs = sqliteTable("audit_logs", {
   entityId: text("entity_id"),
   metadataJson: text("metadata_json"),
   ipAddress: text("ip_address"),
-  createdAt: timestamp("created_at").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── chat_threads ──────────────────────────────────────────────────────────
-export const chatThreads = sqliteTable("chat_threads", {
+export const chatThreads = pgTable("chat_threads", {
   id: idCol(),
   userId: text("user_id")
     .notNull()
@@ -519,14 +549,16 @@ export const chatThreads = sqliteTable("chat_threads", {
     .notNull()
     .references(() => workspaces.id, { onDelete: "cascade" }),
   title: text("title").notNull().default("New Chat"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at")
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── chat_messages ─────────────────────────────────────────────────────────
-export const chatMessages = sqliteTable("chat_messages", {
+export const chatMessages = pgTable("chat_messages", {
   id: idCol(),
   threadId: text("thread_id")
     .notNull()
@@ -539,17 +571,17 @@ export const chatMessages = sqliteTable("chat_messages", {
     .references(() => workspaces.id, { onDelete: "cascade" }),
   role: text("role", { enum: ["user", "assistant"] }).notNull(),
   content: text("content").notNull(),
-  isError: integer("is_error", { mode: "boolean" })
+  isError: boolean("is_error").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
-    .default(false),
-  createdAt: timestamp("created_at").notNull(),
+    .defaultNow(),
 });
 
 // ── document_blocks ──────────────────────────────────────────────────────
-export const documentBlocks = sqliteTable(
+export const documentBlocks = pgTable(
   "document_blocks",
   {
-    id: idCol(), // stable block id, e.g. blk-0-a1b2c3d4
+    id: idCol(),
     documentId: text("document_id")
       .notNull()
       .references(() => notes.id, { onDelete: "cascade" }),
@@ -571,10 +603,12 @@ export const documentBlocks = sqliteTable(
     headingAnchor: text("heading_anchor"),
     sectionTitle: text("section_title"),
     metadataJson: text("metadata_json"),
-    createdAt: timestamp("created_at").notNull(),
-    updatedAt: timestamp("updated_at")
+    createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     index("doc_blocks_doc_idx").on(table.documentId, table.blockIndex),
@@ -584,7 +618,7 @@ export const documentBlocks = sqliteTable(
 );
 
 // ── document_embeddings ──────────────────────────────────────────────────
-export const documentEmbeddings = sqliteTable(
+export const documentEmbeddings = pgTable(
   "document_embeddings",
   {
     id: idCol(),
@@ -603,11 +637,13 @@ export const documentEmbeddings = sqliteTable(
     embeddingModel: text("embedding_model").notNull(),
     embeddingVersion: integer("embedding_version").notNull().default(1),
     dimensions: integer("dimensions").notNull(),
-    embedding: blob("embedding"),
-    createdAt: timestamp("created_at").notNull(),
-    updatedAt: timestamp("updated_at")
+    embedding: vector("embedding", { dimensions: 1536 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     index("doc_emb_doc_blk_idx").on(table.documentId, table.blockId),
@@ -617,7 +653,7 @@ export const documentEmbeddings = sqliteTable(
 );
 
 // ── document_links ───────────────────────────────────────────────────────
-export const documentLinks = sqliteTable(
+export const documentLinks = pgTable(
   "document_links",
   {
     id: idCol(),
@@ -642,8 +678,10 @@ export const documentLinks = sqliteTable(
     origin: text("origin", { enum: ["user", "parser", "ai"] })
       .notNull()
       .default("parser"),
-    confidence: real("confidence").default(1.0),
-    createdAt: timestamp("created_at").notNull(),
+    confidence: doublePrecision("confidence").default(1.0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     index("doc_links_src_idx").on(table.sourceDocumentId),
@@ -653,7 +691,7 @@ export const documentLinks = sqliteTable(
 );
 
 // ── block_relations ──────────────────────────────────────────────────────
-export const blockRelations = sqliteTable(
+export const blockRelations = pgTable(
   "block_relations",
   {
     id: idCol(),
@@ -681,9 +719,11 @@ export const blockRelations = sqliteTable(
     origin: text("origin", { enum: ["user", "parser", "ai"] })
       .notNull()
       .default("parser"),
-    confidence: real("confidence").default(1.0),
+    confidence: doublePrecision("confidence").default(1.0),
     metadataJson: text("metadata_json"),
-    createdAt: timestamp("created_at").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     index("blk_rel_src_idx").on(table.sourceBlockId),
@@ -693,7 +733,7 @@ export const blockRelations = sqliteTable(
 );
 
 // ── document_index_state ─────────────────────────────────────────────────
-export const documentIndexState = sqliteTable("document_index_state", {
+export const documentIndexState = pgTable("document_index_state", {
   documentId: text("document_id")
     .primaryKey()
     .references(() => notes.id, { onDelete: "cascade" }),
@@ -712,18 +752,15 @@ export const documentIndexState = sqliteTable("document_index_state", {
   })
     .notNull()
     .default("pending"),
-  lastIndexedAt: integer("last_indexed_at", { mode: "timestamp" }),
+  lastIndexedAt: timestamp("last_indexed_at", { withTimezone: true }),
   error: text("error"),
-  updatedAt: timestamp("updated_at")
+  updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .defaultNow(),
 });
 
 // ── payments ─────────────────────────────────────────────────────────────
-// One row per top-up attempt. `status` follows the payment until a terminal
-// state; confirmation is the single point where credits are granted, guarded
-// by the conditional pending→confirmed transition in the billing service.
-export const payments = sqliteTable(
+export const payments = pgTable(
   "payments",
   {
     id: idCol(),
@@ -750,26 +787,24 @@ export const payments = sqliteTable(
     })
       .notNull()
       .default("pending"),
-    amountUsd: real("amount_usd").notNull(),
-    // Credit rate is locked in at invoice creation so later rate changes
-    // cannot retroactively change what a pending payment is worth.
-    credits: real("credits").notNull(),
-    paidAmount: real("paid_amount"),
+    amountUsd: doublePrecision("amount_usd").notNull(),
+    credits: doublePrecision("credits").notNull(),
+    paidAmount: doublePrecision("paid_amount"),
     paidAsset: text("paid_asset"),
     paidNetwork: text("paid_network"),
     walletAddress: text("wallet_address"),
     txHash: text("tx_hash"),
     metadataJson: text("metadata_json"),
-    confirmedAt: integer("confirmed_at", { mode: "timestamp" }),
-    expiresAt: integer("expires_at", { mode: "timestamp" }),
-    createdAt: timestamp("created_at").notNull(),
-    updatedAt: timestamp("updated_at")
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
-    // NULL provider_invoice_id rows (manual payments) never collide: SQLite
-    // unique indexes treat NULLs as distinct.
     uniqueIndex("payments_provider_invoice_uq").on(table.providerInvoiceId),
     index("payments_user_idx").on(table.userId, table.createdAt),
     index("payments_status_idx").on(table.status, table.createdAt),
@@ -777,11 +812,7 @@ export const payments = sqliteTable(
 );
 
 // ── credit_ledger ────────────────────────────────────────────────────────
-// Append-only credit history. Balance is SUM(delta) for the user. The unique
-// (paymentId, reason) pair makes webhook retries and duplicate confirmations
-// safe: a payment can grant credits exactly once (NULL paymentId rows, e.g.
-// admin grants, are always allowed since SQLite treats NULLs as distinct).
-export const creditLedger = sqliteTable(
+export const creditLedger = pgTable(
   "credit_ledger",
   {
     id: idCol(),
@@ -791,13 +822,15 @@ export const creditLedger = sqliteTable(
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    delta: real("delta").notNull(),
+    delta: doublePrecision("delta").notNull(),
     reason: text("reason", { enum: ["payment", "admin_grant"] }).notNull(),
     paymentId: text("payment_id").references(() => payments.id, {
       onDelete: "set null",
     }),
     note: text("note"),
-    createdAt: timestamp("created_at").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     uniqueIndex("credit_ledger_payment_reason_uq").on(
@@ -849,5 +882,6 @@ export type Payment = typeof payments.$inferSelect;
 export type NewPayment = typeof payments.$inferInsert;
 export type CreditLedgerEntry = typeof creditLedger.$inferSelect;
 export type NewCreditLedgerEntry = typeof creditLedger.$inferInsert;
+
 
 

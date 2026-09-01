@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { resolve, relative, sep } from "node:path";
-import { createClient } from "@libsql/client";
+import { Database } from "bun:sqlite";
 
 function argument(name) {
   const index = process.argv.indexOf(name);
@@ -64,11 +64,11 @@ await mkdir(destination, { recursive: true });
 
 // VACUUM INTO creates a transactionally consistent, standalone SQLite copy.
 const databaseCopy = resolve(destination, "database.db");
-const client = createClient({ url: `file:${database}` });
+const db = new Database(database);
 try {
-  await client.execute(`VACUUM INTO ${sqlString(databaseCopy)}`);
+  db.exec(`VACUUM INTO ${sqlString(databaseCopy)}`);
 } finally {
-  client.close();
+  db.close();
 }
 
 const storageCopy = resolve(destination, "storage");

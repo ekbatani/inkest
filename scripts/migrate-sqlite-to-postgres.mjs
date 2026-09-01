@@ -3,14 +3,14 @@
  *
  * Reads records from local SQLite (data/local.db) and inserts them into PostgreSQL.
  * Usage:
- *   DATABASE_URL="postgres://user:password@localhost:5432/inknest" node scripts/migrate-sqlite-to-postgres.mjs
+ *   DATABASE_URL="postgres://user:password@localhost:5432/inknest" bun scripts/migrate-sqlite-to-postgres.mjs
  */
 
 import fs from "node:fs";
-import path from "node:path";
-import { createClient as createLibsqlClient } from "@libsql/client";
+import { Database } from "bun:sqlite";
+import postgres from "postgres";
 
-const sqliteUrl = process.env.SQLITE_DATABASE_URL ?? "file:./data/local.db";
+const sqlitePath = (process.env.SQLITE_DATABASE_URL ?? "data/local.db").replace(/^file:\/\//, "").replace(/^file:/, "");
 const postgresUrl = process.env.DATABASE_URL;
 
 if (!postgresUrl || !postgresUrl.startsWith("postgres")) {
@@ -18,10 +18,16 @@ if (!postgresUrl || !postgresUrl.startsWith("postgres")) {
   process.exit(1);
 }
 
-console.log(`Connecting to SQLite: ${sqliteUrl}`);
+if (!fs.existsSync(sqlitePath)) {
+  console.log(`SQLite database file not found at ${sqlitePath}. Nothing to migrate.`);
+  process.exit(0);
+}
+
+console.log(`Connecting to SQLite: ${sqlitePath}`);
 console.log(`Target PostgreSQL: ${postgresUrl.replace(/:[^:@]+@/, ":***@")}`);
 
-const sqliteClient = createLibsqlClient({ url: sqliteUrl });
+const sqliteClient = new Database(sqlitePath);
+const pgClient = postgres(postgresUrl, { max: 1 });
 
 const TABLES = [
   "users",
@@ -43,22 +49,27 @@ async function migrate() {
 
   for (const table of TABLES) {
     try {
-      const result = await sqliteClient.execute(`SELECT * FROM \`${table}\``);
-      console.log(`Extracted ${result.rows.length} rows from table '${table}'.`);
-      // Here you can use standard postgres client (pg) to insert the rows
+      const rows = sqliteClient.prepare(`SELECT * FROM "${table}"`).all();
+      console.log(`Extracted ${rows.length} rows from table '${table}'.`);
+      if (rows.length > 0) {
+        await pgClient`INSERT INTO ${pgClient(table)} ${pgClient(rows)} ON CONFLICT DO NOTHING`;
+        console.log(`Inserted ${rows.length} rows into PostgreSQL table '${table}'.`);
+      }
     } catch (err) {
-      console.warn(`Table '${table}' not present in SQLite or empty, skipping.`);
+      console.warn(`Table '${table}' not present or migrated with note:`, err.message);
     }
   }
 
   console.log("Migration check completed.");
 }
 
-migrate()
-  .catch((err) => {
-    console.error("Migration failed:", err);
-    process.exit(1);
-  })
-  .finally(() => {
-    sqliteClient.close();
-  });
+try {
+  await migrate();
+} catch (err) {
+  console.error("Migration failed:", err);
+  process.exit(1);
+} finally {
+  sqliteClient.close();
+  await pgClient.end();
+}
+

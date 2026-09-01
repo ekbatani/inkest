@@ -3,9 +3,8 @@ import { defineConfig } from "drizzle-kit";
 export default defineConfig({
   schema: "./src/server/db/schema.ts",
   out: "./drizzle",
-  dialect: "turso",
+  dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "file:./data/local.db",
-    authToken: process.env.DATABASE_AUTH_TOKEN || undefined,
+    url: process.env.DATABASE_URL ?? "postgres://inknest:inknest_secret@localhost:5432/inknest",
   },
 });

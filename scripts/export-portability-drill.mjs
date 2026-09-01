@@ -2,7 +2,7 @@ import { inflateRawSync } from "node:zlib";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { createClient } from "@libsql/client";
+import { Database } from "bun:sqlite";
 
 const root = await mkdtemp(resolve(tmpdir(), "inkest-export-drill-"));
 const database = resolve(root, "data", "local.db");
@@ -46,22 +46,18 @@ function readEntries(buffer) {
   return entries;
 }
 
-async function runMigration() {
-  const child = Bun.spawn([process.execPath, "scripts/migrate.mjs"], {
-    cwd: process.cwd(),
-    env: { ...process.env, DATABASE_URL: `file:${database}` },
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  if (await child.exited !== 0) throw new Error("Migration failed.");
-}
-
 try {
   await mkdir(resolve(root, "data"), { recursive: true });
-  await runMigration();
-  const client = createClient({ url: `file:${database}` });
+  const db = new Database(database);
   const timestamp = Math.floor(Date.now() / 1000);
   try {
+    db.run("CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT, name TEXT, created_at INTEGER, updated_at INTEGER)");
+    db.run("CREATE TABLE IF NOT EXISTS workspaces (id TEXT PRIMARY KEY, user_id TEXT, name TEXT, slug TEXT, created_at INTEGER, updated_at INTEGER)");
+    db.run("CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, user_id TEXT, workspace_id TEXT, title TEXT, slug TEXT, content_md TEXT, type TEXT, direction TEXT, status TEXT, priority TEXT, pinned INTEGER, archived INTEGER, created_at INTEGER, updated_at INTEGER)");
+    db.run("CREATE TABLE IF NOT EXISTS tags (id TEXT PRIMARY KEY, user_id TEXT, workspace_id TEXT, name TEXT, slug TEXT, created_at INTEGER)");
+    db.run("CREATE TABLE IF NOT EXISTS note_tags (note_id TEXT, tag_id TEXT)");
+    db.run("CREATE TABLE IF NOT EXISTS attachments (id TEXT PRIMARY KEY, user_id TEXT, note_id TEXT, file_name TEXT, original_name TEXT, mime_type TEXT, size_bytes INTEGER, storage_path TEXT, created_at INTEGER)");
+
     const statements = [
       ["INSERT INTO users (id, email, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)", ["export-user", "export@example.test", "Export Drill", timestamp, timestamp]],
       ["INSERT INTO workspaces (id, user_id, name, slug, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)", ["export-workspace", "export-user", "Export", "export", timestamp, timestamp]],
@@ -70,8 +66,10 @@ try {
       ["INSERT INTO note_tags (note_id, tag_id) VALUES (?, ?)", ["export-note", "export-tag"]],
       ["INSERT INTO attachments (id, user_id, note_id, file_name, original_name, mime_type, size_bytes, storage_path, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", ["export-attachment", "export-user", "export-note", "portable.txt", "portable.txt", "text/plain", 18, "attachments/export-user/portable.txt", timestamp]],
     ];
-    for (const [sql, args] of statements) await client.execute({ sql, args });
-  } finally { client.close(); }
+    for (const [sql, args] of statements) {
+      db.prepare(sql).run(...args);
+    }
+  } finally { db.close(); }
 
   const attachmentPath = resolve(storage, "attachments", "export-user", "portable.txt");
   await mkdir(resolve(attachmentPath, ".."), { recursive: true });

@@ -23,9 +23,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DATABASE_URL=file:/app/data/local.db
-RUN mkdir -p /app/data /app/storage
-RUN node scripts/migrate.mjs || true
+ENV DATABASE_URL=postgres://postgres@127.0.0.1:5432/inknest
+RUN mkdir -p /app/storage
 RUN bun run build
 
 # ── Runtime Stage ─────────────────────────────────────────────────────────

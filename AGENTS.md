@@ -63,7 +63,7 @@ When operating as an AI agent or pair programming with agents, adhere to the fol
 - Avoid introducing circular dependencies between `@/components` and `@/server`.
 
 ### C. Database Evolution Workflow
-1. Modify schema definitions in `src/server/db/schema.ts` (or `src/server/db/schema.pg.ts` for Postgres).
+1. Modify schema definitions in `src/server/db/schema.ts`.
 2. Generate migration files via:
    ```bash
    bun run db:generate

@@ -1,6 +1,6 @@
 /**
- * Turso/libSQL Full-Text Search (FTS5) service for document blocks.
- * Provides block-level lexical retrieval with BM25 ranking and snippet generation.
+ * PostgreSQL Full-Text Search (FTS with tsvector & ts_rank) service for document blocks.
+ * Provides block-level lexical retrieval with rank scoring and headline snippet generation.
  */
 
 import { db } from "@/server/db/client";
@@ -19,31 +19,39 @@ export interface FtsSearchResult {
 let ftsInitialized = false;
 
 /**
- * Ensures the FTS5 virtual table exists in Turso/libSQL.
+ * Ensures the FTS table and indexes exist in PostgreSQL.
  */
 export async function initFtsTable(): Promise<void> {
   if (ftsInitialized) return;
   try {
-    await db.run(sql`
-      CREATE VIRTUAL TABLE IF NOT EXISTS document_blocks_fts USING fts5(
-        document_id UNINDEXED,
-        block_id UNINDEXED,
-        workspace_id UNINDEXED,
-        user_id UNINDEXED,
-        title,
-        section_title,
-        content,
-        tokenize = 'unicode61'
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS document_blocks_fts (
+        id TEXT PRIMARY KEY,
+        document_id TEXT NOT NULL,
+        block_id TEXT NOT NULL,
+        workspace_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        section_title TEXT,
+        content TEXT NOT NULL,
+        tsv TSVECTOR GENERATED ALWAYS AS (
+          setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+          setweight(to_tsvector('english', coalesce(section_title, '')), 'B') ||
+          setweight(to_tsvector('english', coalesce(content, '')), 'C')
+        ) STORED
       );
+      CREATE INDEX IF NOT EXISTS doc_blocks_fts_tsv_idx ON document_blocks_fts USING GIN(tsv);
+      CREATE INDEX IF NOT EXISTS doc_blocks_fts_doc_idx ON document_blocks_fts(document_id);
+      CREATE INDEX IF NOT EXISTS doc_blocks_fts_ws_usr_idx ON document_blocks_fts(workspace_id, user_id);
     `);
     ftsInitialized = true;
   } catch (err) {
-    console.warn("FTS5 table initialization note:", err);
+    console.warn("PostgreSQL FTS table initialization note:", err);
   }
 }
 
 /**
- * Searches document blocks using FTS5 BM25 ranking.
+ * Searches document blocks using PostgreSQL tsvector and plainto_tsquery.
  * Strict workspace & user isolation is enforced.
  */
 export async function searchFts(args: {
@@ -61,15 +69,6 @@ export async function searchFts(args: {
 
   if (!sanitized) return [];
 
-  // Prepare FTS query terms (prefix matching on tokens)
-  const tokens = sanitized
-    .split(/\s+/)
-    .filter((t) => t.length > 0)
-    .map((t) => `"${t.replace(/"/g, '""')}"*`)
-    .join(" AND ");
-
-  if (!tokens) return [];
-
   try {
     let querySql;
     if (args.documentId) {
@@ -79,14 +78,14 @@ export async function searchFts(args: {
           block_id,
           title,
           section_title,
-          snippet(document_blocks_fts, 6, '<mark>', '</mark>', '...', 16) AS snip,
-          bm25(document_blocks_fts) AS rank
+          ts_headline('english', content, plainto_tsquery('english', ${sanitized}), 'StartSel=<mark>, StopSel=</mark>, MaxWords=35, MinWords=15') AS snip,
+          ts_rank(tsv, plainto_tsquery('english', ${sanitized})) AS rank
         FROM document_blocks_fts
-        WHERE document_blocks_fts MATCH ${tokens}
+        WHERE tsv @@ plainto_tsquery('english', ${sanitized})
           AND workspace_id = ${args.workspaceId}
           AND user_id = ${args.userId}
           AND document_id = ${args.documentId}
-        ORDER BY rank ASC
+        ORDER BY rank DESC
         LIMIT ${limit};
       `;
     } else {
@@ -96,18 +95,18 @@ export async function searchFts(args: {
           block_id,
           title,
           section_title,
-          snippet(document_blocks_fts, 6, '<mark>', '</mark>', '...', 16) AS snip,
-          bm25(document_blocks_fts) AS rank
+          ts_headline('english', content, plainto_tsquery('english', ${sanitized}), 'StartSel=<mark>, StopSel=</mark>, MaxWords=35, MinWords=15') AS snip,
+          ts_rank(tsv, plainto_tsquery('english', ${sanitized})) AS rank
         FROM document_blocks_fts
-        WHERE document_blocks_fts MATCH ${tokens}
+        WHERE tsv @@ plainto_tsquery('english', ${sanitized})
           AND workspace_id = ${args.workspaceId}
           AND user_id = ${args.userId}
-        ORDER BY rank ASC
+        ORDER BY rank DESC
         LIMIT ${limit};
       `;
     }
 
-    const res = await db.all<{
+    const res = await db.execute<{
       document_id: string;
       block_id: string;
       title: string;
@@ -116,13 +115,13 @@ export async function searchFts(args: {
       rank: number;
     }>(querySql);
 
-    return res.map((r) => ({
+    return Array.from(res).map((r) => ({
       documentId: r.document_id,
       blockId: r.block_id,
       title: r.title,
       sectionTitle: r.section_title ?? undefined,
       snippet: r.snip,
-      bm25Rank: r.rank,
+      bm25Rank: Number(r.rank ?? 0),
     }));
   } catch (err) {
     console.error("FTS search failed:", err);
@@ -131,7 +130,7 @@ export async function searchFts(args: {
 }
 
 /**
- * Synchronizes FTS5 index for a document's blocks.
+ * Synchronizes FTS index for a document's blocks in PostgreSQL.
  */
 export async function syncDocumentFts(args: {
   documentId: string;
@@ -143,17 +142,19 @@ export async function syncDocumentFts(args: {
   await initFtsTable();
   try {
     // Delete existing entries for this document
-    await db.run(sql`
+    await db.execute(sql`
       DELETE FROM document_blocks_fts
       WHERE document_id = ${args.documentId};
     `);
 
-    // Insert new block rows into FTS5
+    // Insert new block rows
     for (const block of args.blocks) {
       if (!block.content.trim()) continue;
+      const id = `${args.documentId}_${block.id}`;
       const sectionTitle = block.metadata.sectionTitle ?? "";
-      await db.run(sql`
-        INSERT INTO document_blocks_fts(
+      await db.execute(sql`
+        INSERT INTO document_blocks_fts (
+          id,
           document_id,
           block_id,
           workspace_id,
@@ -162,6 +163,7 @@ export async function syncDocumentFts(args: {
           section_title,
           content
         ) VALUES (
+          ${id},
           ${args.documentId},
           ${block.id},
           ${args.workspaceId},
@@ -169,7 +171,11 @@ export async function syncDocumentFts(args: {
           ${args.title},
           ${sectionTitle},
           ${block.content}
-        );
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          title = EXCLUDED.title,
+          section_title = EXCLUDED.section_title,
+          content = EXCLUDED.content;
       `);
     }
   } catch (err) {
@@ -178,12 +184,12 @@ export async function syncDocumentFts(args: {
 }
 
 /**
- * Deletes FTS5 entries when a document is deleted.
+ * Deletes FTS entries when a document is deleted.
  */
 export async function deleteDocumentFts(documentId: string): Promise<void> {
   await initFtsTable();
   try {
-    await db.run(sql`
+    await db.execute(sql`
       DELETE FROM document_blocks_fts
       WHERE document_id = ${documentId};
     `);
@@ -191,3 +197,4 @@ export async function deleteDocumentFts(documentId: string): Promise<void> {
     console.warn("FTS delete note:", err);
   }
 }
+

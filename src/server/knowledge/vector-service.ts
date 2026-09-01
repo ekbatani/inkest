@@ -1,10 +1,10 @@
 /**
- * Turso/libSQL Vector Search Service.
+ * PostgreSQL / pgvector Vector Search Service.
  * Performs cosine similarity retrieval on document block embeddings with strict workspace scoping.
  */
 
 import { db, schema } from "@/server/db/client";
-import { sql, inArray } from "drizzle-orm";
+import { sql, eq, inArray } from "drizzle-orm";
 import { randomId } from "@/lib/slug";
 
 export interface VectorSearchResult {
@@ -19,7 +19,7 @@ function vectorToSqlLiteral(vector: number[]): string {
 }
 
 /**
- * Searches document embeddings using libSQL vector distance (cosine metric).
+ * Searches document embeddings using pgvector cosine distance (<=> operator).
  * Strictly filtered by workspaceId and userId.
  */
 export async function searchVector(args: {
@@ -39,7 +39,7 @@ export async function searchVector(args: {
         SELECT
           document_id,
           block_id,
-          vector_distance_cos(embedding, vector32(${vectorStr})) AS dist
+          (embedding <=> ${vectorStr}::vector) AS dist
         FROM document_embeddings
         WHERE workspace_id = ${args.workspaceId}
           AND user_id = ${args.userId}
@@ -53,7 +53,7 @@ export async function searchVector(args: {
         SELECT
           document_id,
           block_id,
-          vector_distance_cos(embedding, vector32(${vectorStr})) AS dist
+          (embedding <=> ${vectorStr}::vector) AS dist
         FROM document_embeddings
         WHERE workspace_id = ${args.workspaceId}
           AND user_id = ${args.userId}
@@ -63,13 +63,13 @@ export async function searchVector(args: {
       `;
     }
 
-    const rows = await db.all<{
+    const rows = await db.execute<{
       document_id: string;
       block_id: string;
       dist: number;
     }>(querySql);
 
-    return rows.map((r) => {
+    return Array.from(rows).map((r) => {
       const dist = Number(r.dist ?? 1.0);
       return {
         documentId: r.document_id,
@@ -85,7 +85,7 @@ export async function searchVector(args: {
 }
 
 /**
- * Stores or updates a block embedding in Turso/libSQL.
+ * Stores or updates a block embedding in PostgreSQL with pgvector.
  */
 export async function upsertBlockEmbedding(args: {
   id?: string;
@@ -105,7 +105,7 @@ export async function upsertBlockEmbedding(args: {
   const version = args.embeddingVersion ?? 1;
 
   try {
-    await db.run(sql`
+    await db.execute(sql`
       INSERT INTO document_embeddings (
         id,
         document_id,
@@ -131,18 +131,18 @@ export async function upsertBlockEmbedding(args: {
         ${args.embeddingModel},
         ${version},
         ${args.dimensions},
-        vector32(${vectorStr}),
-        unixepoch(),
-        unixepoch()
+        ${vectorStr}::vector,
+        NOW(),
+        NOW()
       )
       ON CONFLICT(id) DO UPDATE SET
-        content_hash = excluded.content_hash,
-        text_hash = excluded.text_hash,
-        embedding_model = excluded.embedding_model,
-        embedding_version = excluded.embedding_version,
-        dimensions = excluded.dimensions,
-        embedding = excluded.embedding,
-        updated_at = unixepoch();
+        content_hash = EXCLUDED.content_hash,
+        text_hash = EXCLUDED.text_hash,
+        embedding_model = EXCLUDED.embedding_model,
+        embedding_version = EXCLUDED.embedding_version,
+        dimensions = EXCLUDED.dimensions,
+        embedding = EXCLUDED.embedding,
+        updated_at = NOW();
     `);
   } catch (err) {
     console.error("Failed to upsert block embedding:", args.blockId, err);
@@ -154,10 +154,9 @@ export async function upsertBlockEmbedding(args: {
  */
 export async function deleteDocumentEmbeddings(documentId: string): Promise<void> {
   try {
-    await db.run(sql`
-      DELETE FROM document_embeddings
-      WHERE document_id = ${documentId};
-    `);
+    await db
+      .delete(schema.documentEmbeddings)
+      .where(eq(schema.documentEmbeddings.documentId, documentId));
   } catch (err) {
     console.warn("Delete document embeddings note:", err);
   }
@@ -176,3 +175,4 @@ export async function deleteBlockEmbeddings(blockIds: string[]): Promise<void> {
     console.warn("Delete block embeddings note:", err);
   }
 }
+
