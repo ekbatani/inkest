@@ -38,7 +38,11 @@ function parseArgs(args) {
 const baseUrl = parseArgs(process.argv.slice(2));
 
 const checks = [
-  { name: "landing page", path: "/", status: 200 },
+  {
+    name: "root redirects to dashboard",
+    path: "/",
+    redirectTo: "/dashboard",
+  },
   { name: "sign-in page", path: "/signin", status: 200 },
   { name: "sign-up page", path: "/signup", status: 200 },
   {
@@ -49,7 +53,7 @@ const checks = [
   {
     name: "Google Calendar connect requires sign-in",
     path: "/api/calendar/google/connect",
-    redirectTo: "/signin",
+    status: 401,
   },
 ];
 

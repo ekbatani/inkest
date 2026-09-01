@@ -650,9 +650,9 @@ Includes:
 * Supporter badge
 * Future discount for cloud plan
 
-### Hosted Pro
+### Hosted Cloud (Pro)
 
-$8/month or $80/year.
+$9/month or $99/year.
 
 Includes:
 

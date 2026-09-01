@@ -207,4 +207,7 @@ actions remain manual and only use text you explicitly select.
 
 ## License
 
-Private project.
+Inkest is free for personal, educational, and non-commercial self-hosted use under the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
+
+For commercial licensing, hosted service partnerships, or enterprise inquiries, please contact [Amir Ekbatani](mailto:amir.ekbatani@gmail.com).
+

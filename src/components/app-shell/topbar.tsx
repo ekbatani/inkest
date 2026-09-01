@@ -85,7 +85,15 @@ export function Topbar({
 
   return (
     <>
-      <header className="relative z-30 flex h-16 shrink-0 items-center gap-2 border-b border-border/70 bg-background/80 px-3 backdrop-blur-xl sm:px-5">
+      <header
+        className="relative z-30 flex shrink-0 items-center gap-2 border-b border-border/70 bg-background/80 px-3 pb-2 backdrop-blur-xl sm:h-16 sm:min-h-16 sm:px-5 sm:pb-0 sm:pt-0"
+        style={{
+          paddingTop: "max(0.5rem, calc(0.5rem + env(safe-area-inset-top, 0px)))",
+          paddingLeft: "max(0.75rem, calc(0.75rem + env(safe-area-inset-left, 0px)))",
+          paddingRight: "max(0.75rem, calc(0.75rem + env(safe-area-inset-right, 0px)))",
+          minHeight: "calc(4rem + env(safe-area-inset-top, 0px))",
+        }}
+      >
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
           <SheetTrigger
             render={

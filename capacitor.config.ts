@@ -30,6 +30,11 @@ const config: LocalCapacitorConfig = {
       splashFullScreen: true,
       splashImmersive: true,
     },
+    StatusBar: {
+      overlaysWebView: true,
+      style: "DARK",
+      backgroundColor: "#0b0d16",
+    },
     Keyboard: {
       resize: "body",
       style: "DARK",

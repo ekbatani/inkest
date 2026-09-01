@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo-mark";
 
 export default function AuthLayout({
@@ -14,13 +13,9 @@ export default function AuthLayout({
 
       <div className="relative z-10 flex min-h-dvh flex-col">
         <header className="auth-header">
-          <Link href="/" className="marketing-logo" aria-label="Inkest home">
+          <Link href="/dashboard" className="marketing-logo" aria-label="Inkest workspace">
             <LogoMark className="size-8" />
             <span>Inkest</span>
-          </Link>
-          <Link href="/" className="marketing-button marketing-button--ghost">
-            <ArrowLeft className="size-3.5 rtl:-scale-x-100" aria-hidden="true" />
-            Back to home
           </Link>
         </header>
 

@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Inkest",
     description:
       "A calm, fast, Markdown-first personal workspace. Notes, projects, tasks, and AI actions.",
-    start_url: "/notes",
+    start_url: "/dashboard",
     display: "standalone",
     background_color: "#0c0a1f",
     theme_color: "#0c0a1f",

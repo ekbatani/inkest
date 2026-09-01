@@ -334,23 +334,114 @@ const indexHtml = `<!DOCTYPE html>
 fs.writeFileSync(outIndexPath, indexHtml, "utf-8");
 console.log("Generated interactive native launcher in out/index.html.");
 
-// 3. Ensure src-tauri/icons directory exists
+// 3. Ensure src-tauri/icons directory exists and generate icons
 if (!fs.existsSync(tauriIconsDir)) {
   fs.mkdirSync(tauriIconsDir, { recursive: true });
 }
 
+const sourceIconPath = fs.existsSync(path.join(publicDir, "icon-1024.png"))
+  ? path.join(publicDir, "icon-1024.png")
+  : fs.existsSync(path.join(publicDir, "app-icon.png"))
+  ? path.join(publicDir, "app-icon.png")
+  : null;
+
+if (sourceIconPath) {
+  try {
+    const sharp = (await import("sharp")).default;
+    const androidIconsDir = path.join(tauriIconsDir, "android");
+
+    const densities = [
+      { name: "mdpi", size: 48, fgSize: 108 },
+      { name: "hdpi", size: 72, fgSize: 162 },
+      { name: "xhdpi", size: 96, fgSize: 216 },
+      { name: "xxhdpi", size: 144, fgSize: 324 },
+      { name: "xxxhdpi", size: 192, fgSize: 432 },
+    ];
+
+    for (const d of densities) {
+      const dir = path.join(androidIconsDir, `mipmap-${d.name}`);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      // 1. Standard square/adaptive ic_launcher.png
+      await sharp(sourceIconPath)
+        .resize(d.size, d.size)
+        .png()
+        .toFile(path.join(dir, "ic_launcher.png"));
+
+      // 2. Round ic_launcher_round.png
+      const circleSvg = Buffer.from(
+        `<svg width="${d.size}" height="${d.size}"><circle cx="${d.size / 2}" cy="${d.size / 2}" r="${d.size / 2}" fill="#fff" /></svg>`
+      );
+      await sharp(sourceIconPath)
+        .resize(d.size, d.size)
+        .composite([{ input: circleSvg, blend: "dest-in" }])
+        .png()
+        .toFile(path.join(dir, "ic_launcher_round.png"));
+
+      // 3. Foreground layer ic_launcher_foreground.png (inner icon padded for Android adaptive icons)
+      const innerSize = Math.round(d.fgSize * 0.666);
+      const innerBuffer = await sharp(sourceIconPath)
+        .resize(innerSize, innerSize)
+        .png()
+        .toBuffer();
+
+      await sharp({
+        create: {
+          width: d.fgSize,
+          height: d.fgSize,
+          channels: 4,
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        },
+      })
+        .composite([{ input: innerBuffer, gravity: "center" }])
+        .png()
+        .toFile(path.join(dir, "ic_launcher_foreground.png"));
+    }
+
+    // Write Android adaptive icon XML declarations
+    const anyDpiDir = path.join(androidIconsDir, "mipmap-anydpi-v26");
+    if (!fs.existsSync(anyDpiDir)) {
+      fs.mkdirSync(anyDpiDir, { recursive: true });
+    }
+    const adaptiveXml = `<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+  <background android:drawable="@color/ic_launcher_background"/>
+  <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>`;
+    fs.writeFileSync(path.join(anyDpiDir, "ic_launcher.xml"), adaptiveXml, "utf-8");
+    fs.writeFileSync(path.join(anyDpiDir, "ic_launcher_round.xml"), adaptiveXml, "utf-8");
+
+    const valuesDir = path.join(androidIconsDir, "values");
+    if (!fs.existsSync(valuesDir)) {
+      fs.mkdirSync(valuesDir, { recursive: true });
+    }
+    const bgXml = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <color name="ic_launcher_background">#0b0d16</color>
+</resources>`;
+    fs.writeFileSync(path.join(valuesDir, "ic_launcher_background.xml"), bgXml, "utf-8");
+
+    console.log("Successfully generated all Android mipmap and adaptive icons.");
+
+    // Sync Android icons directly into Capacitor Android project if it exists
+    const capAndroidResDir = path.join(rootDir, "android", "app", "src", "main", "res");
+    if (fs.existsSync(capAndroidResDir)) {
+      fs.cpSync(androidIconsDir, capAndroidResDir, { recursive: true, force: true });
+      console.log("Synchronized Android icons to android/app/src/main/res.");
+    }
+  } catch (err) {
+    console.warn("Could not generate Android icons:", err?.message || err);
+  }
+}
+
 const mainIcoPath = path.join(tauriIconsDir, "icon.ico");
 if (!fs.existsSync(mainIcoPath) || fs.statSync(mainIcoPath).size < 1000) {
-  const sourceIcon = fs.existsSync(path.join(publicDir, "icon-1024.png"))
-    ? path.join(publicDir, "icon-1024.png")
-    : fs.existsSync(path.join(publicDir, "app-icon.png"))
-    ? path.join(publicDir, "app-icon.png")
-    : null;
-
-  if (sourceIcon) {
+  if (sourceIconPath) {
     try {
       const { execSync } = await import("node:child_process");
-      execSync(`bun x @tauri-apps/cli icon "${sourceIcon}" -o src-tauri/icons`, {
+      execSync(`bun x @tauri-apps/cli icon "${sourceIconPath}" -o src-tauri/icons`, {
         stdio: "inherit",
         cwd: rootDir,
       });

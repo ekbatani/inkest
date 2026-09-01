@@ -59,9 +59,17 @@ const JSON_LD = {
         },
         {
           "@type": "Offer",
-          name: "Inkest Cloud",
-          availability: "https://schema.org/PreOrder",
+          name: "Inkest Cloud (Monthly)",
+          price: "9",
           priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+        },
+        {
+          "@type": "Offer",
+          name: "Inkest Cloud (Yearly)",
+          price: "99",
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
         },
       ],
       featureList: [
@@ -179,3 +187,4 @@ export default async function LandingPage() {
     </div>
   );
 }
+

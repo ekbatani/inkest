@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Lora, Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppearanceSync } from "@/components/users/appearance-sync";
@@ -8,28 +7,6 @@ import { SessionProvider } from "@/components/providers/session-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-
-const geistSans = Geist({
-  subsets: ["latin"],
-  variable: "--font-geist-sans",
-  display: "swap",
-});
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-geist-mono",
-  display: "swap",
-});
-const lora = Lora({
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  variable: "--font-lora",
-  display: "swap",
-});
-const vazirmatn = Vazirmatn({
-  subsets: ["arabic", "latin"],
-  variable: "--font-vazirmatn",
-  display: "swap",
-});
 
 export const viewport: Viewport = {
   themeColor: "#0b0d16",
@@ -101,13 +78,7 @@ export default async function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn(
-        "h-full",
-        geistSans.variable,
-        geistMono.variable,
-        lora.variable,
-        vazirmatn.variable,
-      )}
+      className="h-full"
     >
       <body className="flex min-h-full flex-col antialiased">
         <ThemeProvider

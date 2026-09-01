@@ -65,7 +65,8 @@ function SheetContent({
             render={
               <Button
                 variant="ghost"
-                className="absolute top-4 end-4 bg-secondary"
+                className="absolute end-4 bg-secondary"
+                style={{ top: "max(1rem, calc(1rem + env(safe-area-inset-top, 0px)))" }}
                 size="icon-sm"
               />
             }

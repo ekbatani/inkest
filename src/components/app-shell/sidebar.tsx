@@ -62,7 +62,14 @@ export function Sidebar({
   const navItemsToRender = settingsNav;
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      className="flex h-full flex-col"
+      style={{
+        paddingTop: "max(0px, env(safe-area-inset-top, 0px))",
+        paddingBottom: "max(0px, env(safe-area-inset-bottom, 0px))",
+        paddingLeft: "max(0px, env(safe-area-inset-left, 0px))",
+      }}
+    >
       <Link
         href="/dashboard"
         onClick={onNavigate}
