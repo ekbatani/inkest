@@ -28,10 +28,11 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { completeProfileSetupAction } from "@/server/users/profile-actions";
 import type { UserSettings } from "@/server/users/settings-service";
-import type {
-  AppearanceFont,
-  AppearancePalette,
-  AppearanceTheme,
+import {
+  applyAppearance,
+  type AppearanceFont,
+  type AppearancePalette,
+  type AppearanceTheme,
 } from "@/components/users/appearance-sync";
 
 const PRESET_AVATARS = [
@@ -343,24 +344,27 @@ export function ProfileSetupWizard({
 
             {/* Palette Selection */}
             <div className="flex flex-col gap-2.5">
-              <Label className="text-xs font-semibold">Color Palette Accent</Label>
+              <Label className="text-xs font-semibold">Color Palette & Mood</Label>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
-                  { id: "paper" as const, label: "Paper Warm", desc: "Classic ink feel" },
-                  { id: "forest" as const, label: "Forest Emerald", desc: "Calm green tint" },
-                  { id: "violet" as const, label: "Violet Slate", desc: "Modern indigo" },
-                  { id: "amber" as const, label: "Amber Honey", desc: "Warm parchment" },
-                  { id: "nord" as const, label: "Nord Frost", desc: "Arctic slate" },
-                  { id: "rose" as const, label: "Rose Quartz", desc: "Earthy crimson" },
-                  { id: "terracotta" as const, label: "Terracotta", desc: "Burnt copper clay" },
-                  { id: "midnight" as const, label: "Midnight Dusk", desc: "Obsidian electric" },
+                  { id: "paper" as const, label: "Paper", desc: "Warm Minimalist" },
+                  { id: "forest" as const, label: "Forest", desc: "Botanical Moss" },
+                  { id: "violet" as const, label: "Violet", desc: "Twilight Dusk" },
+                  { id: "amber" as const, label: "Amber", desc: "Sepia Honey" },
+                  { id: "nord" as const, label: "Nord", desc: "Arctic Frost" },
+                  { id: "rose" as const, label: "Rose", desc: "Blush Crimson" },
+                  { id: "terracotta" as const, label: "Terracotta", desc: "Warm Clay" },
+                  { id: "midnight" as const, label: "Midnight", desc: "Tokyo Indigo" },
                 ].map((p) => {
                   const active = themePalette === p.id;
                   return (
                     <button
                       key={p.id}
                       type="button"
-                      onClick={() => setThemePalette(p.id)}
+                      onClick={() => {
+                        setThemePalette(p.id);
+                        applyAppearance({ palette: p.id, font: themeFont });
+                      }}
                       className={cn(
                         "flex flex-col text-start p-3 rounded-xl border transition-all",
                         active
@@ -378,7 +382,7 @@ export function ProfileSetupWizard({
 
             {/* Font Selection */}
             <div className="flex flex-col gap-2.5">
-              <Label className="text-xs font-semibold">Writing Typography Font</Label>
+              <Label className="text-xs font-semibold">Workspace Typography & Font</Label>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {[
                   { id: "sans" as const, label: "Sans-Serif", sample: "Geist Clean" },
@@ -403,7 +407,10 @@ export function ProfileSetupWizard({
                     <button
                       key={f.id}
                       type="button"
-                      onClick={() => setThemeFont(f.id)}
+                      onClick={() => {
+                        setThemeFont(f.id);
+                        applyAppearance({ palette: themePalette, font: f.id });
+                      }}
                       className={cn(
                         "flex flex-col text-start p-3 rounded-xl border transition-all",
                         active

@@ -6,7 +6,6 @@ import { getUserSettings } from "@/server/users/settings-service";
 import { SessionProvider } from "@/components/providers/session-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
-import { cn } from "@/lib/utils";
 
 export const viewport: Viewport = {
   themeColor: "#0b0d16",
@@ -79,6 +78,8 @@ export default async function RootLayout({
       lang="en"
       suppressHydrationWarning
       className="h-full"
+      data-palette={theme?.palette ?? "paper"}
+      data-font={theme?.font ?? "sans"}
     >
       <body className="flex min-h-full flex-col antialiased">
         <ThemeProvider

@@ -240,7 +240,7 @@ export const FONTS: FontDefinition[] = [
     description: "Clean, ultra-legible contemporary sans designed for modern interfaces",
     sample: "The quick brown fox jumps over the lazy dog · 1234567890",
     sampleEn: "The quick brown fox jumps over the lazy dog · 1234567890",
-    fontFamily: "var(--font-sans), system-ui, sans-serif",
+    fontFamily: "var(--font-sans-default), 'Geist', system-ui, sans-serif",
   },
   {
     id: "serif",
@@ -251,7 +251,7 @@ export const FONTS: FontDefinition[] = [
     description: "Contemporary serif with brushed curves, perfect for essayists and book notes",
     sample: "Writing is thinking made visible through quiet deliberate prose · 1234567890",
     sampleEn: "Writing is thinking made visible through quiet deliberate prose · 1234567890",
-    fontFamily: "var(--font-serif), Georgia, serif",
+    fontFamily: "'Lora', var(--font-serif), Georgia, serif",
   },
   {
     id: "mono",
@@ -262,7 +262,7 @@ export const FONTS: FontDefinition[] = [
     description: "Crisp fixed-width font engineered for markdown blocks and technical thinking",
     sample: "const flow = compose(observe, distill, articulate); // 1234567890",
     sampleEn: "const flow = compose(observe, distill, articulate); // 1234567890",
-    fontFamily: "var(--font-mono), monospace",
+    fontFamily: "var(--font-mono), 'Geist Mono', monospace",
   },
   {
     id: "slab",
@@ -273,7 +273,7 @@ export const FONTS: FontDefinition[] = [
     description: "Sturdy serifs with pleasant reading rhythm designed for long-form screens",
     sample: "Clarity of expression comes from clarity of thought · 1234567890",
     sampleEn: "Clarity of expression comes from clarity of thought · 1234567890",
-    fontFamily: "var(--font-slab), Georgia, serif",
+    fontFamily: "'Merriweather', var(--font-slab), Georgia, serif",
   },
   {
     id: "typewriter",
@@ -284,7 +284,7 @@ export const FONTS: FontDefinition[] = [
     description: "Mechanical nostalgia recreating the rhythm of vintage distraction-free typewriters",
     sample: "Ink on paper: drafting thoughts in their rawest purest state · 1234567890",
     sampleEn: "Ink on paper: drafting thoughts in their rawest purest state · 1234567890",
-    fontFamily: "var(--font-typewriter), monospace",
+    fontFamily: "'Courier Prime', var(--font-typewriter), monospace",
   },
   {
     id: "grotesk",
@@ -295,7 +295,7 @@ export const FONTS: FontDefinition[] = [
     description: "Distinctive geometric personality with crisp angles and editorial character",
     sample: "Form follows function, architecture follows intention · 1234567890",
     sampleEn: "Form follows function, architecture follows intention · 1234567890",
-    fontFamily: "var(--font-grotesk), sans-serif",
+    fontFamily: "'Space Grotesk', var(--font-grotesk), sans-serif",
   },
   {
     id: "baskerville",
@@ -306,7 +306,7 @@ export const FONTS: FontDefinition[] = [
     description: "Centuries-old transitional serif with elegance fit for scholarship and archives",
     sample: "Preserving human knowledge through structured interconnected notes · 1234567890",
     sampleEn: "Preserving human knowledge through structured interconnected notes · 1234567890",
-    fontFamily: "var(--font-baskerville), serif",
+    fontFamily: "'Libre Baskerville', var(--font-baskerville), 'Baskerville', serif",
   },
 ];
 

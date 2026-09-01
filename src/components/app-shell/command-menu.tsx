@@ -18,7 +18,9 @@ import {
   FilePlus2,
   FolderPlus,
   CreditCard,
+  LogOut,
 } from "lucide-react";
+import { signOut } from "next-auth/react";
 import {
   Dialog,
   DialogContent,
@@ -331,6 +333,16 @@ export function CommandMenu({ open, onOpenChange, isAdmin = false }: Props) {
                 >
                   <CalendarDays className="size-4" />
                   <span>Open today’s daily note</span>
+                </CommandItem>
+                <CommandItem
+                  value="log out sign out exit session"
+                  onSelect={async () => {
+                    handleOpenChange(false);
+                    await signOut({ callbackUrl: "/signin" });
+                  }}
+                >
+                  <LogOut className="size-4" />
+                  <span>Log out</span>
                 </CommandItem>
               </CommandGroup>
               {currentNoteId && (

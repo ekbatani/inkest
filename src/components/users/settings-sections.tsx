@@ -46,7 +46,9 @@ import {
   PenLine,
   MessageSquare,
   FolderKanban,
+  LogOut,
 } from "lucide-react";
+import { LogoutButton } from "@/components/auth/logout-button";
 import { CopyCodeBlock } from "@/components/marketing/copy-code-block";
 import {
   AI_PROVIDERS,
@@ -514,6 +516,21 @@ export function AppearanceSection({
   const [fontFilter, setFontFilter] = React.useState<"all" | "persian" | "latin">("all");
   const [saving, setSaving] = React.useState(false);
 
+  const handleFontSelect = (fontId: AppearanceFont) => {
+    setSelectedFont(fontId);
+    applyAppearance({ palette: selectedPalette, font: fontId });
+  };
+
+  const handlePaletteSelect = (paletteId: AppearancePalette) => {
+    setSelectedPalette(paletteId);
+    applyAppearance({ palette: paletteId, font: selectedFont });
+  };
+
+  const handleThemeSelect = (themeId: AppearanceTheme) => {
+    setSelectedTheme(themeId);
+    setTheme(themeId);
+  };
+
   const save = async () => {
     setSaving(true);
     try {
@@ -560,7 +577,7 @@ export function AppearanceSection({
             <h2 className="text-base font-semibold">Theme & Appearance</h2>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Customize interface theme, palette accents, Persian and Latin typography, with real-time live preview.
+            Customize interface theme, palette accents, and Persian and Latin typography across the entire workspace with real-time live preview.
           </p>
         </div>
         <Button size="sm" onClick={save} disabled={saving} className="gap-1.5 shadow-xs">
@@ -588,7 +605,7 @@ export function AppearanceSection({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setSelectedTheme(item.id)}
+                  onClick={() => handleThemeSelect(item.id)}
                   className={cn(
                     "flex flex-col items-center justify-center gap-2 rounded-xl border p-3.5 text-xs font-medium transition-all",
                     active
@@ -616,7 +633,7 @@ export function AppearanceSection({
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => setSelectedPalette(p.id)}
+                  onClick={() => handlePaletteSelect(p.id)}
                   className={cn(
                     "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all",
                     active
@@ -650,10 +667,10 @@ export function AppearanceSection({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Typography & Font · قلم و تایپوگرافی
+                Typography & Font · قلم و تایپوگرافی سراسری
               </Label>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                قلم مورد نظر خود را برای متون فارسی، مقالات لاتین و ویرایشگر انتخاب کنید.
+                قلم مورد نظر خود را برای تمام بخش‌های برنامه، منوها، یادداشت‌ها و ویرایشگر انتخاب کنید.
               </p>
             </div>
 
@@ -713,7 +730,7 @@ export function AppearanceSection({
                 <button
                   key={f.id}
                   type="button"
-                  onClick={() => setSelectedFont(f.id)}
+                  onClick={() => handleFontSelect(f.id)}
                   className={cn(
                     "flex flex-col justify-between gap-3 rounded-xl border p-4 text-start transition-all hover:border-primary/50",
                     active
@@ -1088,6 +1105,28 @@ export function ProfileSection({
               placeholder="••••••••"
             />
           </div>
+        </div>
+      </section>
+
+      {/* Session & Sign Out Card */}
+      <section className="surface-card flex flex-col gap-4 p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <LogOut className="size-4 text-destructive" />
+              <h2 className="text-base font-semibold">Active Session</h2>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              You are currently signed in as <span className="font-medium text-foreground">{email}</span>.
+            </p>
+          </div>
+          <LogoutButton
+            variant="destructive"
+            size="sm"
+            className="shrink-0 font-medium"
+          >
+            Log out of Inkest
+          </LogoutButton>
         </div>
       </section>
     </div>

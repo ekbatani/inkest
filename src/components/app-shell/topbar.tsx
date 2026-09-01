@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { Sidebar } from "@/components/app-shell/sidebar";
 import { CommandMenu } from "@/components/app-shell/command-menu";
+import { UserMenu } from "@/components/app-shell/user-menu";
 import { mainNav, settingsNav } from "@/components/app-shell/nav-items";
 import type { NoteTreeNode } from "@/server/notes/service";
 import type { InboxNotification } from "@/server/notifications/service";
@@ -44,10 +45,17 @@ export function Topbar({
   notesTree = [],
   notifications = [],
   isAdmin = false,
+  user,
 }: {
   notesTree?: NoteTreeNode[];
   notifications?: InboxNotification[];
   isAdmin?: boolean;
+  user?: {
+    id?: string;
+    email?: string | null;
+    name?: string | null;
+    role?: "admin" | "user" | string | null;
+  } | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -160,6 +168,8 @@ export function Topbar({
           >
             <Sparkles className="size-4" />
           </Button>
+          <div className="mx-1 h-5 w-px bg-border/60" />
+          <UserMenu user={user} align="end" />
         </div>
       </header>
 

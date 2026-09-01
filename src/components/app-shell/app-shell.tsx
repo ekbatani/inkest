@@ -6,12 +6,14 @@ import { PageContextProvider } from "@/components/providers/page-context-provide
 import { listNotesTree } from "@/server/notes/service";
 import { listInboxNotifications } from "@/server/notifications/service";
 import { isAdmin } from "@/server/auth/admin";
+import { getCurrentUser } from "@/server/auth";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const [notesTree, notifications, isAdminUser] = await Promise.all([
+  const [notesTree, notifications, isAdminUser, user] = await Promise.all([
     listNotesTree().catch(() => []),
     listInboxNotifications().catch(() => []),
     isAdmin().catch(() => false),
+    getCurrentUser().catch(() => null),
   ]);
 
   return (
@@ -23,13 +25,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         Skip to main content
       </a>
       <SidebarToggleWrapper
-        sidebar={<Sidebar notesTree={notesTree} />}
+        sidebar={<Sidebar notesTree={notesTree} user={user} />}
         aiSidebar={<AiChatSidebar />}
       >
         <Topbar
           notesTree={notesTree}
           notifications={notifications}
           isAdmin={isAdminUser}
+          user={user}
         />
         <main
           id="main-content"
