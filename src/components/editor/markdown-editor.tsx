@@ -64,6 +64,8 @@ type Props = {
   onLargeMarkdownPaste?: (content: string) => void;
   spellcheck?: boolean;
   spellcheckLanguage?: "auto" | "en" | "fa";
+  documentId?: string;
+  externalVersion?: number;
 };
 
 const LARGE_PASTE_THRESHOLD = 1500;
@@ -969,8 +971,11 @@ export function MarkdownEditor({
   onLargeMarkdownPaste,
   spellcheck = true,
   spellcheckLanguage = "auto",
+  documentId,
+  externalVersion = 0,
 }: Props) {
-  const lastEmittedValueRef = React.useRef(value);
+  const lastDocumentIdRef = React.useRef(documentId);
+  const lastExternalVersionRef = React.useRef(externalVersion);
 
   // Link management state
   const [createdTargets, setCreatedTargets] = React.useState<WikiLinkTarget[]>([]);
@@ -1007,11 +1012,19 @@ export function MarkdownEditor({
       window.removeEventListener("inkest:open-insert-link-dialog", onOpenDialog);
   }, []);
 
-  // Sync external changes (e.g. Undo, Redo, Version Restore, Note switch) down to CodeMirror state.
-  // Ignore echo prop updates that match the last value emitted by CodeMirror.
+  // Apply external changes (e.g. Note navigation switch, Version restore, toolbar Undo/Redo)
+  // This explicitly prevents debounced keystroke echoes and in-flight server save confirmations
+  // from resetting active typing or jumping the cursor.
   React.useEffect(() => {
-    if (value === lastEmittedValueRef.current) return;
-    lastEmittedValueRef.current = value;
+    const isDocSwitch = documentId !== undefined && documentId !== lastDocumentIdRef.current;
+    const isVersionBump = externalVersion !== lastExternalVersionRef.current;
+
+    lastDocumentIdRef.current = documentId;
+    lastExternalVersionRef.current = externalVersion;
+
+    if (!isDocSwitch && !isVersionBump) {
+      return;
+    }
 
     const view = editorRef?.current?.view;
     if (view && view.state.doc.toString() !== value) {
@@ -1024,11 +1037,10 @@ export function MarkdownEditor({
         selection: { anchor: newAnchor, head: newHead },
       });
     }
-  }, [value, editorRef]);
+  }, [value, documentId, externalVersion, editorRef]);
 
   const handleCodeMirrorChange = React.useCallback(
     (nextValue: string) => {
-      lastEmittedValueRef.current = nextValue;
       onChange(nextValue);
     },
     [onChange],

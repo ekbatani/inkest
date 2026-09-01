@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=Lalezar&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Space+Grotesk:wght@300..700&family=Vazirmatn:wght@100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Lalezar&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Space+Grotesk:wght@300..700&family=Vazirmatn:wght@100..900&display=swap");
 @import url("https://cdn.jsdelivr.net/gh/rastikerdar/sahel-font@v3.4.0/dist/font-face.css");
 @import url("https://cdn.jsdelivr.net/gh/rastikerdar/shabnam-font@v5.6.1/dist/font-face.css");
 @import url("https://cdn.jsdelivr.net/gh/rastikerdar/samim-font@v4.0.5/dist/font-face.css");
@@ -59,6 +59,10 @@
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
+  --font-inter: "Inter", "Geist", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-plus-jakarta: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-jetbrains-mono: "JetBrains Mono", var(--font-geist-mono), "Cascadia Code", "Fira Code", ui-monospace, monospace;
+  --font-newsreader: "Newsreader", var(--font-lora), "Charter", Georgia, "Times New Roman", serif;
   --font-sans-default: var(--font-geist-sans), "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-sans: var(--inkest-font-body, var(--font-sans-default));
   --font-mono: var(--font-geist-mono), "Geist Mono", "JetBrains Mono", "Cascadia Code", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -174,15 +178,35 @@ html[data-font="sans"],
   --inkest-font-body: var(--font-sans-default);
   --inkest-font-writing: var(--font-sans-default);
 }
+html[data-font="inter"],
+[data-font="inter"] {
+  --inkest-font-body: var(--font-inter);
+  --inkest-font-writing: var(--font-inter);
+}
+html[data-font="plus-jakarta"],
+[data-font="plus-jakarta"] {
+  --inkest-font-body: var(--font-plus-jakarta);
+  --inkest-font-writing: var(--font-plus-jakarta);
+}
 html[data-font="serif"],
 [data-font="serif"] {
   --inkest-font-body: var(--font-serif), Georgia, serif;
   --inkest-font-writing: var(--font-serif), Georgia, serif;
 }
+html[data-font="newsreader"],
+[data-font="newsreader"] {
+  --inkest-font-body: var(--font-newsreader);
+  --inkest-font-writing: var(--font-newsreader);
+}
 html[data-font="mono"],
 [data-font="mono"] {
   --inkest-font-body: var(--font-mono), ui-monospace, monospace;
   --inkest-font-writing: var(--font-mono), ui-monospace, monospace;
+}
+html[data-font="jetbrains-mono"],
+[data-font="jetbrains-mono"] {
+  --inkest-font-body: var(--font-jetbrains-mono);
+  --inkest-font-writing: var(--font-jetbrains-mono);
 }
 html[data-font="persian"],
 [data-font="persian"] {

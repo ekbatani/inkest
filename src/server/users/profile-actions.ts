@@ -29,8 +29,16 @@ const ProfileSetupSchema = z.object({
   themeFont: z
     .enum([
       "sans",
+      "inter",
+      "plus-jakarta",
       "serif",
+      "newsreader",
       "mono",
+      "jetbrains-mono",
+      "slab",
+      "typewriter",
+      "grotesk",
+      "baskerville",
       "persian",
       "persian-sahel",
       "persian-shabnam",
@@ -39,10 +47,6 @@ const ProfileSetupSchema = z.object({
       "persian-lalezar",
       "persian-nastaliq",
       "persian-noto",
-      "slab",
-      "typewriter",
-      "grotesk",
-      "baskerville",
       "persian-serif",
     ])
     .optional(),

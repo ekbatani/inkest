@@ -513,7 +513,13 @@ export function AppearanceSection({
   const [selectedTheme, setSelectedTheme] = React.useState(preference);
   const [selectedPalette, setSelectedPalette] = React.useState(palette);
   const [selectedFont, setSelectedFont] = React.useState(font);
-  const [fontFilter, setFontFilter] = React.useState<"all" | "persian" | "latin">("all");
+  const activeFontDef = React.useMemo(
+    () => FONTS.find((f) => f.id === selectedFont) ?? FONTS[0],
+    [selectedFont],
+  );
+  const [fontFilter, setFontFilter] = React.useState<"all" | "persian" | "latin">(() =>
+    font.startsWith("persian") ? "persian" : "latin",
+  );
   const [saving, setSaving] = React.useState(false);
 
   const handleFontSelect = (fontId: AppearanceFont) => {
@@ -561,11 +567,79 @@ export function AppearanceSection({
     { id: "dark", label: "Dark", icon: <Moon className="size-4" /> },
   ];
 
-  const filteredFonts = React.useMemo(() => {
-    if (fontFilter === "persian") return FONTS.filter((f) => f.category === "persian");
-    if (fontFilter === "latin") return FONTS.filter((f) => f.category === "latin");
-    return FONTS;
-  }, [fontFilter]);
+  const latinFonts = React.useMemo(() => FONTS.filter((f) => f.category === "latin"), []);
+  const persianFonts = React.useMemo(() => FONTS.filter((f) => f.category === "persian"), []);
+
+  const renderFontCard = (f: (typeof FONTS)[number]) => {
+    const active = selectedFont === f.id;
+    const isPersian = f.category === "persian";
+    return (
+      <button
+        key={f.id}
+        type="button"
+        onClick={() => handleFontSelect(f.id)}
+        className={cn(
+          "flex flex-col justify-between gap-3 rounded-xl border p-4 text-start transition-all hover:border-primary/50",
+          active
+            ? "border-primary bg-primary/5 ring-1 ring-primary/30 shadow-xs"
+            : "border-border/70 bg-card hover:bg-muted/30",
+        )}
+      >
+        <div className="flex w-full items-start justify-between gap-2">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Type className="size-3.5 text-primary shrink-0" />
+              <span className="text-xs font-semibold text-foreground">
+                {f.nativeName}
+              </span>
+              {f.nativeName !== f.name && (
+                <span className="text-[11px] text-muted-foreground">
+                  ({f.name})
+                </span>
+              )}
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.2 text-[9px] font-mono font-medium tracking-tight",
+                  isPersian
+                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+                )}
+              >
+                {isPersian ? "RTL" : "LTR"}
+              </span>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-mono mt-0.5">
+              {f.tag}
+            </span>
+          </div>
+          {active && (
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xs">
+              <Check className="size-3" />
+            </span>
+          )}
+        </div>
+
+        {/* Sample glyph rendering in actual font */}
+        <div
+          className={cn(
+            "rounded-lg border border-border/50 bg-muted/20 p-2.5 text-foreground/90 transition-colors",
+            isPersian ? "text-right" : "text-left",
+          )}
+          dir={isPersian ? "rtl" : "ltr"}
+          style={{ fontFamily: f.fontFamily }}
+        >
+          <p className="text-sm font-medium line-clamp-1">
+            {f.sample}
+          </p>
+        </div>
+
+        {/* Description */}
+        <p className="text-[11px] text-muted-foreground line-clamp-2 leading-tight">
+          {f.description}
+        </p>
+      </button>
+    );
+  };
 
   return (
     <section className="surface-card flex flex-col gap-8 p-6">
@@ -663,19 +737,86 @@ export function AppearanceSection({
         </div>
 
         {/* Writing & Typography Font */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
+          {/* Active Font Status Pill */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-muted/20 p-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Type className="size-4" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-foreground">
+                    {activeFontDef.nativeName} ({activeFontDef.name})
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                      activeFontDef.category === "persian"
+                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        : "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+                    )}
+                  >
+                    {activeFontDef.category === "persian" ? "Persian / Arabic (RTL)" : "English / Latin (LTR)"}
+                  </span>
+                </div>
+                <span className="text-[11px] text-muted-foreground truncate">
+                  {activeFontDef.tag} — {activeFontDef.description}
+                </span>
+              </div>
+            </div>
+
+            <div
+              className="rounded-lg border border-border/60 bg-background px-3 py-1.5 text-xs text-foreground/90 shadow-2xs shrink-0"
+              style={{ fontFamily: activeFontDef.fontFamily }}
+              dir={activeFontDef.category === "persian" ? "rtl" : "ltr"}
+            >
+              <span>{activeFontDef.category === "persian" ? "پیش‌نمایش فعال قلم" : "Active Font Preview"}</span>
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Typography & Font · قلم و تایپوگرافی سراسری
               </Label>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                قلم مورد نظر خود را برای تمام بخش‌های برنامه، منوها، یادداشت‌ها و ویرایشگر انتخاب کنید.
+                قلم‌های فارسی و انگلیسی به‌صورت مجزا تفکیک شده‌اند تا بهترین گزینه را برای سبک نوشتاری خود انتخاب کنید.
               </p>
             </div>
 
             {/* Font category filter tabs */}
             <div className="flex items-center gap-1 rounded-lg border border-border/70 bg-muted/30 p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setFontFilter("latin")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1 text-[11px] font-medium transition-all",
+                  fontFilter === "latin"
+                    ? "bg-background text-primary shadow-2xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span>English & Latin (LTR)</span>
+                <span className="rounded-full bg-blue-500/10 px-1.5 text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                  {latinFonts.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFontFilter("persian")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-3 py-1 text-[11px] font-medium transition-all",
+                  fontFilter === "persian"
+                    ? "bg-background text-primary shadow-2xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span>فارسی و عربی (RTL)</span>
+                <span className="rounded-full bg-amber-500/10 px-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                  {persianFonts.length}
+                </span>
+              </button>
               <button
                 type="button"
                 onClick={() => setFontFilter("all")}
@@ -688,100 +829,87 @@ export function AppearanceSection({
               >
                 همه ({FONTS.length})
               </button>
-              <button
-                type="button"
-                onClick={() => setFontFilter("persian")}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all",
-                  fontFilter === "persian"
-                    ? "bg-background text-primary shadow-2xs font-semibold"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <span>فارسی (Persian)</span>
-                <span className="rounded-full bg-primary/10 px-1.5 text-[10px] text-primary">
-                  {FONTS.filter((f) => f.category === "persian").length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFontFilter("latin")}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium transition-all",
-                  fontFilter === "latin"
-                    ? "bg-background text-primary shadow-2xs font-semibold"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <span>Latin / English</span>
-                <span className="rounded-full bg-muted px-1.5 text-[10px] text-muted-foreground">
-                  {FONTS.filter((f) => f.category === "latin").length}
-                </span>
-              </button>
             </div>
           </div>
 
-          {/* Rich Font Grid */}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredFonts.map((f) => {
-              const active = selectedFont === f.id;
-              const isPersian = f.category === "persian";
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => handleFontSelect(f.id)}
-                  className={cn(
-                    "flex flex-col justify-between gap-3 rounded-xl border p-4 text-start transition-all hover:border-primary/50",
-                    active
-                      ? "border-primary bg-primary/5 ring-1 ring-primary/30 shadow-xs"
-                      : "border-border/70 bg-card hover:bg-muted/30",
-                  )}
-                >
-                  <div className="flex w-full items-start justify-between gap-2">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-1.5">
-                        <Type className="size-3.5 text-primary" />
-                        <span className="text-xs font-semibold text-foreground">
-                          {f.nativeName}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          ({f.name})
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                        {f.tag}
-                      </span>
-                    </div>
-                    {active && (
-                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xs">
-                        <Check className="size-3" />
-                      </span>
-                    )}
-                  </div>
+          {/* Render Fonts by Selected Category or Separated Sections */}
+          {fontFilter === "latin" && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-foreground">English & Latin Typography</span>
+                  <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+                    LTR · Left-to-Right
+                  </span>
+                </div>
+                <span className="text-[11px] text-muted-foreground">
+                  High-clarity sans-serifs, modern geometrics, editorial book serifs, and technical monospaces.
+                </span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {latinFonts.map(renderFontCard)}
+              </div>
+            </div>
+          )}
 
-                  {/* Sample glyph rendering in actual font */}
-                  <div
-                    className={cn(
-                      "rounded-lg border border-border/50 bg-muted/20 p-2.5 text-foreground/90 transition-colors",
-                      isPersian ? "text-right" : "text-left",
-                    )}
-                    dir={isPersian ? "rtl" : "ltr"}
-                    style={{ fontFamily: f.fontFamily }}
-                  >
-                    <p className="text-sm font-medium line-clamp-1">
-                      {f.sample}
-                    </p>
-                  </div>
+          {fontFilter === "persian" && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-foreground">تایپوگرافی فارسی و عربی (Persian & Arabic)</span>
+                  <span className="rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                    RTL · راست‌چین
+                  </span>
+                </div>
+                <span className="text-[11px] text-muted-foreground">
+                  قلم‌های هندسی وب، خطوط ادبی نسخ، نستعلیق سنتی و تایپوگرافی کتابی.
+                </span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {persianFonts.map(renderFontCard)}
+              </div>
+            </div>
+          )}
 
-                  {/* Description */}
-                  <p className="text-[11px] text-muted-foreground line-clamp-2 leading-tight">
-                    {f.description}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
+          {fontFilter === "all" && (
+            <div className="flex flex-col gap-6">
+              {/* Latin Section */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-foreground">English & Latin Typography</span>
+                    <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+                      LTR · Left-to-Right ({latinFonts.length})
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">
+                    Modern clean sans, editorial literature serifs, and developer monospace.
+                  </span>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {latinFonts.map(renderFontCard)}
+                </div>
+              </div>
+
+              {/* Persian Section */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-foreground">قلم‌های فارسی و عربی (Persian & Arabic)</span>
+                    <span className="rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                      RTL · راست‌چین ({persianFonts.length})
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground">
+                    استاندارد وب، خوانایی بالا در متون بلند، خط نستعلیق و نسخ آکادمیک.
+                  </span>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {persianFonts.map(renderFontCard)}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </section>

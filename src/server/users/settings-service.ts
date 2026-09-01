@@ -93,8 +93,16 @@ export const userSettingsSchema = z.object({
       font: z
         .enum([
           "sans",
+          "inter",
+          "plus-jakarta",
           "serif",
+          "newsreader",
           "mono",
+          "jetbrains-mono",
+          "slab",
+          "typewriter",
+          "grotesk",
+          "baskerville",
           "persian",
           "persian-sahel",
           "persian-shabnam",
@@ -103,10 +111,6 @@ export const userSettingsSchema = z.object({
           "persian-lalezar",
           "persian-nastaliq",
           "persian-noto",
-          "slab",
-          "typewriter",
-          "grotesk",
-          "baskerville",
           "persian-serif",
         ])
         .optional(),

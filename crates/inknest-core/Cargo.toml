@@ -1,0 +1,25 @@
+[package]
+name = "inknest-core"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance Zed-inspired Rope text buffer, CRDT journal, and diff-patch engine for Inkest"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2.99"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.138"
+serde-wasm-bindgen = "0.6.5"
+ropey = "1.6.1"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.49"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/server/auth";
 import { checkUploadQuota, isCloudDeployment } from "@/cloud/limits/service";
 import { randomId } from "@/lib/slug";
-import path from "node:path";
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();

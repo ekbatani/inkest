@@ -15,8 +15,16 @@ export type AppearancePalette =
   | "midnight";
 export type AppearanceFont =
   | "sans"
+  | "inter"
+  | "plus-jakarta"
   | "serif"
+  | "newsreader"
   | "mono"
+  | "jetbrains-mono"
+  | "slab"
+  | "typewriter"
+  | "grotesk"
+  | "baskerville"
   | "persian"
   | "persian-sahel"
   | "persian-shabnam"
@@ -25,10 +33,6 @@ export type AppearanceFont =
   | "persian-lalezar"
   | "persian-nastaliq"
   | "persian-noto"
-  | "slab"
-  | "typewriter"
-  | "grotesk"
-  | "baskerville"
   | "persian-serif";
 
 export interface PaletteDefinition {
@@ -129,7 +133,7 @@ export interface FontDefinition {
 }
 
 export const FONTS: FontDefinition[] = [
-  // Persian fonts
+  // Persian / Arabic (RTL) fonts
   {
     id: "persian",
     name: "Vazirmatn",
@@ -230,68 +234,90 @@ export const FONTS: FontDefinition[] = [
     fontFamily: "'B Nazanin', 'Sahel', 'Vazirmatn', serif",
   },
 
-  // Latin fonts
+  // English & Latin (LTR) fonts
+  {
+    id: "inter",
+    name: "Inter",
+    nativeName: "Inter Clean",
+    category: "latin",
+    tag: "Ultra-Clean Sans · UI Standard",
+    description: "The modern standard for digital reading: crisp glyphs, tall x-height, and flawless clarity",
+    sample: "Writing is thinking made visible through quiet deliberate prose · 1234567890",
+    sampleEn: "Writing is thinking made visible through quiet deliberate prose · 1234567890",
+    fontFamily: "var(--font-inter), 'Inter', system-ui, sans-serif",
+  },
   {
     id: "sans",
     name: "Geist Sans",
-    nativeName: "Clean Sans",
+    nativeName: "Geist Sans",
     category: "latin",
-    tag: "Clean Sans · Modern Default",
-    description: "Clean, ultra-legible contemporary sans designed for modern interfaces",
-    sample: "The quick brown fox jumps over the lazy dog · 1234567890",
-    sampleEn: "The quick brown fox jumps over the lazy dog · 1234567890",
+    tag: "Precision Sans · Engineered",
+    description: "Precision-engineered contemporary geometric sans designed for modern interfaces",
+    sample: "The quiet rhythm of thoughtful writing and clarity · 1234567890",
+    sampleEn: "The quiet rhythm of thoughtful writing and clarity · 1234567890",
     fontFamily: "var(--font-sans-default), 'Geist', system-ui, sans-serif",
+  },
+  {
+    id: "plus-jakarta",
+    name: "Plus Jakarta",
+    nativeName: "Plus Jakarta Sans",
+    category: "latin",
+    tag: "Modern Geometric · Fresh & Sleek",
+    description: "Sophisticated geometric typography with smooth curves and a fresh, open aesthetic",
+    sample: "Clarity of expression comes from clarity of thought · 1234567890",
+    sampleEn: "Clarity of expression comes from clarity of thought · 1234567890",
+    fontFamily: "var(--font-plus-jakarta), 'Plus Jakarta Sans', system-ui, sans-serif",
+  },
+  {
+    id: "newsreader",
+    name: "Newsreader",
+    nativeName: "Newsreader Serif",
+    category: "latin",
+    tag: "Editorial Serif · Long-form Literature",
+    description: "Crafted specifically for continuous long-form reading, essays, and literary notes",
+    sample: "In quiet contemplation, knowledge crystallizes into lasting wisdom · 1234567890",
+    sampleEn: "In quiet contemplation, knowledge crystallizes into lasting wisdom · 1234567890",
+    fontFamily: "var(--font-newsreader), 'Newsreader', Georgia, serif",
   },
   {
     id: "serif",
     name: "Lora Serif",
-    nativeName: "Editorial Serif",
+    nativeName: "Lora Serif",
     category: "latin",
-    tag: "Literary Serif · Editorial Feel",
-    description: "Contemporary serif with brushed curves, perfect for essayists and book notes",
-    sample: "Writing is thinking made visible through quiet deliberate prose · 1234567890",
-    sampleEn: "Writing is thinking made visible through quiet deliberate prose · 1234567890",
+    tag: "Literary Serif · Editorial Warmth",
+    description: "Contemporary serif with brushed curves and a memorable, warm reading atmosphere",
+    sample: "Preserving human knowledge through structured interconnected notes · 1234567890",
+    sampleEn: "Preserving human knowledge through structured interconnected notes · 1234567890",
     fontFamily: "'Lora', var(--font-serif), Georgia, serif",
+  },
+  {
+    id: "jetbrains-mono",
+    name: "JetBrains Mono",
+    nativeName: "JetBrains Mono",
+    category: "latin",
+    tag: "Developer Mono · Code & Markdown",
+    description: "Elite monospace engineered for developers and technical markdown with unmatched glyph distinction",
+    sample: "const flow = compose(observe, distill, articulate); // 1234567890",
+    sampleEn: "const flow = compose(observe, distill, articulate); // 1234567890",
+    fontFamily: "var(--font-jetbrains-mono), 'JetBrains Mono', monospace",
   },
   {
     id: "mono",
     name: "Geist Mono",
-    nativeName: "Code Mono",
+    nativeName: "Geist Mono",
     category: "latin",
-    tag: "Monospace · Code & Markdown",
+    tag: "Precision Mono · Technical",
     description: "Crisp fixed-width font engineered for markdown blocks and technical thinking",
-    sample: "const flow = compose(observe, distill, articulate); // 1234567890",
-    sampleEn: "const flow = compose(observe, distill, articulate); // 1234567890",
+    sample: "interface Note<T> { id: string; content: T; createdAt: Date; }",
+    sampleEn: "interface Note<T> { id: string; content: T; createdAt: Date; }",
     fontFamily: "var(--font-mono), 'Geist Mono', monospace",
-  },
-  {
-    id: "slab",
-    name: "Merriweather",
-    nativeName: "Humanist Slab",
-    category: "latin",
-    tag: "Slab Serif · High Contrast",
-    description: "Sturdy serifs with pleasant reading rhythm designed for long-form screens",
-    sample: "Clarity of expression comes from clarity of thought · 1234567890",
-    sampleEn: "Clarity of expression comes from clarity of thought · 1234567890",
-    fontFamily: "'Merriweather', var(--font-slab), Georgia, serif",
-  },
-  {
-    id: "typewriter",
-    name: "Courier Prime",
-    nativeName: "Classic Typewriter",
-    category: "latin",
-    tag: "Typewriter · Nostalgic Focus",
-    description: "Mechanical nostalgia recreating the rhythm of vintage distraction-free typewriters",
-    sample: "Ink on paper: drafting thoughts in their rawest purest state · 1234567890",
-    sampleEn: "Ink on paper: drafting thoughts in their rawest purest state · 1234567890",
-    fontFamily: "'Courier Prime', var(--font-typewriter), monospace",
   },
   {
     id: "grotesk",
     name: "Space Grotesk",
-    nativeName: "Modern Grotesk",
+    nativeName: "Space Grotesk",
     category: "latin",
-    tag: "Geometric Grotesk · Punchy",
+    tag: "Geometric Grotesk · Tech Personality",
     description: "Distinctive geometric personality with crisp angles and editorial character",
     sample: "Form follows function, architecture follows intention · 1234567890",
     sampleEn: "Form follows function, architecture follows intention · 1234567890",
@@ -299,14 +325,36 @@ export const FONTS: FontDefinition[] = [
   },
   {
     id: "baskerville",
-    name: "Baskerville",
-    nativeName: "Academic Classic",
+    name: "Libre Baskerville",
+    nativeName: "Libre Baskerville",
     category: "latin",
-    tag: "Academic Classic · Traditional",
+    tag: "Academic Classic · Stately",
     description: "Centuries-old transitional serif with elegance fit for scholarship and archives",
-    sample: "Preserving human knowledge through structured interconnected notes · 1234567890",
-    sampleEn: "Preserving human knowledge through structured interconnected notes · 1234567890",
+    sample: "The art of writing is the art of discovering what you believe · 1234567890",
+    sampleEn: "The art of writing is the art of discovering what you believe · 1234567890",
     fontFamily: "'Libre Baskerville', var(--font-baskerville), 'Baskerville', serif",
+  },
+  {
+    id: "slab",
+    name: "Merriweather",
+    nativeName: "Merriweather",
+    category: "latin",
+    tag: "Humanist Slab · High Contrast",
+    description: "Sturdy serifs with pleasant reading rhythm designed for long-form screens",
+    sample: "Simple ideas expressed with precision create lasting impact · 1234567890",
+    sampleEn: "Simple ideas expressed with precision create lasting impact · 1234567890",
+    fontFamily: "'Merriweather', var(--font-slab), Georgia, serif",
+  },
+  {
+    id: "typewriter",
+    name: "Courier Prime",
+    nativeName: "Courier Prime",
+    category: "latin",
+    tag: "Typewriter · Distraction-Free",
+    description: "Mechanical nostalgia recreating the rhythm of vintage distraction-free typewriters",
+    sample: "Ink on paper: drafting thoughts in their rawest purest state · 1234567890",
+    sampleEn: "Ink on paper: drafting thoughts in their rawest purest state · 1234567890",
+    fontFamily: "'Courier Prime', var(--font-typewriter), monospace",
   },
 ];
 

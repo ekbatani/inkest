@@ -178,6 +178,7 @@ export function NoteEditor({
   );  const [saveState, setSaveState] = React.useState<
     "idle" | "saving" | "saved" | "offline" | "error"
   >("idle");
+  const [externalVersion, setExternalVersion] = React.useState(0);
   const [metadata, setMetadata] = React.useState({
     type: note.type,
     direction: note.direction,
@@ -350,7 +351,7 @@ export function NoteEditor({
   }, [note.id]);
 
   const performSave = React.useCallback(
-    async (options?: { forceRevalidate?: boolean; forceFull?: boolean }) => {
+    async function executeSave(options?: { forceRevalidate?: boolean; forceFull?: boolean }) {
       if (saveTimer.current) clearTimeout(saveTimer.current);
       if (maxWaitTimer.current) {
         clearTimeout(maxWaitTimer.current);
@@ -471,6 +472,10 @@ export function NoteEditor({
             }, 2000);
           } else {
             pendingSaveAfterInFlightRef.current = false;
+            if (saveTimer.current) clearTimeout(saveTimer.current);
+            saveTimer.current = setTimeout(() => {
+              void executeSave({ forceRevalidate: false });
+            }, 1000);
           }
 
           break;
@@ -527,6 +532,7 @@ export function NoteEditor({
           title: recovered.title ?? note.title,
           content: recovered.content,
         });
+        setExternalVersion((v) => v + 1);
         // Silently sync recovered draft to server without noisy toast notifications
         void performSave({ forceRevalidate: false });
       }
@@ -680,8 +686,10 @@ export function NoteEditor({
       }
       lastCheckpointRef.current = snapshot;
       setLastCheckpointSnapshot(snapshot);
+      latestContentRef.current = snapshot;
       setTitle(snapshot.title);
       setContent(snapshot.content);
+      setExternalVersion((v) => v + 1);
       if (options?.nextHistory) {
         setHistoryState(options.nextHistory);
       }
@@ -1323,6 +1331,8 @@ export function NoteEditor({
             <div className="flex min-h-0 flex-1 flex-col py-6">
                 <MarkdownEditor
                   value={content}
+                  documentId={note.id}
+                  externalVersion={externalVersion}
                   onChange={handleEditorChange}
                   direction={metadata.direction}
                   className="flex-1"

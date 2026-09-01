@@ -30,6 +30,7 @@ import { completeProfileSetupAction } from "@/server/users/profile-actions";
 import type { UserSettings } from "@/server/users/settings-service";
 import {
   applyAppearance,
+  FONTS,
   type AppearanceFont,
   type AppearancePalette,
   type AppearanceTheme,
@@ -48,14 +49,14 @@ const PRESET_ROLES = [
   "Writer & Author",
   "Researcher & Scholar",
   "Software Engineer",
+  "Product Designer",
   "Student & Academic",
-  "Productivity Enthusiast",
-  "Knowledge Worker",
+  "Knowledge Curator",
 ];
 
 export function ProfileSetupWizard({
   initialUser,
-  initialWorkspaceName = "Personal Workspace",
+  initialWorkspaceName,
   initialSettings,
 }: {
   initialUser: {
@@ -91,6 +92,11 @@ export function ProfileSetupWizard({
   );
   const [themeFont, setThemeFont] = React.useState<AppearanceFont>(
     (initialSettings?.theme?.font as AppearanceFont) || "sans",
+  );
+  const [fontCategory, setFontCategory] = React.useState<"latin" | "persian">(() =>
+    ((initialSettings?.theme?.font as string) || "sans").startsWith("persian")
+      ? "persian"
+      : "latin",
   );
 
   // Get active avatar icon component
@@ -381,28 +387,42 @@ export function ProfileSetupWizard({
             </div>
 
             {/* Font Selection */}
-            <div className="flex flex-col gap-2.5">
-              <Label className="text-xs font-semibold">Workspace Typography & Font</Label>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label className="text-xs font-semibold">Workspace Typography & Font</Label>
+                {/* Category Switcher Tabs */}
+                <div className="flex items-center gap-1 rounded-lg border border-border/80 bg-muted/30 p-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setFontCategory("latin")}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-[11px] font-medium transition-all",
+                      fontCategory === "latin"
+                        ? "bg-background text-primary shadow-2xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    English & Latin (LTR)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFontCategory("persian")}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-[11px] font-medium transition-all",
+                      fontCategory === "persian"
+                        ? "bg-background text-primary shadow-2xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    فارسی و عربی (RTL)
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {[
-                  { id: "sans" as const, label: "Sans-Serif", sample: "Geist Clean" },
-                  { id: "serif" as const, label: "Serif", sample: "Lora Editorial" },
-                  { id: "mono" as const, label: "Monospace", sample: "Geist Mono" },
-                  { id: "persian" as const, label: "وزیرمتن · Vazirmatn", sample: "Clean Persian Sans" },
-                  { id: "persian-sahel" as const, label: "ساحل · Sahel", sample: "Humanist Persian" },
-                  { id: "persian-shabnam" as const, label: "شبنم · Shabnam", sample: "Crisp Geometric" },
-                  { id: "persian-samim" as const, label: "صمیم · Samim", sample: "Friendly & Warm" },
-                  { id: "persian-amiri" as const, label: "امیری · Amiri", sample: "Classic Naskh" },
-                  { id: "persian-lalezar" as const, label: "لاله‌زار · Lalezar", sample: "Display Title" },
-                  { id: "persian-nastaliq" as const, label: "نستعلیق · Nastaliq", sample: "Persian Calligraphy" },
-                  { id: "persian-noto" as const, label: "نوتو نسخ · Noto Naskh", sample: "Formal Naskh" },
-                  { id: "persian-serif" as const, label: "بی‌نازنین · B Nazanin", sample: "Traditional Editorial" },
-                  { id: "slab" as const, label: "Humanist Slab", sample: "Merriweather" },
-                  { id: "typewriter" as const, label: "Typewriter", sample: "Courier Prime" },
-                  { id: "grotesk" as const, label: "Modern Grotesk", sample: "Space Grotesk" },
-                  { id: "baskerville" as const, label: "Academic Classic", sample: "Baskerville" },
-                ].map((f) => {
+                {FONTS.filter((f) => f.category === fontCategory).map((f) => {
                   const active = themeFont === f.id;
+                  const isPersian = f.category === "persian";
                   return (
                     <button
                       key={f.id}
@@ -412,17 +432,32 @@ export function ProfileSetupWizard({
                         applyAppearance({ palette: themePalette, font: f.id });
                       }}
                       className={cn(
-                        "flex flex-col text-start p-3 rounded-xl border transition-all",
+                        "flex flex-col text-start p-3 rounded-xl border transition-all gap-1.5",
                         active
                           ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-xs"
                           : "border-border/80 bg-card hover:bg-muted/40",
                       )}
                     >
-                      <span className="text-xs font-semibold flex items-center gap-1.5">
-                        <Type className="size-3.5" />
-                        {f.label}
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-xs font-semibold flex items-center gap-1.5 truncate">
+                          <Type className="size-3.5 text-primary shrink-0" />
+                          {f.nativeName}
+                        </span>
+                        {active && <Check className="size-3 text-primary shrink-0" />}
+                      </div>
+                      <span
+                        className={cn(
+                          "text-[11px] text-foreground/80 truncate rounded bg-muted/40 px-1.5 py-0.5",
+                          isPersian ? "text-right" : "text-left",
+                        )}
+                        style={{ fontFamily: f.fontFamily }}
+                        dir={isPersian ? "rtl" : "ltr"}
+                      >
+                        {f.sample}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">{f.sample}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono truncate">
+                        {f.tag}
+                      </span>
                     </button>
                   );
                 })}
