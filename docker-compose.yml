@@ -21,14 +21,24 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       AI_CREDENTIAL_ENCRYPTION_KEYS: ${AI_CREDENTIAL_ENCRYPTION_KEYS:-}
       AI_PROVIDER: ${AI_PROVIDER:-openrouter}
+      AI_MODEL: ${AI_MODEL:-openai/gpt-4o-mini}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
       BILLING_PROVIDER: ${BILLING_PROVIDER:-}
+      NEXAPAY_API_KEY: ${NEXAPAY_API_KEY:-}
+      NEXAPAY_API_SECRET: ${NEXAPAY_API_SECRET:-}
+      NEXAPAY_WEBHOOK_SECRET: ${NEXAPAY_WEBHOOK_SECRET:-}
+      NEXAPAY_BASE_URL: ${NEXAPAY_BASE_URL:-https://api.nexapay.one}
       BILLING_CREDITS_PER_USD: ${BILLING_CREDITS_PER_USD:-100}
       BILLING_MIN_TOPUP_USD: ${BILLING_MIN_TOPUP_USD:-5}
       BILLING_MAX_TOPUP_USD: ${BILLING_MAX_TOPUP_USD:-500}
+      BILLING_PAYMENT_ASSET: ${BILLING_PAYMENT_ASSET:-USDT}
+      BILLING_PAYMENT_NETWORK: ${BILLING_PAYMENT_NETWORK:-tron}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,15 +51,15 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_USER: inknest
-      POSTGRES_PASSWORD: inknest_secret
-      POSTGRES_DB: inknest
+      POSTGRES_USER: ${POSTGRES_USER:-inknest}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-inknest_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-inknest}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - inkest-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U inknest -d inknest"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inknest} -d ${POSTGRES_DB:-inknest}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -58,7 +68,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - inkest-redis-data:/data
     healthcheck:
@@ -77,8 +87,8 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - inkest-minio-data:/data
     restart: unless-stopped

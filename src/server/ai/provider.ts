@@ -62,7 +62,14 @@ function getEnvValue(
   keyType: "API_KEY" | "BASE_URL" | "MODEL",
 ): string | undefined {
   const envPrefix = PROVIDER_ENV_PREFIX[providerId];
-  if (!envPrefix) return process.env[`OPENAI_${keyType}`]?.trim();
+  if (!envPrefix) {
+    const val = process.env[`OPENAI_${keyType}`]?.trim();
+    if (val) return val;
+    if (keyType === "MODEL" && process.env.AI_MODEL?.trim()) {
+      return process.env.AI_MODEL.trim();
+    }
+    return undefined;
+  }
 
   const primary = process.env[`${envPrefix}_${keyType}`]?.trim();
   if (primary) return primary;
@@ -71,6 +78,10 @@ function getEnvValue(
   if (providerId === "opencode-go") {
     const fallback = process.env[`OPENCODE_${keyType}`]?.trim();
     if (fallback) return fallback;
+  }
+
+  if (keyType === "MODEL" && process.env.AI_MODEL?.trim()) {
+    return process.env.AI_MODEL.trim();
   }
 
   return undefined;

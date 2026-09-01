@@ -100,8 +100,10 @@ function addDays(date: Date, amount: number) {
 }
 
 function getGoogleCalendarConfig() {
-  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const clientId =
+    process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+  const clientSecret =
+    process.env.GOOGLE_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
   const appUrl = process.env.NEXTAUTH_URL;
 
   if (!clientId || !clientSecret || !appUrl) {

@@ -24,8 +24,6 @@ services:
       - DATABASE_URL=file:/app/data/inkest.db
       - STORAGE_DRIVER=local
       - STORAGE_LOCAL_PATH=/app/data/attachments
-      - TELEGRAM_BOT_TOKEN=
-      - TELEGRAM_WEBHOOK_SECRET=
     volumes:
       - inkest-data:/app/data
 
@@ -116,16 +114,6 @@ export default function SelfHostingPage() {
                 <td className="py-2.5 font-mono text-foreground">STORAGE_DRIVER</td>
                 <td className="py-2.5"><code>local</code></td>
                 <td className="py-2.5">Attachment storage backend: <code>local</code> or <code>s3</code> (MinIO / AWS).</td>
-              </tr>
-              <tr>
-                <td className="py-2.5 font-mono text-foreground">TELEGRAM_BOT_TOKEN</td>
-                <td className="py-2.5"><em>Optional</em></td>
-                <td className="py-2.5">HTTP Bot token obtained from @BotFather for reminders.</td>
-              </tr>
-              <tr>
-                <td className="py-2.5 font-mono text-foreground">TELEGRAM_WEBHOOK_SECRET</td>
-                <td className="py-2.5"><em>Optional</em></td>
-                <td className="py-2.5">Secret token passed to authenticate incoming webhook requests.</td>
               </tr>
             </tbody>
           </table>
