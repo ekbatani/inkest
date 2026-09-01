@@ -79,13 +79,6 @@ export class DocumentPersistenceManager {
     contentHash?: string,
   ): Promise<void> {
     const nextVersion = ++this.currentVersion;
-    let compressed: Uint8Array | undefined;
-    try {
-      compressed = await compressText(content);
-    } catch {
-      // Best effort compression
-    }
-
     await documentIndexedDBStore.saveSnapshot(
       this.documentId,
       nextVersion,
@@ -93,7 +86,6 @@ export class DocumentPersistenceManager {
       title,
       false,
       contentHash,
-      compressed,
     );
   }
 

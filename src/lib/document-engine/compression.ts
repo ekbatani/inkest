@@ -1,35 +1,74 @@
 /**
  * High-performance compression and binary packing utilities for document persistence.
- * Uses native Web Streams (CompressionStream / DecompressionStream) with Deflate/Gzip
- * and zero external dependencies for maximum browser and server throughput.
+ * Uses native zlib in server/Node/Bun runtimes and Web Streams in modern browsers
+ * for maximum throughput and zero keystroke latency.
  */
 
 import type { DocumentModel } from "./types";
 
 /**
+ * Checks if the environment is a Node/Bun server runtime.
+ */
+function isServerRuntime(): boolean {
+  return (
+    typeof process !== "undefined" &&
+    process.versions != null &&
+    (process.versions.node != null || process.versions.bun != null)
+  );
+}
+
+/**
  * Compresses a UTF-8 string into a Deflate-compressed Uint8Array.
  */
 export async function compressText(text: string): Promise<Uint8Array> {
-  const bytes = new TextEncoder().encode(text);
-  if (bytes.length === 0) {
+  if (text.length === 0) {
     return new Uint8Array(0);
   }
 
-  if (typeof CompressionStream !== "undefined") {
+  const bytes = new TextEncoder().encode(text);
+
+  if (isServerRuntime()) {
     try {
-      const cs = new CompressionStream("deflate");
-      const stream = new Blob([bytes as unknown as ArrayBufferView<ArrayBuffer>])
-        .stream()
-        .pipeThrough(cs);
-      const response = new Response(stream);
-      const arrayBuffer = await response.arrayBuffer();
-      return new Uint8Array(arrayBuffer);
+      const zlib = await import("node:zlib");
+      const deflated = zlib.deflateSync(bytes);
+      return new Uint8Array(deflated.buffer, deflated.byteOffset, deflated.byteLength);
     } catch {
       return bytes;
     }
   }
 
-  // Fallback: uncompressed bytes
+  if (typeof CompressionStream !== "undefined") {
+    try {
+      const cs = new CompressionStream("deflate");
+      const writer = cs.writable.getWriter();
+      writer.write(bytes);
+      writer.close();
+
+      const chunks: Uint8Array[] = [];
+      const reader = cs.readable.getReader();
+      let totalLen = 0;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+          chunks.push(value);
+          totalLen += value.length;
+        }
+      }
+
+      const result = new Uint8Array(totalLen);
+      let offset = 0;
+      for (const chunk of chunks) {
+        result.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return result;
+    } catch {
+      return bytes;
+    }
+  }
+
   return bytes;
 }
 
@@ -45,17 +84,48 @@ export async function decompressText(
     return "";
   }
 
+  if (isServerRuntime()) {
+    try {
+      const zlib = await import("node:zlib");
+      const inflated = zlib.inflateSync(bytes);
+      return new TextDecoder().decode(inflated);
+    } catch {
+      try {
+        return new TextDecoder().decode(bytes);
+      } catch {
+        return "";
+      }
+    }
+  }
+
   if (typeof DecompressionStream !== "undefined") {
     try {
       const ds = new DecompressionStream("deflate");
-      const stream = new Blob([bytes as unknown as ArrayBufferView<ArrayBuffer>])
-        .stream()
-        .pipeThrough(ds);
-      const response = new Response(stream);
-      const arrayBuffer = await response.arrayBuffer();
-      return new TextDecoder().decode(arrayBuffer);
+      const writer = ds.writable.getWriter();
+      writer.write(bytes as unknown as BufferSource);
+      writer.close();
+
+      const chunks: Uint8Array[] = [];
+      const reader = ds.readable.getReader();
+      let totalLen = 0;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+          chunks.push(value);
+          totalLen += value.length;
+        }
+      }
+
+      const result = new Uint8Array(totalLen);
+      let offset = 0;
+      for (const chunk of chunks) {
+        result.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return new TextDecoder().decode(result);
     } catch {
-      // If decompression fails (e.g. uncompressed raw bytes), decode as plain text
       try {
         return new TextDecoder().decode(bytes);
       } catch {

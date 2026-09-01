@@ -263,7 +263,7 @@ export function NoteEditor({
       } catch {
         // Ignore
       }
-    }, 1000);
+    }, 2500);
   }, [note.id]);
 
   // CodeMirror keeps the keystroke path local. Parent React state is debounced so
@@ -280,7 +280,7 @@ export function NoteEditor({
       React.startTransition(() => {
         setContent(nextContent);
       });
-    }, 250);
+    }, 450);
   }, [scheduleLocalDraftSave, title]);
 
   const handleTitleChange = React.useCallback((nextTitle: string) => {
@@ -417,15 +417,27 @@ export function NoteEditor({
             };
           }
 
-          const compressed = await compressPayload(payload);
-          const res = await fetch(`/api/notes/${note.id}/save`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/octet-stream",
-              "Content-Encoding": "deflate",
-            },
-            body: new Blob([compressed as unknown as ArrayBufferView<ArrayBuffer>]),
-          });
+          const jsonStr = JSON.stringify(payload);
+          let res: Response;
+
+          // Only compress over the wire when payload size > 2KB (where Deflate yields positive compression ratio)
+          if (jsonStr.length > 2048) {
+            const compressed = await compressPayload(payload);
+            res = await fetch(`/api/notes/${note.id}/save`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/octet-stream",
+                "Content-Encoding": "deflate",
+              },
+              body: new Blob([compressed as unknown as ArrayBufferView<ArrayBuffer>]),
+            });
+          } else {
+            res = await fetch(`/api/notes/${note.id}/save`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: jsonStr,
+            });
+          }
 
           if (res.status === 409 && attempt === 0) {
             // Base hash mismatch -> retry once with full payload
