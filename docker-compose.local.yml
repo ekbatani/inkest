@@ -1,8 +1,0 @@
-services:
-  app:
-    ports:
-      - "3000:3000"
-    environment:
-      INKEST_DEPLOYMENT_ENV: ${INKEST_DEPLOYMENT_ENV:-self-hosted}
-      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
-

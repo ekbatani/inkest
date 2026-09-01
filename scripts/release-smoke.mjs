@@ -6,7 +6,7 @@ function usage() {
   console.log(`Usage: bun run smoke -- [--base-url <url>]
 
 Runs the unauthenticated release preflight. Continue with
-docs/release-smoke-test.md for the authenticated browser checks.`);
+documents/operations/release-smoke-test.md for the authenticated browser checks.`);
 }
 
 function parseArgs(args) {
@@ -98,4 +98,4 @@ if (failures > 0) {
   process.exit(1);
 }
 
-console.log("\nPreflight passed. Complete the authenticated checks in docs/release-smoke-test.md.");
+console.log("\nPreflight passed. Complete the authenticated checks in documents/operations/release-smoke-test.md.");

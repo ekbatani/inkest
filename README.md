@@ -1,212 +1,174 @@
-# Inkest
+<p align="center">
+  <img src="public/favicon.svg" alt="Inkest Logo" width="64" height="64" />
+</p>
 
-Inkest is a calm, private, Markdown-first personal workspace for notes,
-projects, tasks, and intentional AI assistance. It is designed to be
-self-hosted, portable, and comfortable for daily writing.
+<h1 align="center">Inkest</h1>
 
-## What it includes
+<p align="center">
+  <strong>A calm, Markdown-native home for your notes, diary, projects, and ideas — with a citing AI assistant.</strong>
+</p>
 
-- Markdown notes with safe GFM preview, Mermaid diagrams, wiki links,
-  backlinks, version history, and Markdown/workspace export.
-- Projects, note-backed tasks, checklists, due dates, kanban, tags, folders,
-  archive, daily notes, and calendar views. Projects can be shared with other
-  accounts as read-only viewers or editors.
-- Private image and document attachments; browser speech-to-text; and a
-  focus reader with text-to-speech, RTL, and dark-mode reading support.
-- Explicit AI actions for writing, summaries, task extraction, project plans,
-  Mermaid generation, explanations, and translation.
-- Optional Google Calendar and Telegram integrations.
+<p align="center">
+  <a href="#quickstart-self-hosted">Self-Host with Docker</a> •
+  <a href="#our-philosophy">Our Philosophy</a> •
+  <a href="#key-features">Key Features</a> •
+  <a href="#contributing">Contributing</a> •
+  <a href="#license">License</a>
+</p>
 
-The durable product, architecture, and operations documentation is in
-[docs/](docs/README.md).
+---
 
-## Beta feedback
+## What is Inkest?
 
-Report reproducible beta defects through the
-[Beta bug report](https://github.com/ekbatani/inkest/issues/new?template=bug-report.yml).
-Please redact note content, attachments, credentials, tokens, cookies, and
-personal data. The [beta feedback guide](docs/beta-feedback.md) explains the
-severity definitions and triage cadence; use GitHub's private security advisory
-flow for potential vulnerabilities.
+Inkest is an open-source, private, Markdown-first personal workspace. It combines the simplicity and permanence of plain Markdown with the polish of a modern productivity tool and an intentional, citing AI assistant that answers directly from your private knowledge base.
 
-## Stack
+Whether you are journaling daily thoughts, organizing long-term software projects, drafting system architecture diagrams, or researching complex ideas, Inkest provides a quiet digital room designed to compound your thinking.
 
-| Layer | Technology |
-| --- | --- |
-| Application | Next.js 16 App Router, React 19, TypeScript |
-| Runtime and package manager | Bun |
-| UI | Tailwind CSS v4, shadcn/ui, CodeMirror 6 |
-| Data | Drizzle ORM with local libSQL or Turso |
-| Authentication | Auth.js credentials sessions |
-| Integrations | OpenAI-compatible AI providers, Google Calendar, Telegram, MinIO/S3-compatible storage |
+```
+CAPTURE  ·  ORGANIZE  ·  THINK
+```
 
-## Run locally
+---
+
+## Our Philosophy
+
+1. **Calm over clutter**  
+   No feeds to refresh, no streaks to keep, and no red badges begging for attention. Inkest is built to be a distraction-free space where thinking compounds instead of reacting.
+2. **Privacy is the product**  
+   Your notes, your AI keys, your server. Nothing you write is analyzed, monetized, or trained on. Personal AI credentials use Bring-Your-Own-Key (BYOK) with AES-256-GCM encryption at rest.
+3. **Yours, forever**  
+   Plain Markdown on your own disk, 1-click full export (ZIP/JSON), and zero vendor lock-in. Built to outlive any startup.
+
+---
+
+## Key Features
+
+* 📝 **Markdown-Native Writing:** Live GFM preview, CodeMirror 6 editor, wiki links, backlinks, RTL/LTR support, and a focus reader with text-to-speech.
+* 🧠 **Citing AI Assistant (BYOK):** Summarize, improve writing, extract tasks, translate, and chat with notes—with citations that link directly to source paragraphs. Uses user-provided API keys (OpenAI, Anthropic, OpenRouter, Google Gemini, Ollama).
+* 🚀 **Projects & Task Management:** Project subtrees, automatic checkbox synchronization, Kanban boards, milestones, and granular project sharing.
+* 📅 **Daily Journaling & Calendar:** Daily notes with reflection templates (Gratitude, Daily Review, Decisions) and optional Google Calendar integration.
+* 📊 **Mermaid Diagrams & Media:** Native Mermaid rendering for flowcharts and system designs, plus private authenticated attachment storage.
+* 🔒 **Encrypted Vault & Private Attachments:** Secure sensitive snippets and files with client-side AES-256 encryption.
+
+---
+
+## Quickstart: Self-Hosted
+
+Inkest can be deployed in seconds as a self-contained, all-in-one container with embedded PostgreSQL and `pgvector`.
+
+### Option A: One-Liner `docker run` (Recommended)
+
+Run Inkest directly with persistent volumes for data and attachments:
+
+```bash
+docker run -d \
+  --name inkest \
+  -p 3000:3000 \
+  -v inkest-data:/data \
+  -v inkest-storage:/app/storage \
+  -e NEXTAUTH_URL=http://localhost:3000 \
+  -e NEXTAUTH_SECRET=$(openssl rand -base64 32) \
+  -e AI_CREDENTIAL_ENCRYPTION_KEYS=2026-09:$(openssl rand -base64 32) \
+  ghcr.io/ekbatani/inkest:latest
+```
+
+Open [http://localhost:3000](http://localhost:3000) to create your initial account.
+
+---
+
+### Option B: Cloud Multi-Service Stack (`docker compose`)
+
+To run the complete multi-service stack with external PostgreSQL (`pgvector`), Redis caching, and optional MinIO storage:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/ekbatani/inkest.git
+cd inkest
+
+# 2. Copy the Cloud environment template
+cp .env.cloud.example .env
+
+# 3. Start the stack
+docker compose up -d --build
+```
+
+---
+
+### Option C: Local Development with Bun
 
 Prerequisite: [Bun](https://bun.sh/) 1.x.
 
 ```bash
+# 1. Install dependencies
 bun install
+
+# 2. Setup environment variables
 cp .env.example .env.local
-```
 
-Set `NEXTAUTH_SECRET` in `.env.local` to a strong value, for example
-`openssl rand -base64 32`. The defaults use a local SQLite-compatible libSQL
-database and local attachment storage.
-
-```bash
+# 3. Apply database migrations & start development server
 bun run db:migrate
 bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), create an account, and
-start writing. On PowerShell, use `Copy-Item .env.example .env.local` instead
-of `cp` if that command is unavailable.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Useful commands
+---
 
-```bash
-bun run typecheck
-bun run lint
-bun run build
-bun run db:generate  # create a migration after changing the schema
-bun run db:migrate   # apply committed migrations
-bun run db:studio
-bun run verify:backup # temporary SQLite backup/restore and portable-export drill
-```
+## Tech Stack
 
-For operator backup, restore, secret-boundary, and export verification steps,
-see [Backup and restore](docs/backup-restore.md).
+| Layer | Technology |
+| :--- | :--- |
+| **Framework** | Next.js 16 (App Router), React 19, TypeScript |
+| **Runtime & Package Manager** | Bun |
+| **Styling & Components** | Tailwind CSS v4, shadcn/ui, CodeMirror 6 |
+| **Database & Vector Search** | PostgreSQL 16+ with `pgvector` (via Drizzle ORM) |
+| **Caching & Queues** | Redis / Valkey (with in-memory LRU fallback) |
+| **Storage** | Local Filesystem Volume or S3 / Cloudflare R2 |
+| **AI Integration** | OpenAI-compatible BYOK (OpenRouter, Anthropic, Gemini, Ollama) |
 
-## Configuration
+---
 
-Only `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, and `DATABASE_URL` are needed for a
-standard deployment. The rest enable optional integrations or override safe
-defaults. Keep all values in your environment or secret store; do not commit
-them.
-
-| Group | Variables |
-| --- | --- |
-| App and database | `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `NEXT_PUBLIC_APP_URL`, `DATABASE_URL`, `DATABASE_AUTH_TOKEN` |
-| User credential encryption | `AI_CREDENTIAL_ENCRYPTION_KEYS` (required before users save provider keys or connect Google Calendar) |
-| AI provider | `AI_PROVIDER` (`openai`, `openrouter`, `opencode`, `nvidia`, `ollama`, or `custom`) plus the selected provider's `*_API_KEY`, `*_BASE_URL`, and `*_MODEL` values. Use `AI_ALLOWED_BASE_URLS` to approve custom personal-provider origins. |
-| OpenAI or custom AI | `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL` |
-| OpenRouter AI | `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL` |
-| opencode Zen AI | `OPENCODE_API_KEY`, `OPENCODE_BASE_URL`, `OPENCODE_MODEL` |
-| NVIDIA Build AI | `NVIDIA_API_KEY`, `NVIDIA_BASE_URL`, `NVIDIA_MODEL` |
-| Ollama AI | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` (no API key required) |
-| Google Calendar | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` (the callback URL is derived as `${NEXTAUTH_URL}/api/calendar/google/callback`) |
-| Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET` |
-| Billing (optional) | `BILLING_PROVIDER` (`nexapay` or `manual`; unset disables payments), `NEXAPAY_API_KEY`, `NEXAPAY_API_SECRET`, `NEXAPAY_WEBHOOK_SECRET`, `NEXAPAY_BASE_URL`, `BILLING_MANUAL_WALLET_ADDRESS`, `BILLING_PAYMENT_ASSET`, `BILLING_PAYMENT_NETWORK`, `BILLING_CREDITS_PER_USD` |
-
-After signing in, **Settings → AI setup** can store a personal provider, model,
-base URL, and encrypted API key. Personal settings override the selected
-instance environment values only for that account; a blank personal key uses
-the instance default. The settings page shows which source is active without
-revealing the saved key. The personal provider selects which instance
-`*_API_KEY`, `*_BASE_URL`, and `*_MODEL` fallback group applies; each non-empty
-personal field then overrides only that field. A blank personal key therefore
-uses the selected provider's instance key. If the selected provider needs a key
-and neither setting provides one, AI actions remain unavailable rather than
-switching providers. See [Architecture](docs/ARCHITECTURE.md#ai-configuration-precedence)
-for the full data and configuration contract.
-| MinIO | `MINIO_ENDPOINT`, `MINIO_BUCKET`, `MINIO_REGION`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` |
-
-`DATABASE_URL` defaults to `file:./data/local.db`; use a Turso URL with
-`DATABASE_AUTH_TOKEN` for a remote database. `NEXT_PUBLIC_APP_URL` supplies
-the canonical public URL for metadata, robots, and the sitemap. AI settings can
-also be supplied per user in the application.
-
-Attachments use the local driver by default. Set
-`ATTACHMENT_STORAGE_DRIVER=minio` with all `MINIO_*` variables to use an
-S3-compatible MinIO server. Files remain private in either mode and are served
-only through the authenticated attachment route.
-
-## Docker and self-hosting
-
-The checked-in Compose path builds the image from a fresh source checkout, so
-it does not depend on an unpublished registry image. Docker Hub publishing is
-deliberately disabled until the release owner supplies the namespace and
-credentials described in [the image publishing plan](docs/docker-publishing.md).
+## Useful Commands
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+bun run typecheck     # Run TypeScript type verification
+bun run lint          # Run ESLint checks
+bun test              # Run automated test suite
+bun run db:generate   # Generate Drizzle migrations from schema
+bun run db:migrate    # Apply migrations
+bun run build         # Compile production Next.js standalone build
 ```
 
-The image applies pending Drizzle migrations at startup. With the default local
-storage driver, the named `inkest-data` and `inkest-storage` volumes persist the
-database and uploads across redeployments.
+---
 
-The base [docker-compose.yml](docker-compose.yml) exposes the app only to the
-Docker network for reverse proxies such as Dokploy. Point the proxy at port
-`3000` in the container. For local Docker development, add the included port
-override:
+## Contributing
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
-```
+We welcome contributions from the community! Whether fixing bugs, improving documentation, or adding new features, here is how you can help:
 
-To start the optional MinIO service declared in the same Compose file, add its
-profile:
+1. **Fork the Repository:** Create your own branch (`git checkout -b feature/amazing-feature`).
+2. **Follow Coding Standards:**
+   * TypeScript with strict typing.
+   * Server actions and API routes must authenticate and scope all queries to the active user.
+   * Maintain Markdown integrity and user data privacy boundaries.
+3. **Verify Your Changes:**
+   ```bash
+   bun run typecheck
+   bun run lint
+   bun test
+   ```
+4. **Submit a Pull Request:** Open a PR against `main` with a clear description of your changes.
 
-```bash
-docker compose --profile storage -f docker-compose.yml -f docker-compose.local.yml up -d --build
-```
+For major architectural changes, please open an issue first to discuss the design.
 
-After a versioned Docker Hub image has been published and verified, operators
-can deploy it without a source checkout by using the release compose command
-in the image publishing plan. Until then, the source Compose command above is
-the supported path.
-
-You can also build and run the image directly:
-
-```bash
-docker build -t inkest .
-docker run -p 3000:3000 \
-  -e NEXTAUTH_URL=http://localhost:3000 \
-  -e NEXTAUTH_SECRET="$(openssl rand -base64 32)" \
-  -e DATABASE_URL=file:/app/data/local.db \
-  -v inkest-data:/app/data \
-  -v inkest-storage:/app/storage \
-  inkest
-```
-
-## Keyboard shortcuts
-
-| Shortcut | Action |
-| --- | --- |
-| `Ctrl+K` | Open command palette |
-| `Ctrl+N` | Create a note |
-| `Ctrl+D` | Open today's daily note |
-| `Ctrl+\` | Toggle sidebar |
-| `Ctrl+S` | Force save in the editor |
-| `Ctrl+Shift+R` | Open the focus reader; `Esc` returns to the editor caret |
-| `Ctrl+F` / `Enter` / `Shift+Enter` | Find in the current note / next match / previous match |
-| `Ctrl+B`, `Ctrl+I`, `Ctrl+Shift+X`, `Ctrl+E` | Bold, italic, strikethrough, inline code in the editor |
-
-On macOS, use `Cmd` in place of `Ctrl`. Use the command palette to open a
-specific note, navigate the workspace, or apply additional current-note
-formatting such as a bulleted list. Vim-style multi-cursor/select-all-occurrences
-shortcuts are intentionally not reserved: their browser and assistive-technology
-conflicts are too high for a global writing shortcut.
-
-## Daily notes and Calendar
-
-Open today&apos;s daily note from **Home**, `Ctrl+D`, or the command palette. Use
-**Calendar** to browse any date; choosing a day preserves the Calendar URL and
-**Open daily note** takes you to that date&apos;s note. Google Calendar is optional:
-the day and note remain available when it is not configured or connected.
-
-## Writing suggestions
-
-Native browser spellcheck is enabled by default for notes. Set its language to
-your browser default, English, or Persian (or disable it) in **Settings →
-Editor**. Dictionaries and suggestions are supplied locally by the browser;
-Inkest does not send note text to an AI provider for spelling. AI writing
-actions remain manual and only use text you explicitly select.
+---
 
 ## License
 
-Inkest is free for personal, educational, and non-commercial self-hosted use under the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
+Inkest is free for personal, educational, and non-commercial self-hosted use under the **[PolyForm Noncommercial License 1.0.0](LICENSE.md)**.
 
-For commercial licensing, hosted service partnerships, or enterprise inquiries, please contact [Amir Ekbatani](mailto:amir.ekbatani@gmail.com).
+### Commercial Inquiries & Cloud SaaS
+For commercial licensing, enterprise self-hosting, hosted service partnerships, or alternative licensing terms, please contact:
 
+**Amir Ekbatani**  
+Email: [amir.ekbatani@gmail.com](mailto:amir.ekbatani@gmail.com)  
+Website: [inkest.app](https://inkest.app)

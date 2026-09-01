@@ -1,68 +1,90 @@
 services:
   app:
-    # A fresh source checkout is deployable before a public registry exists.
-    # After the Docker Hub release gate is completed, operators may set
-    # INKEST_IMAGE=docker.io/<namespace>/inkest:<version> to use that image.
-    image: ${INKEST_IMAGE:-inkest:local}
     build:
       context: .
-    expose:
-      - "3000"
+      dockerfile: Dockerfile.cloud
+    ports:
+      - "${PORT:-3000}:3000"
     environment:
-      DATABASE_URL: file:/app/data/local.db
-      INKEST_DEPLOYMENT_ENV: ${INKEST_DEPLOYMENT_ENV:-self-hosted}
-      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      INKEST_DEPLOYMENT_ENV: cloud
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@inkest.app}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET to a unique random value before starting Inkest}
-      AI_CREDENTIAL_ENCRYPTION_KEYS: ${AI_CREDENTIAL_ENCRYPTION_KEYS:-}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET to a secure random value}
+      DATABASE_URL: ${DATABASE_URL:-postgres://inknest:inknest_secret@postgres:5432/inknest}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       ATTACHMENT_STORAGE_DRIVER: ${ATTACHMENT_STORAGE_DRIVER:-local}
       LOCAL_STORAGE_ROOT: ${LOCAL_STORAGE_ROOT:-/app/storage}
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-}
-      MINIO_BUCKET: ${MINIO_BUCKET:-}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_BUCKET: ${MINIO_BUCKET:-inkest-attachments}
       MINIO_REGION: ${MINIO_REGION:-us-east-1}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-}
-      AI_PROVIDER: openrouter
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      AI_CREDENTIAL_ENCRYPTION_KEYS: ${AI_CREDENTIAL_ENCRYPTION_KEYS:-}
+      AI_PROVIDER: ${AI_PROVIDER:-openrouter}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      OPENROUTER_BASE_URL:
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
-      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
       BILLING_PROVIDER: ${BILLING_PROVIDER:-}
-      NEXAPAY_API_KEY: ${NEXAPAY_API_KEY:-}
-      NEXAPAY_API_SECRET: ${NEXAPAY_API_SECRET:-}
-      NEXAPAY_WEBHOOK_SECRET: ${NEXAPAY_WEBHOOK_SECRET:-}
-      NEXAPAY_BASE_URL: ${NEXAPAY_BASE_URL:-https://api.nexapay.one}
-      BILLING_PAYMENT_ASSET: ${BILLING_PAYMENT_ASSET:-USDT}
-      BILLING_PAYMENT_NETWORK: ${BILLING_PAYMENT_NETWORK:-tron}
-      BILLING_MANUAL_WALLET_ADDRESS: ${BILLING_MANUAL_WALLET_ADDRESS:-}
-      BILLING_MANUAL_WALLET_NETWORK: ${BILLING_MANUAL_WALLET_NETWORK:-tron}
-      BILLING_MANUAL_WALLET_ASSET: ${BILLING_MANUAL_WALLET_ASSET:-USDT}
       BILLING_CREDITS_PER_USD: ${BILLING_CREDITS_PER_USD:-100}
       BILLING_MIN_TOPUP_USD: ${BILLING_MIN_TOPUP_USD:-5}
       BILLING_MAX_TOPUP_USD: ${BILLING_MAX_TOPUP_USD:-500}
-      BILLING_INVOICE_LIFETIME_MINUTES: ${BILLING_INVOICE_LIFETIME_MINUTES:-60}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
-      - inkest-data:/app/data
       - inkest-storage:/app/storage
     restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: inknest
+      POSTGRES_PASSWORD: inknest_secret
+      POSTGRES_DB: inknest
+    ports:
+      - "5432:5432"
+    volumes:
+      - inkest-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inknest -d inknest"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - inkest-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   minio:
-    image: minio/minio:RELEASE.2026-06-13T11-33-47Z
+    image: minio/minio:latest
     profiles:
       - storage
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER before enabling the storage profile}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD before enabling the storage profile}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     command: server /data --console-address ":9001"
-    expose:
+    ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - inkest-minio:/data
+      - inkest-minio-data:/data
     restart: unless-stopped
 
 volumes:
-  inkest-data:
+  inkest-postgres-data:
+  inkest-redis-data:
   inkest-storage:
-  inkest-minio:
+  inkest-minio-data:

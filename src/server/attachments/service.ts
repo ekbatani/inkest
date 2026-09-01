@@ -12,6 +12,7 @@ import {
   writeAttachmentData,
 } from "@/server/attachments/storage";
 import { hasExpectedFileSignature } from "@/server/attachments/validation";
+import { checkUploadQuota } from "@/cloud/limits/service";
 
 const MAX_UPLOAD_SIZE_MB = Number(process.env.MAX_UPLOAD_SIZE_MB ?? 20);
 const MAX_UPLOAD_SIZE = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
@@ -101,6 +102,11 @@ export async function saveLocalAttachment(
 > {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized", status: 401 };
+
+  const quota = await checkUploadQuota(user.id, file.size);
+  if (!quota.allowed) {
+    return { error: quota.reason ?? "Storage limit reached.", status: 413 };
+  }
 
   if (file.size > MAX_UPLOAD_SIZE) {
     return { error: `File too large. Max ${MAX_UPLOAD_SIZE_MB}MB.`, status: 413 };

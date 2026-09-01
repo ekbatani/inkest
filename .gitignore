@@ -33,6 +33,7 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+!.env*.example
 
 # vercel
 .vercel
@@ -52,3 +53,8 @@ next-env.d.ts
 /release-android
 /release-ios
 /dist
+
+# local documentation
+/docs
+/documents
+

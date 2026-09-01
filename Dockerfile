@@ -1,16 +1,20 @@
-FROM node:20-slim AS base
+# ── All-in-One Self-Hosted Dockerfile (Next.js + Embedded PostgreSQL + pgvector) ──
+FROM node:20-bookworm-slim AS base
 RUN corepack enable && npm i -g bun@1
+
+# Install PostgreSQL 16 & pgvector
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-16 \
+    postgresql-16-pgvector \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # ── Dependencies ──────────────────────────────────────────────────────────
 FROM base AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
-
-FROM base AS prod-deps
-WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
 
 # ── Build ─────────────────────────────────────────────────────────────────
 FROM base AS builder
@@ -21,10 +25,10 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL=file:/app/data/local.db
 RUN mkdir -p /app/data /app/storage
-RUN node scripts/migrate.mjs
+RUN node scripts/migrate.mjs || true
 RUN bun run build
 
-# ── Runtime ───────────────────────────────────────────────────────────────
+# ── Runtime Stage ─────────────────────────────────────────────────────────
 FROM base AS runner
 WORKDIR /app
 
@@ -32,26 +36,20 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
-ENV DATABASE_URL=file:/app/data/local.db
 
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
-
-COPY --from=prod-deps /app/node_modules ./node_modules
+# Copy Next.js Standalone Build
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-# Drizzle migration files + programmatic migration runner
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/drizzle ./drizzle
-COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder /app/scripts ./scripts
 COPY --chmod=755 docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN mkdir -p /app/data /app/storage && chown -R nextjs:nodejs /app/data /app/storage
-
-USER nextjs
+RUN mkdir -p /data/postgres /app/storage && \
+    chown -R postgres:postgres /data
 
 EXPOSE 3000
+
+VOLUME ["/data", "/app/storage"]
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
