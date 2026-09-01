@@ -455,7 +455,7 @@ export function BillingView({
               {status.enabled
                 ? status.provider === "manual"
                   ? "Top up with a direct crypto transfer; an operator confirms it."
-                  : "Top up with crypto through a secure checkout; funds settle to the operator wallet."
+                  : "Top up with card (Visa, Mastercard, Apple Pay, Google Pay) or crypto through NexaPay."
                 : "Payments are not enabled on this instance."}
             </p>
           </div>
@@ -551,7 +551,7 @@ export function BillingView({
                         ? `${payment.paidAsset}${payment.paidNetwork ? ` · ${payment.paidNetwork}` : ""}`
                         : payment.provider === "manual"
                           ? "Direct transfer"
-                          : "Crypto"}
+                          : "Card / Crypto"}
                     </td>
                     <td className="px-2 py-2.5">
                       <StatusBadge status={payment.status} />
@@ -785,7 +785,7 @@ export function BillingView({
                 ? "Finish the payment to receive your credits."
                 : status.provider === "manual"
                   ? "Pay with a direct transfer from your crypto wallet."
-                  : "Pay with crypto through a secure checkout page."}
+                  : "Pay with card or crypto through NexaPay secure checkout."}
             </DialogDescription>
           </DialogHeader>
 

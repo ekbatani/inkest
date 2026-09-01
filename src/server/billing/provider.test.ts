@@ -1,93 +1,127 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
-  cryptomusSign,
-  mapCryptomusStatus,
-  parseCryptomusWebhook,
-  verifyCryptomusSignature,
+  mapNexaPayStatus,
+  nexapaySign,
+  parseNexaPayWebhook,
+  verifyNexaPaySignature,
 } from "@/server/billing/provider";
 import { getBillingStatus } from "@/server/billing/config";
 
-describe("cryptomus webhook signature", () => {
-  const apiKey = "test-api-key";
-  const body = JSON.stringify({ type: "payment", uuid: "inv-1", status: "paid" });
+describe("nexapay webhook signature", () => {
+  const secretKey = "test-webhook-secret";
+  const body = JSON.stringify({ event: "order.completed", id: "inv-1", status: "paid" });
 
-  test("sign matches md5(base64(body) + key)", () => {
-    const expected = cryptomusSign(body, apiKey);
-    assert.equal(/^[0-9a-f]{32}$/.test(expected), true);
-    assert.equal(expected, cryptomusSign(body, apiKey));
+  test("sign matches hmac-sha256 hex", () => {
+    const expected = nexapaySign(body, secretKey);
+    assert.equal(/^[0-9a-f]{64}$/.test(expected), true);
+    assert.equal(expected, nexapaySign(body, secretKey));
   });
 
   test("verify accepts the correct signature and rejects others", () => {
-    const sign = cryptomusSign(body, apiKey);
-    assert.equal(verifyCryptomusSignature(body, sign, apiKey), true);
-    assert.equal(verifyCryptomusSignature(body, ` ${sign} `, apiKey), true);
-    assert.equal(verifyCryptomusSignature(body, cryptomusSign(body, "other"), apiKey), false);
-    assert.equal(verifyCryptomusSignature(body, null, apiKey), false);
-    assert.equal(verifyCryptomusSignature(body, "", apiKey), false);
+    const sign = nexapaySign(body, secretKey);
+    assert.equal(verifyNexaPaySignature(body, sign, secretKey), true);
+    assert.equal(verifyNexaPaySignature(body, ` ${sign} `, secretKey), true);
+    assert.equal(verifyNexaPaySignature(body, nexapaySign(body, "other-secret"), secretKey), false);
+    assert.equal(verifyNexaPaySignature(body, null, secretKey), false);
+    assert.equal(verifyNexaPaySignature(body, "", secretKey), false);
     // A tampered body must not verify against the original signature.
     assert.equal(
-      verifyCryptomusSignature(body + " ", sign, apiKey),
+      verifyNexaPaySignature(body + " ", sign, secretKey),
       false,
     );
   });
 });
 
-describe("cryptomus status mapping", () => {
-  test("paid statuses confirm", () => {
-    assert.equal(mapCryptomusStatus("paid"), "confirmed");
-    assert.equal(mapCryptomusStatus("paid_over"), "confirmed");
-    assert.equal(mapCryptomusStatus("PAID"), "confirmed");
+describe("nexapay status mapping", () => {
+  test("paid and success statuses confirm", () => {
+    assert.equal(mapNexaPayStatus("paid"), "confirmed");
+    assert.equal(mapNexaPayStatus("paid_over"), "confirmed");
+    assert.equal(mapNexaPayStatus("PAID"), "confirmed");
+    assert.equal(mapNexaPayStatus("success"), "confirmed");
+    assert.equal(mapNexaPayStatus("succeeded"), "confirmed");
+    assert.equal(mapNexaPayStatus("completed"), "confirmed");
+    assert.equal(mapNexaPayStatus("settled"), "confirmed");
+    assert.equal(mapNexaPayStatus("payment.success"), "confirmed");
+    assert.equal(mapNexaPayStatus("order.completed"), "confirmed");
   });
 
   test("failure and cancellation statuses map to terminal states", () => {
-    assert.equal(mapCryptomusStatus("fail"), "failed");
-    assert.equal(mapCryptomusStatus("wrong_amount"), "failed");
-    assert.equal(mapCryptomusStatus("cancel"), "canceled");
-    assert.equal(mapCryptomusStatus("expired"), "expired");
+    assert.equal(mapNexaPayStatus("fail"), "failed");
+    assert.equal(mapNexaPayStatus("failed"), "failed");
+    assert.equal(mapNexaPayStatus("declined"), "failed");
+    assert.equal(mapNexaPayStatus("wrong_amount"), "failed");
+    assert.equal(mapNexaPayStatus("payment.failed"), "failed");
+    assert.equal(mapNexaPayStatus("cancel"), "canceled");
+    assert.equal(mapNexaPayStatus("canceled"), "canceled");
+    assert.equal(mapNexaPayStatus("cancelled"), "canceled");
+    assert.equal(mapNexaPayStatus("expired"), "expired");
   });
 
   test("intermediate statuses stay open and unknown ones are dropped", () => {
-    assert.equal(mapCryptomusStatus("process"), "awaiting_confirmation");
-    assert.equal(mapCryptomusStatus("check"), "awaiting_confirmation");
-    assert.equal(mapCryptomusStatus("something_new"), null);
+    assert.equal(mapNexaPayStatus("process"), "awaiting_confirmation");
+    assert.equal(mapNexaPayStatus("processing"), "awaiting_confirmation");
+    assert.equal(mapNexaPayStatus("pending"), "awaiting_confirmation");
+    assert.equal(mapNexaPayStatus("check"), "awaiting_confirmation");
+    assert.equal(mapNexaPayStatus("something_unknown"), null);
   });
 });
 
-describe("cryptomus webhook payload parsing", () => {
-  test("parses a paid payment callback", () => {
-    const outcome = parseCryptomusWebhook({
-      type: "payment",
-      uuid: "8f3c...uuid",
+describe("nexapay webhook payload parsing", () => {
+  test("parses a paid payment callback with flat structure", () => {
+    const outcome = parseNexaPayWebhook({
+      event: "payment.success",
+      id: "nxp_inv_12345",
       status: "paid",
-      amount: "10.00",
-      payer_amount: "9.99",
+      amount: "25.00",
+      paid_amount: "25.00",
       currency: "USDT",
-      network: "tron",
+      network: "TRC20",
+      tx_hash: "0xabc123456789",
     });
     assert.ok(outcome);
-    assert.equal(outcome.providerInvoiceId, "8f3c...uuid");
+    assert.equal(outcome.providerInvoiceId, "nxp_inv_12345");
     assert.equal(outcome.status, "confirmed");
-    assert.equal(outcome.paidAmount, 9.99);
+    assert.equal(outcome.paidAmount, 25);
     assert.equal(outcome.paidAsset, "USDT");
-    assert.equal(outcome.paidNetwork, "tron");
+    assert.equal(outcome.paidNetwork, "TRC20");
+    assert.equal(outcome.txHash, "0xabc123456789");
   });
 
-  test("falls back to order_id and rejects non-payment types", () => {
-    const outcome = parseCryptomusWebhook({
-      type: "payment",
-      order_id: "pay_abc",
+  test("parses nested data callback structure", () => {
+    const outcome = parseNexaPayWebhook({
+      event: "order.completed",
+      data: {
+        order_id: "pay_xyz987",
+        status: "completed",
+        amount_received: 50,
+        currency: "USDC",
+        network: "ERC20",
+        txid: "0xdef987654321",
+      },
+    });
+    assert.ok(outcome);
+    assert.equal(outcome.providerInvoiceId, "pay_xyz987");
+    assert.equal(outcome.status, "confirmed");
+    assert.equal(outcome.paidAmount, 50);
+    assert.equal(outcome.paidAsset, "USDC");
+    assert.equal(outcome.paidNetwork, "ERC20");
+    assert.equal(outcome.txHash, "0xdef987654321");
+  });
+
+  test("falls back to order_id and rejects invalid payloads", () => {
+    const outcome = parseNexaPayWebhook({
+      order_id: "pay_fallback",
       status: "cancel",
     });
     assert.ok(outcome);
-    assert.equal(outcome.providerInvoiceId, "pay_abc");
+    assert.equal(outcome.providerInvoiceId, "pay_fallback");
     assert.equal(outcome.status, "canceled");
 
-    assert.equal(parseCryptomusWebhook({ type: "wallet-check", uuid: "x", status: "paid" }), null);
-    assert.equal(parseCryptomusWebhook({ status: "paid" }), null);
-    assert.equal(parseCryptomusWebhook({ type: "payment", uuid: "x" }), null);
-    assert.equal(parseCryptomusWebhook("nope"), null);
-    assert.equal(parseCryptomusWebhook(null), null);
+    assert.equal(parseNexaPayWebhook({ status: "paid" }), null);
+    assert.equal(parseNexaPayWebhook({ id: "x" }), null);
+    assert.equal(parseNexaPayWebhook("invalid"), null);
+    assert.equal(parseNexaPayWebhook(null), null);
   });
 });
 
@@ -97,11 +131,28 @@ describe("billing status", () => {
     try {
       delete process.env.BILLING_PROVIDER;
       assert.equal(getBillingStatus().enabled, false);
-      process.env.BILLING_PROVIDER = "stripe";
+      process.env.BILLING_PROVIDER = "unknown_gateway";
       assert.equal(getBillingStatus().enabled, false);
     } finally {
       if (prev === undefined) delete process.env.BILLING_PROVIDER;
       else process.env.BILLING_PROVIDER = prev;
+    }
+  });
+
+  test("nexapay driver enables status without leaking secrets", () => {
+    const prev = { ...process.env };
+    try {
+      process.env.BILLING_PROVIDER = "nexapay";
+      process.env.NEXAPAY_API_KEY = "nxp_live_key";
+      process.env.NEXAPAY_API_SECRET = "nxp_live_secret";
+      const status = getBillingStatus();
+      assert.equal(status.enabled, true);
+      assert.equal(status.provider, "nexapay");
+      assert.equal("nexapayApiKey" in status, false);
+      assert.equal("nexapayApiSecret" in status, false);
+      assert.equal("nexapayWebhookSecret" in status, false);
+    } finally {
+      process.env = prev;
     }
   });
 
@@ -110,14 +161,15 @@ describe("billing status", () => {
     try {
       process.env.BILLING_PROVIDER = "manual";
       process.env.BILLING_MANUAL_WALLET_ADDRESS = "TXY...wallet";
-      delete process.env.CRYPTOMUS_API_KEY;
+      delete process.env.NEXAPAY_API_KEY;
+      delete process.env.NEXAPAY_API_SECRET;
       const status = getBillingStatus();
       assert.equal(status.enabled, true);
       assert.equal(status.provider, "manual");
       assert.equal(status.manualWalletAddress, "TXY...wallet");
       assert.equal(status.paymentAsset, "USDT");
       assert.equal(status.paymentNetwork, "tron");
-      assert.equal("cryptomusApiKey" in status, false);
+      assert.equal("nexapayApiKey" in status, false);
     } finally {
       process.env = prev;
     }

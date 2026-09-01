@@ -96,8 +96,7 @@ them.
 | Ollama AI | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` (no API key required) |
 | Google Calendar | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` (the callback URL is derived as `${NEXTAUTH_URL}/api/calendar/google/callback`) |
 | Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET` |
-| Attachments | `ATTACHMENT_STORAGE_DRIVER`, `LOCAL_STORAGE_ROOT`, `MAX_UPLOAD_SIZE_MB`, `ALLOWED_UPLOAD_TYPES` |
-| Billing (optional) | `BILLING_PROVIDER` (`cryptomus` or `manual`; unset disables payments), `CRYPTOMUS_API_KEY`, `CRYPTOMUS_MERCHANT_ID`, `BILLING_MANUAL_WALLET_ADDRESS`, `BILLING_PAYMENT_ASSET`, `BILLING_PAYMENT_NETWORK`, `BILLING_CREDITS_PER_USD` |
+| Billing (optional) | `BILLING_PROVIDER` (`nexapay` or `manual`; unset disables payments), `NEXAPAY_API_KEY`, `NEXAPAY_API_SECRET`, `NEXAPAY_WEBHOOK_SECRET`, `NEXAPAY_BASE_URL`, `BILLING_MANUAL_WALLET_ADDRESS`, `BILLING_PAYMENT_ASSET`, `BILLING_PAYMENT_NETWORK`, `BILLING_CREDITS_PER_USD` |
 
 After signing in, **Settings → AI setup** can store a personal provider, model,
 base URL, and encrypted API key. Personal settings override the selected

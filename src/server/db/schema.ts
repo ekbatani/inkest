@@ -733,7 +733,9 @@ export const payments = sqliteTable(
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    provider: text("provider", { enum: ["cryptomus", "manual"] }).notNull(),
+    provider: text("provider", {
+      enum: ["nexapay", "cryptomus", "manual"],
+    }).notNull(),
     providerInvoiceId: text("provider_invoice_id"),
     status: text("status", {
       enum: [

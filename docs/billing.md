@@ -1,4 +1,4 @@
-# Billing: Crypto Payments & Credits
+# Billing: Card & Crypto Payments with Credits
 
 Inkest can accept payments from users and settle them into the operator's
 crypto wallet. Confirmed payments grant credits to the user's balance
@@ -31,20 +31,13 @@ Schema (`src/server/db/schema.ts`, migration `drizzle/0012_*`):
 
 ## Providers
 
-### `cryptomus` (hosted gateway, recommended)
+### `nexapay` (hosted gateway, recommended)
 
-1. Create a Cryptomus account and configure your **payout wallet** in its
-   dashboard — that wallet is where received funds are settled; Inkest never
-   holds crypto keys.
-2. Set `BILLING_PROVIDER=cryptomus`, `CRYPTOMUS_API_KEY` (and
-   `CRYPTOMUS_MERCHANT_ID` for business accounts).
-3. Point the gateway's callback URL at `https://<your-host>/api/billing/webhook`
-   (the app also sends `url_callback` on every invoice, which overrides the
-   dashboard setting).
+1. Register at [nexapay.one](https://nexapay.one) and obtain your **API Key** and **API Secret** (plus optional Webhook Secret). Configure your settlement crypto wallet address in the NexaPay console.
+2. Set `BILLING_PROVIDER=nexapay`, `NEXAPAY_API_KEY`, and `NEXAPAY_API_SECRET`. Optionally set `NEXAPAY_WEBHOOK_SECRET` (defaults to the API secret) and `NEXAPAY_BASE_URL` (defaults to `https://api.nexapay.one`).
+3. Set your webhook URL in the NexaPay dashboard to `https://<your-host>/api/billing/webhook` (the application also passes callback and return URLs during order creation).
 
-Users get a checkout page and can pay in the coin of their choice; the webhook
-is verified with Cryptomus's `md5(base64(body) + API key)` signature before
-anything is applied.
+Users can pay with credit/debit cards (Visa, Mastercard, Apple Pay, Google Pay) or cryptocurrency through NexaPay's checkout page; the webhook is authenticated via `HMAC-SHA256` signature verification (`X-NexaPay-Signature`) before updates are applied.
 
 ### `manual` (direct transfer)
 
@@ -60,7 +53,7 @@ administration panel); confirmation is what credits the user.
 locked into the payment row at invoice creation. `BILLING_MIN_TOPUP_USD` /
 `BILLING_MAX_TOPUP_USD` (5 / 500) bound a single top-up.
 `BILLING_PAYMENT_ASSET` / `BILLING_PAYMENT_NETWORK` (e.g. `USDT` / `tron`)
-pin the invoice currency for the cryptomus driver; leave the asset empty to
+pin the invoice currency for the nexapay driver; leave the asset empty to
 let payers choose any coin. Spending credits (e.g. AI usage metering) is not
 wired yet — the ledger's `reason` enum will grow for that.
 
@@ -75,8 +68,8 @@ wired yet — the ledger's `reason` enum will grow for that.
 - Confirmation is a guarded state transition (`pending/awaiting_confirmation
   → confirmed`) plus a ledger insert protected by a unique index, so duplicate
   webhooks or concurrent workers cannot double-credit.
-- API keys live only in env vars and are never returned to the client; the UI
-  receives a secret-free status object.
+- API keys and secrets live only in env vars and are never returned to the client;
+  the UI receives a secret-free status object.
 - Billing admin actions (`confirm`, `reject`, `grantCredits`) require a
   database-level `admin` role. This is deliberately **not** gated on cloud
   deployment mode (`isAdmin()` returns false self-hosted), so a self-hosted
@@ -90,7 +83,7 @@ wired yet — the ledger's `reason` enum will grow for that.
 - Apply the migration: `bun run db:migrate`.
 - Verify a deployment: with billing unset, the Billing page shows
   "Payments disabled" and `POST /api/billing/webhook` returns 404. With the
-  cryptomus driver, a top-up should create an invoice, and replaying the
+  nexapay driver, a top-up should create an invoice, and replaying the
   webhook with a bad signature must return 403.
 - Manual confirmation flow: verify the tx hash in a block explorer for the
   exact asset/network and amount, then Confirm. Rejected payments can be

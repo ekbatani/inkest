@@ -2,12 +2,14 @@
 // attachments/storage.ts): env vars are read lazily, the feature has a
 // graceful "not configured" state, and secrets never leave the server.
 
-export type BillingProviderId = "cryptomus" | "manual";
+export type BillingProviderId = "nexapay" | "manual";
 
 export type BillingConfig = {
   provider: BillingProviderId;
-  cryptomusMerchantId: string | null;
-  cryptomusApiKey: string;
+  nexapayApiKey: string;
+  nexapayApiSecret: string;
+  nexapayWebhookSecret: string;
+  nexapayBaseUrl: string;
   manualWallet: { address: string; network: string; asset: string } | null;
   creditsPerUsd: number;
   minTopUpUsd: number;
@@ -51,19 +53,28 @@ export function billingWebhookUrl() {
 
 export function getBillingConfig(): BillingConfig | null {
   const provider = process.env.BILLING_PROVIDER?.trim().toLowerCase();
-  if (provider !== "cryptomus" && provider !== "manual") return null;
+  if (provider !== "nexapay" && provider !== "manual") return null;
 
-  if (provider === "cryptomus") {
-    const apiKey = process.env.CRYPTOMUS_API_KEY?.trim() ?? "";
-    if (!apiKey) {
+  if (provider === "nexapay") {
+    const apiKey = process.env.NEXAPAY_API_KEY?.trim() ?? "";
+    const apiSecret = process.env.NEXAPAY_API_SECRET?.trim() ?? "";
+    if (!apiKey || !apiSecret) {
       throw new Error(
-        "Cryptomus billing requires CRYPTOMUS_API_KEY (and optionally CRYPTOMUS_MERCHANT_ID).",
+        "NexaPay billing requires NEXAPAY_API_KEY and NEXAPAY_API_SECRET.",
       );
     }
+    const webhookSecret =
+      process.env.NEXAPAY_WEBHOOK_SECRET?.trim() || apiSecret;
+    const baseUrl =
+      process.env.NEXAPAY_BASE_URL?.trim().replace(/\/+$/, "") ||
+      "https://api.nexapay.one";
+
     return {
       provider,
-      cryptomusApiKey: apiKey,
-      cryptomusMerchantId: process.env.CRYPTOMUS_MERCHANT_ID?.trim() || null,
+      nexapayApiKey: apiKey,
+      nexapayApiSecret: apiSecret,
+      nexapayWebhookSecret: webhookSecret,
+      nexapayBaseUrl: baseUrl,
       manualWallet: null,
       creditsPerUsd: readNumberEnv("BILLING_CREDITS_PER_USD", 100, 1, 1_000_000),
       minTopUpUsd: readNumberEnv("BILLING_MIN_TOPUP_USD", 5, 0.5, 10_000),
@@ -80,8 +91,10 @@ export function getBillingConfig(): BillingConfig | null {
   }
   return {
     provider,
-    cryptomusApiKey: "",
-    cryptomusMerchantId: null,
+    nexapayApiKey: "",
+    nexapayApiSecret: "",
+    nexapayWebhookSecret: "",
+    nexapayBaseUrl: "",
     manualWallet: {
       address,
       network: process.env.BILLING_MANUAL_WALLET_NETWORK?.trim() || "tron",

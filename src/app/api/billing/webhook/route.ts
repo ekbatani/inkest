@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBillingConfig } from "@/server/billing/config";
 import {
-  parseCryptomusWebhook,
-  verifyCryptomusSignature,
+  parseNexaPayWebhook,
+  verifyNexaPaySignature,
 } from "@/server/billing/provider";
 import { applyProviderCallback } from "@/server/billing/service";
 
@@ -18,16 +18,22 @@ export async function POST(request: NextRequest) {
     console.error("[billing webhook] misconfigured billing:", err);
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (!config || config.provider !== "cryptomus") {
+  if (!config || config.provider !== "nexapay") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const signature =
+    request.headers.get("x-nexapay-signature") ||
+    request.headers.get("x-signature") ||
+    request.headers.get("signature") ||
+    request.headers.get("sign");
+
   const rawBody = await request.text();
   if (
-    !verifyCryptomusSignature(
+    !verifyNexaPaySignature(
       rawBody,
-      request.headers.get("sign"),
-      config.cryptomusApiKey,
+      signature,
+      config.nexapayWebhookSecret,
     )
   ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -40,7 +46,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const outcome = parseCryptomusWebhook(payload);
+  const outcome = parseNexaPayWebhook(payload);
   if (!outcome) {
     console.warn("[billing webhook] unhandled payload shape");
     return NextResponse.json({ ok: true });
