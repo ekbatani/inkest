@@ -81,19 +81,40 @@ export function VersionHistoryButton({
   const [restoring, setRestoring] = React.useState<string | null>(null);
   const [activeId, setActiveId] = React.useState<string | "draft" | null>(null);
 
-  const openHistory = React.useCallback(async () => {
-    setOpen(true);
-    setLoading(true);
-    try {
-      const list = await listNoteVersionsAction(noteId);
-      setVersions(list);
-      setActiveId(draft ? "draft" : (list[0]?.id ?? null));
-    } catch {
-      toast.error("Failed to load history.");
-    } finally {
-      setLoading(false);
-    }
-  }, [draft, noteId, setOpen]);
+  const hasDraft = Boolean(draft);
+
+  React.useEffect(() => {
+    if (!open) return;
+    let isMounted = true;
+
+    const fetchHistory = async () => {
+      setLoading(true);
+      try {
+        const list = await listNoteVersionsAction(noteId);
+        if (isMounted) {
+          setVersions(list);
+          setActiveId(hasDraft ? "draft" : (list[0]?.id ?? null));
+        }
+      } catch {
+        if (isMounted) {
+          toast.error("Failed to load history.");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    const timer = setTimeout(() => {
+      void fetchHistory();
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [open, noteId, hasDraft]);
 
   const restore = async (versionId: string) => {
     if (
@@ -109,7 +130,9 @@ export function VersionHistoryButton({
         toast.error(res.error);
         return;
       }
-      const restored = versions.find((version) => version.id === versionId);
+      const restored =
+        ("version" in res && res.version) ||
+        versions.find((version) => version.id === versionId);
       if (restored && onRestoreVersion) {
         onRestoreVersion({
           title: restored.title,
@@ -118,6 +141,8 @@ export function VersionHistoryButton({
       }
       toast.success("Restored version.");
       setOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to restore version.");
     } finally {
       setRestoring(null);
     }
@@ -145,7 +170,7 @@ export function VersionHistoryButton({
           className={iconOnly ? "rounded-full" : "w-full justify-start gap-2"}
           aria-label="Open version history"
           title="Version history"
-          onClick={() => void openHistory()}
+          onClick={() => setOpen(true)}
         >
           <History className="size-4" />
           {!iconOnly && "Version history"}
@@ -154,11 +179,7 @@ export function VersionHistoryButton({
       <Dialog
         open={open}
         onOpenChange={(nextOpen) => {
-          if (nextOpen) {
-            void openHistory();
-          } else {
-            setOpen(false);
-          }
+          setOpen(nextOpen);
         }}
       >
         <DialogContent className="sm:max-w-3xl">
@@ -202,7 +223,7 @@ export function VersionHistoryButton({
             </div>
           </DialogHeader>
           <div className="flex min-h-0 gap-3">
-            <ScrollArea className="w-44 shrink-0 rounded-lg border">
+            <ScrollArea className="w-52 shrink-0 rounded-lg border sm:w-60">
               <ul className="flex flex-col">
                 {draft && (
                   <li>
@@ -288,8 +309,19 @@ export function VersionHistoryButton({
                       </Button>
                     )}
                   </div>
-                  <ScrollArea className="max-h-[55vh] rounded-lg border p-3">
-                    <MarkdownPreview content={activeVersion.contentMd} />
+                  <ScrollArea className="max-h-[55vh] rounded-lg border p-4">
+                    {activeVersion.title && (
+                      <h2 className="mb-3 text-base font-semibold border-b pb-2 text-foreground">
+                        {activeVersion.title}
+                      </h2>
+                    )}
+                    {activeVersion.contentMd ? (
+                      <MarkdownPreview content={activeVersion.contentMd} />
+                    ) : (
+                      <p className="text-xs italic text-muted-foreground">
+                        No content in this snapshot.
+                      </p>
+                    )}
                   </ScrollArea>
                 </>
               ) : (

@@ -3,6 +3,7 @@ import { db, schema } from "@/server/db/client";
 import { getCurrentUser } from "@/server/auth";
 import { randomId } from "@/lib/slug";
 import type { NoteVersion } from "@/server/db/schema";
+import { resolveProjectAccess } from "@/server/projects/access";
 
 export const MAX_VERSIONS_PER_NOTE = 50;
 // Only create a new auto-snapshot if the previous snapshot is older than
@@ -21,25 +22,25 @@ async function getContext() {
  * actually written.
  *
  * Snapshots are throttled: only one auto-snapshot per minute and only if the
- * current state differs from the last stored snapshot. We always cap the total
- * number of snapshots per note at MAX_VERSIONS_PER_NOTE, trimming the oldest.
+ * current state differs from the last stored snapshot. When `options.force` is
+ * true (e.g. before rolling back a version), the time interval is bypassed.
+ * We always cap the total number of snapshots per note at MAX_VERSIONS_PER_NOTE,
+ * trimming the oldest.
  */
 export async function snapshotNoteIfChanged(
   noteId: string,
   prevContent: string,
   prevTitle: string,
+  options?: { force?: boolean },
 ): Promise<boolean> {
   const { user } = await getContext();
+  const access = await resolveProjectAccess(noteId, user.id);
+  if (!access || access.role === "viewer") return false;
 
   const latest = await db
     .select()
     .from(schema.noteVersions)
-    .where(
-      and(
-        eq(schema.noteVersions.noteId, noteId),
-        eq(schema.noteVersions.userId, user.id),
-      ),
-    )
+    .where(eq(schema.noteVersions.noteId, noteId))
     .orderBy(desc(schema.noteVersions.createdAt))
     .limit(1);
 
@@ -50,8 +51,8 @@ export async function snapshotNoteIfChanged(
   const titleChanged = !last || last.title !== prevTitle;
   if (!contentChanged && !titleChanged) return false;
 
-  if (last) {
-    const age = now - last.createdAt.getTime();
+  if (last && !options?.force) {
+    const age = now - new Date(last.createdAt).getTime();
     if (age < AUTO_SNAPSHOT_MIN_INTERVAL_MS) return false;
   }
 
@@ -64,20 +65,17 @@ export async function snapshotNoteIfChanged(
     createdAt: new Date(),
   });
 
-  // Trim oldest beyond cap.
+  // Trim oldest beyond cap in PostgreSQL.
   await db
     .delete(schema.noteVersions)
     .where(
       and(
         eq(schema.noteVersions.noteId, noteId),
-        eq(schema.noteVersions.userId, user.id),
-        sql`rowid NOT IN (
-          SELECT rowid FROM (
-            SELECT rowid FROM note_versions
-            WHERE note_id = ${noteId} AND user_id = ${user.id}
-            ORDER BY created_at DESC
-            LIMIT ${MAX_VERSIONS_PER_NOTE}
-          )
+        sql`${schema.noteVersions.id} NOT IN (
+          SELECT id FROM note_versions
+          WHERE note_id = ${noteId}
+          ORDER BY created_at DESC
+          LIMIT ${MAX_VERSIONS_PER_NOTE}
         )`,
       ),
     );
@@ -87,15 +85,13 @@ export async function snapshotNoteIfChanged(
 
 export async function listNoteVersions(noteId: string): Promise<NoteVersion[]> {
   const { user } = await getContext();
+  const access = await resolveProjectAccess(noteId, user.id);
+  if (!access) return [];
+
   const rows = await db
     .select()
     .from(schema.noteVersions)
-    .where(
-      and(
-        eq(schema.noteVersions.noteId, noteId),
-        eq(schema.noteVersions.userId, user.id),
-      ),
-    )
+    .where(eq(schema.noteVersions.noteId, noteId))
     .orderBy(desc(schema.noteVersions.createdAt))
     .limit(MAX_VERSIONS_PER_NOTE);
   return rows;
@@ -106,6 +102,9 @@ export async function getNoteVersion(
   versionId: string,
 ): Promise<NoteVersion | null> {
   const { user } = await getContext();
+  const access = await resolveProjectAccess(noteId, user.id);
+  if (!access) return null;
+
   const rows = await db
     .select()
     .from(schema.noteVersions)
@@ -113,7 +112,6 @@ export async function getNoteVersion(
       and(
         eq(schema.noteVersions.id, versionId),
         eq(schema.noteVersions.noteId, noteId),
-        eq(schema.noteVersions.userId, user.id),
       ),
     )
     .limit(1);

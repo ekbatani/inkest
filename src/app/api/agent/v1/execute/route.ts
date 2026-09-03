@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateAgentRequest } from "@/server/agent/harness-protocol";
 import { executeAgentTool } from "@/server/agent/tools";
+import { runWithAuthContext } from "@/server/auth/context";
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -21,7 +22,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await executeAgentTool(toolName, args);
+    const result = await runWithAuthContext(
+      { userId: auth.userId, workspaceId: auth.workspaceId, isAgent: true },
+      () => executeAgentTool(toolName, args),
+    );
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

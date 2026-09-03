@@ -11,7 +11,7 @@ const COMPACT_THRESHOLD_PATCHES = 30;
 const COMPACT_IDLE_TIMEOUT_MS = 4000;
 
 export class DocumentPersistenceManager {
-  private documentId: string;
+  public readonly documentId: string;
   private currentVersion = 1;
   private patchCountSinceSnapshot = 0;
   private compactTimer: ReturnType<typeof setTimeout> | null = null;

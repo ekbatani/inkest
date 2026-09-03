@@ -132,6 +132,22 @@ export class DocumentIndexedDBStore {
     content?: string,
   ): Promise<boolean> {
     if (content !== undefined) {
+      // Safety check: if local storage already has a newer, unsaved draft with different content,
+      // do not overwrite the user's active keystrokes with stale synced content!
+      try {
+        if (typeof window !== "undefined" && window.localStorage) {
+          const raw = window.localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${documentId}`);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.synced === false && parsed.content !== content) {
+              return true;
+            }
+          }
+        }
+      } catch {
+        // Ignore parsing errors
+      }
+
       return this.saveSnapshot(
         documentId,
         version ?? 1,
@@ -176,9 +192,22 @@ export class DocumentIndexedDBStore {
   }
 
   /**
-   * Retrieves the latest snapshot for a document, consulting IndexedDB then localStorage fallback.
+   * Retrieves the latest snapshot for a document, consulting IndexedDB and localStorage,
+   * prioritizing unsaved drafts or whichever record is newest.
    */
   public async getSnapshot(documentId: string): Promise<StoredSnapshot | null> {
+    let localItem: StoredSnapshot | null = null;
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        const raw = window.localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${documentId}`);
+        if (raw) {
+          localItem = JSON.parse(raw) as StoredSnapshot;
+        }
+      }
+    } catch {
+      // Ignore
+    }
+
     const db = await this.initDB();
     if (db) {
       const fromDb = await new Promise<StoredSnapshot | null>((resolve) => {
@@ -192,22 +221,19 @@ export class DocumentIndexedDBStore {
           resolve(null);
         }
       });
+
+      if (fromDb && localItem) {
+        // If local storage has an unsaved draft while DB is marked synced,
+        // prioritize the active local unsaved draft
+        if (localItem.synced === false && fromDb.synced === true) {
+          return localItem;
+        }
+        return localItem.timestamp > fromDb.timestamp ? localItem : fromDb;
+      }
       if (fromDb) return fromDb;
     }
 
-    // Fallback: localStorage
-    try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        const raw = window.localStorage.getItem(`${LOCAL_STORAGE_PREFIX}${documentId}`);
-        if (raw) {
-          return JSON.parse(raw) as StoredSnapshot;
-        }
-      }
-    } catch {
-      // Ignore
-    }
-
-    return null;
+    return localItem;
   }
 
   /**

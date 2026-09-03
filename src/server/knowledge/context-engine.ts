@@ -22,6 +22,7 @@ export interface BuildContextOptions {
   currentBlockId?: string;
   selectedText?: string;
   maxSources?: number;
+  allowedDocumentIds?: string[];
 }
 
 /**
@@ -38,6 +39,7 @@ export async function buildContextPack(
     currentBlockId,
     selectedText,
     maxSources = 8,
+    allowedDocumentIds,
   } = options;
 
   const sources: ContextSource[] = [];
@@ -86,8 +88,12 @@ export async function buildContextPack(
       limit: 15,
     });
 
-    for (let rank = 0; rank < ftsResults.length; rank++) {
-      const item = ftsResults[rank];
+    const scopedFts = allowedDocumentIds && allowedDocumentIds.length > 0
+      ? ftsResults.filter((r) => allowedDocumentIds.includes(r.documentId))
+      : ftsResults;
+
+    for (let rank = 0; rank < scopedFts.length; rank++) {
+      const item = scopedFts[rank];
       const key = `${item.documentId}:${item.blockId}`;
       const rrf = 1 / (60 + rank + 1); // RRF standard constant k=60
 
@@ -133,9 +139,13 @@ export async function buildContextPack(
       limit: 15,
     });
 
+    const scopedVector = allowedDocumentIds && allowedDocumentIds.length > 0
+      ? vectorResults.filter((r) => allowedDocumentIds.includes(r.documentId))
+      : vectorResults;
+
     // Hydrate vector block contents
-    if (vectorResults.length > 0) {
-      const blockIds = vectorResults.map((v) => v.blockId);
+    if (scopedVector.length > 0) {
+      const blockIds = scopedVector.map((v) => v.blockId);
       const blocks = await db
         .select({
           id: schema.documentBlocks.id,
@@ -157,8 +167,8 @@ export async function buildContextPack(
 
       const blockMap = new Map(blocks.map((b) => [b.id, b]));
 
-      for (let rank = 0; rank < vectorResults.length; rank++) {
-        const item = vectorResults[rank];
+      for (let rank = 0; rank < scopedVector.length; rank++) {
+        const item = scopedVector[rank];
         const block = blockMap.get(item.blockId);
         if (!block) continue;
 

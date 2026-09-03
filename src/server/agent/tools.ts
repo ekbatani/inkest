@@ -12,6 +12,10 @@ import {
 } from "@/server/tasks/service";
 import { listTags } from "@/server/tags/service";
 import { getPlannerData } from "@/server/tasks/planner-service";
+import { getCurrentUser } from "@/server/auth";
+import { getWorkspaceForUser } from "@/server/auth/users";
+import { buildContextPack } from "@/server/knowledge/context-engine";
+import type { ContextPack } from "@/lib/document-engine/types";
 
 export interface AgentToolDefinition {
   name: string;
@@ -346,6 +350,42 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
     parameters: {
       type: "object",
       properties: {},
+    },
+  },
+  {
+    name: "query_project_knowledge",
+    description: "Search and retrieve grounded knowledge from a specific project and all its nested notes/sources using hybrid retrieval (lexical BM25, semantic vector similarity, and backlinks). Returns ranked excerpts with document citations.",
+    parameters: {
+      type: "object",
+      properties: {
+        projectId: {
+          type: "string",
+          description: "The ID of the project note to search within.",
+        },
+        query: {
+          type: "string",
+          description: "The search query or question.",
+        },
+        maxSources: {
+          type: "number",
+          description: "Maximum number of source excerpts to retrieve (default 6, max 15).",
+        },
+      },
+      required: ["projectId", "query"],
+    },
+  },
+  {
+    name: "get_project_tree",
+    description: "Get the complete hierarchical structure of a project, including all nested sub-notes, sources, articles, research items, and attached tasks.",
+    parameters: {
+      type: "object",
+      properties: {
+        projectId: {
+          type: "string",
+          description: "The ID of the project to inspect.",
+        },
+      },
+      required: ["projectId"],
     },
   },
 ];
@@ -699,6 +739,156 @@ export async function executeAgentTool(
               unplannedCount: planner.unplanned.length,
               completedThisWeekCount: planner.completedThisWeekCount,
             } : null,
+          },
+        };
+      }
+
+      case "query_project_knowledge": {
+        const projectId = String(args.projectId);
+        const query = String(args.query ?? "");
+        const maxSources = typeof args.maxSources === "number" ? Math.min(15, Math.max(1, args.maxSources)) : 6;
+
+        const project = await getNoteById(projectId);
+        if (!project) return { success: false, error: `Project not found with ID ${projectId}` };
+
+        // 1. Collect all descendant notes under this project
+        const allNotes = await listNotes({ limit: 500 });
+        const allowedIds = new Set<string>([projectId]);
+        let changed = true;
+        while (changed) {
+          changed = false;
+          for (const n of allNotes) {
+            if (n.parentId && allowedIds.has(n.parentId) && !allowedIds.has(n.id)) {
+              allowedIds.add(n.id);
+              changed = true;
+            }
+          }
+        }
+
+        const allowedArray = Array.from(allowedIds);
+        const user = await getCurrentUser();
+        const workspace = user ? await getWorkspaceForUser(user.id) : null;
+
+        let pack: ContextPack | null = null;
+        if (user && workspace) {
+          pack = await buildContextPack({
+            workspaceId: workspace.id,
+            userId: user.id,
+            query,
+            allowedDocumentIds: allowedArray,
+            maxSources,
+          });
+        }
+
+        // Direct lexical fallback across project notes to ensure non-indexed notes are also found
+        const projectNotesMap = new Map(allNotes.filter((n) => allowedIds.has(n.id)).map((n) => [n.id, n]));
+        const matchingNotes = Array.from(projectNotesMap.values()).filter((n) => {
+          const lq = query.toLowerCase();
+          return n.title.toLowerCase().includes(lq) || n.contentMd.toLowerCase().includes(lq);
+        });
+
+        const sources = pack?.sources && pack.sources.length > 0 ? [...pack.sources] : [];
+
+        // If context pack didn't yield enough sources, add direct excerpts from matching notes
+        if (sources.length < maxSources) {
+          for (const note of matchingNotes) {
+            if (sources.some((s) => s.documentId === note.id)) continue;
+            const idx = note.contentMd.toLowerCase().indexOf(query.toLowerCase());
+            const start = Math.max(0, idx - 100);
+            const end = Math.min(note.contentMd.length, (idx === -1 ? 0 : idx) + 250);
+            const snippet = note.contentMd.slice(start, end).trim() || note.contentMd.slice(0, 200);
+
+            sources.push({
+              documentId: note.id,
+              documentTitle: note.title,
+              type: "fts",
+              score: 0.8,
+              content: snippet,
+              sectionTitle: note.type === "project" ? "Project Overview" : "Document Content",
+            });
+            if (sources.length >= maxSources) break;
+          }
+        }
+
+        const formattedSources = sources.map((s) => ({
+          documentId: s.documentId,
+          title: s.documentTitle || projectNotesMap.get(s.documentId)?.title || "Untitled",
+          sectionTitle: s.sectionTitle,
+          relevanceScore: s.score,
+          type: s.type,
+          excerpt: s.content,
+        }));
+
+        const contextSummary = formattedSources
+          .map((s, i) => `[Source ${i + 1}: "${s.title}" (ID: ${s.documentId})]\n${s.excerpt}`)
+          .join("\n\n---\n\n");
+
+        return {
+          success: true,
+          data: {
+            project: { id: project.id, title: project.title },
+            totalSourcesFound: formattedSources.length,
+            sources: formattedSources,
+            contextSummary,
+          },
+        };
+      }
+
+      case "get_project_tree": {
+        const projectId = String(args.projectId);
+        const project = await getNoteById(projectId);
+        if (!project) return { success: false, error: `Project not found with ID ${projectId}` };
+
+        const allNotes = await listNotes({ limit: 500 });
+        const descendantIds = new Set<string>([projectId]);
+        let changed = true;
+        while (changed) {
+          changed = false;
+          for (const n of allNotes) {
+            if (n.parentId && descendantIds.has(n.parentId) && !descendantIds.has(n.id)) {
+              descendantIds.add(n.id);
+              changed = true;
+            }
+          }
+        }
+
+        const projectNotes = allNotes.filter((n) => descendantIds.has(n.id) && n.id !== projectId);
+        const projectTasks = await listTasks(projectId).catch(() => []);
+
+        // Also collect tasks for child notes
+        const childTasksList: { id: string; title: string; status: string; priority: string; noteTitle: string }[] = [];
+        for (const child of projectNotes.slice(0, 25)) {
+          const ct = await listTasks(child.id).catch(() => []);
+          if (ct.length > 0) {
+            childTasksList.push(...ct.map((t) => ({ id: t.id, title: t.title, status: t.status, priority: t.priority, noteTitle: child.title })));
+          }
+        }
+
+        return {
+          success: true,
+          data: {
+            project: {
+              id: project.id,
+              title: project.title,
+              type: project.type,
+              status: project.status,
+              priority: project.priority,
+              dueDate: project.dueDate,
+              contentMd: project.contentMd,
+            },
+            notes: projectNotes.map((n) => ({
+              id: n.id,
+              parentId: n.parentId,
+              title: n.title,
+              type: n.type,
+              status: n.status,
+              priority: n.priority,
+              dueDate: n.dueDate,
+              excerpt: n.contentMd ? n.contentMd.slice(0, 150) : "",
+            })),
+            totalNotes: projectNotes.length,
+            tasks: [...projectTasks.map((t) => ({ id: t.id, title: t.title, status: t.status, priority: t.priority, noteTitle: project.title })), ...childTasksList],
+            totalTasks: projectTasks.length + childTasksList.length,
           },
         };
       }

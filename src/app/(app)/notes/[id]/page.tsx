@@ -124,6 +124,7 @@ export default async function NoteDetailPage({
 
   return (
     <NoteEditor
+      key={note.id}
       note={note}
       allTags={allTags}
       noteTagIds={noteTags.map((t) => t.id)}

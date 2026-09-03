@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/server/auth";
+import { getWorkspaceForUser } from "@/server/auth/users";
 import { AGENT_TOOLS } from "./tools";
 import { db, schema } from "@/server/db/client";
 
@@ -39,15 +40,20 @@ export function getOpenClawToolManifest() {
 
 /**
  * Validates either a standard user session or a Bearer token in the Authorization header.
+ * Resolves both userId and workspaceId.
  */
 export async function authenticateAgentRequest(authHeader: string | null): Promise<
-  | { ok: true; userId: string }
+  | { ok: true; userId: string; workspaceId: string }
   | { ok: false; error: string; status: number }
 > {
   // 1. Try session auth
   const sessionUser = await getCurrentUser();
   if (sessionUser) {
-    return { ok: true, userId: sessionUser.id };
+    const ws = await getWorkspaceForUser(sessionUser.id);
+    if (!ws) {
+      return { ok: false, error: "Workspace not found for user", status: 404 };
+    }
+    return { ok: true, userId: sessionUser.id, workspaceId: ws.id };
   }
 
   // 2. Try Bearer token
@@ -61,20 +67,29 @@ export async function authenticateAgentRequest(authHeader: string | null): Promi
   }
 
   // Search user by settings containing this token
-  const allUsers = await db.select({ id: schema.users.id, settings: schema.users.settings }).from(schema.users);
-  const matched = allUsers.find((u) => {
-    if (!u.settings) return false;
-    try {
-      const parsed = JSON.parse(u.settings);
-      return parsed?.agentHarness?.apiToken === token;
-    } catch {
-      return false;
+  try {
+    const allUsers = await db.select({ id: schema.users.id, settings: schema.users.settings }).from(schema.users);
+    const matched = allUsers.find((u) => {
+      if (!u.settings) return false;
+      try {
+        const parsed = JSON.parse(u.settings);
+        return parsed?.agentHarness?.apiToken === token && parsed?.agentHarness?.enabled !== false;
+      } catch {
+        return false;
+      }
+    });
+
+    if (!matched) {
+      return { ok: false, error: "Invalid agent API token", status: 401 };
     }
-  });
 
-  if (!matched) {
-    return { ok: false, error: "Invalid agent API token", status: 401 };
+    const ws = await getWorkspaceForUser(matched.id);
+    if (!ws) {
+      return { ok: false, error: "Workspace not found for user", status: 404 };
+    }
+
+    return { ok: true, userId: matched.id, workspaceId: ws.id };
+  } catch {
+    return { ok: false, error: "Authentication service unavailable", status: 500 };
   }
-
-  return { ok: true, userId: matched.id };
 }

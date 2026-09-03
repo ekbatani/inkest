@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/server/auth";
 import { getNoteById, updateNote } from "@/server/notes/service";
 import { syncMarkdownTasks } from "@/server/tasks/service";
@@ -98,6 +99,9 @@ export async function POST(
         // Sync failure should not block note save response.
       }
 
+      revalidatePath(`/notes/${id}`);
+      revalidatePath("/notes");
+
       return NextResponse.json(
         {
           success: true,
@@ -129,6 +133,9 @@ export async function POST(
         // Sync failure should not block note save response.
       }
     }
+
+    revalidatePath(`/notes/${id}`);
+    revalidatePath("/notes");
 
     return NextResponse.json(
       {

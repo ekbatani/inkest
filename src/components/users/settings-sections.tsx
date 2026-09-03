@@ -2015,16 +2015,36 @@ export function AgentHarnessSection({
   const hermesCmd = `hermes run --tools ${origin}/api/agent/v1/tools?format=hermes --header "Authorization: Bearer ${token || "<YOUR_AGENT_TOKEN>"}"`;
   const openclawCmd = `openclaw connect --endpoint ${origin}/api/agent/v1/execute --token "${token || "<YOUR_AGENT_TOKEN>"}"`;
 
+  const [copiedClaude, setCopiedClaude] = React.useState(false);
+  const [copiedGpt, setCopiedGpt] = React.useState(false);
+
+  const claudeConfigJson = JSON.stringify(
+    {
+      mcpServers: {
+        inkest: {
+          url: `${origin}/api/mcp`,
+          headers: {
+            Authorization: `Bearer ${token || "<YOUR_AGENT_TOKEN>"}`,
+          },
+        },
+      },
+    },
+    null,
+    2,
+  );
+
+  const openApiSpecUrl = `${origin}/api/agent/v1/openapi.json`;
+
   return (
     <section className="surface-card flex flex-col gap-6 p-6">
       <div className="flex items-start justify-between gap-4 border-b pb-4">
         <div>
           <div className="flex items-center gap-2">
             <Bot className="size-4 text-primary" />
-            <h2 className="text-base font-semibold">Agent Harness & External Integrations</h2>
+            <h2 className="text-base font-semibold">Agent Harness & External AI Connections</h2>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Connect external autonomous agent harnesses such as <strong>Hermes</strong> and <strong>OpenClaw</strong> / <strong>OpenHands</strong> to this workspace.
+            Connect external AI applications—including <strong>Claude Desktop (MCP)</strong>, <strong>OpenAI ChatGPT (Custom GPT Actions)</strong>, <strong>Cursor</strong>, and autonomous CLI harnesses—directly to your Inkest second brain.
           </p>
         </div>
         <Badge variant={token ? "secondary" : "outline"} className="text-[10px]">
@@ -2040,9 +2060,9 @@ export function AgentHarnessSection({
               <Key className="size-4" />
             </div>
             <div>
-              <h4 className="text-xs font-semibold">Agent API Token</h4>
+              <h4 className="text-xs font-semibold">Personal Agent API Token</h4>
               <p className="text-[11px] text-muted-foreground">
-                Bearer token used by Hermes and OpenClaw CLI harnesses to authenticate against your workspace.
+                Bearer token used by external AI applications (Claude, ChatGPT, Cursor, CLI agents) to securely authenticate with your workspace.
               </p>
             </div>
           </div>
@@ -2079,6 +2099,53 @@ export function AgentHarnessSection({
 
       {/* Harness Integration Quick Connects */}
       <div className="grid gap-4 sm:grid-cols-2">
+        {/* Claude Desktop & Cursor (Model Context Protocol) */}
+        <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-card/60 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold flex items-center gap-1.5">
+              <Sparkles className="size-3.5 text-primary" /> Claude Desktop & Cursor (MCP)
+            </span>
+            <button
+              type="button"
+              onClick={() => copyText(claudeConfigJson, setCopiedClaude)}
+              className="text-[10px] text-primary hover:underline"
+            >
+              {copiedClaude ? "Copied Config" : "Copy MCP Config"}
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Paste into <code>claude_desktop_config.json</code> to give Claude direct access to your notes and project second brain.
+          </p>
+          <pre className="mt-1 rounded-lg border bg-background/80 p-2.5 font-mono text-[10px] text-muted-foreground overflow-x-auto whitespace-pre-wrap">
+            {claudeConfigJson}
+          </pre>
+        </div>
+
+        {/* OpenAI ChatGPT Custom GPT Actions */}
+        <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-card/60 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold flex items-center gap-1.5">
+              <Bot className="size-3.5 text-primary" /> ChatGPT Custom GPT (OpenAPI 3.0)
+            </span>
+            <button
+              type="button"
+              onClick={() => copyText(openApiSpecUrl, setCopiedGpt)}
+              className="text-[10px] text-primary hover:underline"
+            >
+              {copiedGpt ? "Copied URL" : "Copy OpenAPI URL"}
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            In ChatGPT Custom GPT editor &rarr; Actions &rarr; <strong>Import from URL</strong>:
+          </p>
+          <div className="mt-1 flex items-center gap-2 rounded-lg border bg-background/80 p-2 font-mono text-[10px] text-muted-foreground">
+            <span className="flex-1 truncate">{openApiSpecUrl}</span>
+          </div>
+          <p className="text-[10px] text-muted-foreground/80">
+            Set Authentication to <strong>Bearer</strong> and paste your token above.
+          </p>
+        </div>
+
         {/* Hermes Harness */}
         <div className="flex flex-col gap-2 rounded-xl border border-border/70 bg-card/60 p-4">
           <div className="flex items-center justify-between">
