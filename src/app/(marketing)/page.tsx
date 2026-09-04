@@ -9,6 +9,7 @@ import { AiCapabilitiesSection } from "@/components/marketing/ai-capabilities-se
 import { PhilosophySection } from "@/components/marketing/philosophy-section";
 import { WorkflowSection } from "@/components/marketing/workflow-section";
 import { SelfHostSection } from "@/components/marketing/self-host-section";
+import { DownloadSection } from "@/components/marketing/download-section";
 import { PricingSection } from "@/components/marketing/pricing-section";
 import { CtaSection } from "@/components/marketing/cta-section";
 
@@ -171,6 +172,7 @@ export default async function LandingPage() {
       <PhilosophySection />
       <WorkflowSection />
       <SelfHostSection />
+      <DownloadSection />
       <PricingSection />
       <CtaSection user={user} />
 

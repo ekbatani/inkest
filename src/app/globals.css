@@ -3388,6 +3388,303 @@ html.dark[data-palette="midnight"],
   margin-top: 1.4rem;
 }
 
+/* Downloads — landing section and /download page */
+.download-section {
+  max-width: 90rem;
+  margin-inline: auto;
+  padding: clamp(5rem, 10vw, 9rem) max(1.25rem, calc((100vw - 90rem) / 2 + 1.25rem));
+  background:
+    radial-gradient(60% 90% at 0% 30%, color-mix(in oklab, var(--mk-violet) 8%, transparent), transparent 60%),
+    var(--mk-canvas);
+}
+.download-page {
+  max-width: 74rem;
+  margin-inline: auto;
+  padding: clamp(4rem, 8vw, 6.5rem) 1.25rem 5rem;
+}
+.download-hero {
+  max-width: 46rem;
+}
+.download-hero-copy {
+  margin-top: 1.2rem;
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: var(--mk-muted);
+}
+.download-hero-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+.download-inline-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 550;
+  color: var(--mk-indigo-bright);
+  transition: color 0.2s;
+}
+.download-inline-link:hover {
+  color: var(--mk-ink);
+  text-decoration: underline;
+}
+.download-latest {
+  margin-top: 3.5rem;
+}
+.download-latest-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mk-faint);
+}
+.download-latest-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+.download-badge {
+  border: 1px solid var(--mk-line-strong);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  background: color-mix(in oklab, var(--mk-indigo) 12%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mk-indigo-bright);
+}
+.download-badge--pre {
+  border-color: color-mix(in oklab, var(--warning) 45%, transparent);
+  background: color-mix(in oklab, var(--warning) 10%, transparent);
+  color: var(--warning);
+}
+.download-latest-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--mk-muted);
+}
+.platform-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
+  gap: 1rem;
+  margin-top: 2.25rem;
+}
+.platform-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.2rem;
+  border: 1px solid var(--mk-line-strong);
+  border-radius: 0.9rem;
+  background: color-mix(in oklab, var(--mk-panel) 60%, transparent);
+  transition:
+    border-color 0.25s,
+    transform 0.25s;
+}
+.platform-card:hover {
+  border-color: color-mix(in oklab, var(--mk-indigo) 45%, transparent);
+  transform: translateY(-2px);
+}
+.platform-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.platform-card-icon {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.55rem;
+  background: var(--mk-grad);
+  color: #fff;
+  box-shadow: 0 4px 14px color-mix(in oklab, var(--mk-indigo) 40%, transparent);
+}
+.platform-card-head h3 {
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--mk-ink);
+}
+.platform-card-head p {
+  font-size: 0.72rem;
+  color: var(--mk-faint);
+}
+.platform-assets {
+  display: grid;
+  gap: 0.4rem;
+}
+.asset-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--mk-line);
+  border-radius: 0.55rem;
+  background: color-mix(in oklab, var(--mk-base) 55%, transparent);
+}
+.asset-meta {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.asset-name {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--mk-ink);
+}
+.asset-info {
+  font-size: 0.66rem;
+  color: var(--mk-faint);
+}
+.asset-download {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--mk-line-strong);
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 650;
+  color: var(--mk-ink);
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+.asset-download:hover {
+  background: var(--mk-grad);
+  border-color: transparent;
+  color: #fff;
+}
+.download-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  margin-top: 2rem;
+}
+.download-source-label {
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mk-faint);
+}
+.download-source-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+}
+.download-source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 550;
+  color: var(--mk-muted);
+  transition: color 0.2s;
+}
+.download-source-link:hover {
+  color: var(--mk-ink);
+}
+.download-archive {
+  margin-top: 4rem;
+  border-top: 1px solid var(--mk-line);
+  padding-top: 2.5rem;
+}
+.download-archive-title {
+  font-size: 1.1rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.download-archive-list {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+.download-archive-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--mk-line);
+  border-radius: 0.6rem;
+  background: color-mix(in oklab, var(--mk-panel) 45%, transparent);
+}
+.download-archive-tag {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--mk-ink);
+}
+.download-archive-date {
+  margin-right: auto;
+  font-size: 0.72rem;
+  color: var(--mk-faint);
+}
+.download-archive-foot {
+  margin-top: 1.25rem;
+  font-size: 0.78rem;
+  color: var(--mk-muted);
+}
+.download-empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+  margin-top: 3rem;
+  padding: 3rem 1.5rem;
+  border: 1px dashed var(--mk-line-strong);
+  border-radius: 1rem;
+  text-align: center;
+  color: var(--mk-muted);
+}
+.download-empty h2 {
+  font-size: 1.2rem;
+  font-weight: 650;
+  color: var(--mk-ink);
+}
+.download-empty p {
+  max-width: 34rem;
+  font-size: 0.85rem;
+}
+.download-empty svg {
+  color: var(--mk-indigo-bright);
+}
+.download-foot {
+  margin-top: 4rem;
+  border-top: 1px solid var(--mk-line);
+  padding-top: 2rem;
+  font-size: 0.82rem;
+  color: var(--mk-muted);
+}
+@media (max-width: 40rem) {
+  .asset-row {
+    flex-wrap: wrap;
+  }
+  .download-hero-links {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 /* Pricing and final CTA */
 .pricing-section {
   max-width: 90rem;
@@ -4345,7 +4642,9 @@ html.dark[data-palette="midnight"],
   .ai-capability-index,
   .product-ai-step,
   .product-ai-cite,
-  .ai-demo-cite {
+  .ai-demo-cite,
+  .platform-card,
+  .asset-download {
     transition: none !important;
     animation: none !important;
   }

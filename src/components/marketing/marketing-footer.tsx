@@ -20,6 +20,7 @@ const LEARN_LINKS = [
 ] as const;
 
 const PROJECT_LINKS = [
+  { label: "Download apps", href: "/download" },
   { label: "GitHub repository", href: "https://github.com/ekbatani/inkest", external: true },
   { label: "Changelog & releases", href: "https://github.com/ekbatani/inkest/releases", external: true },
   { label: "Self-host vs cloud", href: "/#pricing" },
