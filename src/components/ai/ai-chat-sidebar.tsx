@@ -32,14 +32,16 @@ import {
   Search,
   ShieldCheck,
   Target,
-  Lightbulb,
   MessageSquarePlus,
+  MessagesSquare,
   SpellCheck,
+  Lightbulb,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -87,11 +89,17 @@ import {
   createProjectPlanAction,
   clarifyAndFindGapsAction,
   checkTyposAction,
+  commentSelectionAction,
+  applyCommentsAction,
   getChatThreadMessagesAction,
   deleteChatThreadAction,
   searchContextItemsAction,
   type AiContextItem,
 } from "@/server/ai/chat-actions";
+import {
+  getAiPlanningContextAction,
+  saveAiTaskPlanAction,
+} from "@/server/ai/planning-actions";
 import { decryptVaultSecret } from "@/lib/vault-crypto";
 import { usePageContext } from "@/components/providers/page-context-provider";
 import { ChatHistoryDrawer } from "./chat-history-drawer";
@@ -104,6 +112,38 @@ const MarkdownPreview = dynamic(
   { ssr: false },
 );
 
+type ExtractedTask = {
+  title: string;
+  description?: string | null;
+  priority: "none" | "low" | "medium" | "high";
+  dueDate?: string | null;
+  startDate?: string | null;
+};
+
+type PlanningContext = {
+  currentProject: {
+    id: string;
+    title: string;
+    dueDate?: Date | null;
+    status?: string;
+    priority?: string;
+  } | null;
+  projects: {
+    id: string;
+    title: string;
+    parentId: string | null;
+    dueDate?: Date | null;
+    status?: string;
+    priority?: string;
+  }[];
+};
+
+type PlannedTask = ExtractedTask & {
+  status: "todo" | "doing" | "done" | "canceled";
+  dueDate: string;
+  startDate: string;
+};
+
 type ChatMessage = {
   id: string;
   role: "user" | "assistant";
@@ -115,6 +155,7 @@ type ChatMessage = {
   timestamp: Date;
   targetScope?: "selection" | "note";
   originalSourceSnippet?: string;
+  extractedTasks?: ExtractedTask[];
 };
 
 type Props = {
@@ -128,10 +169,14 @@ type Props = {
 type QuickAction = {
   id: string;
   label: string;
-  category: "context" | "project" | "writing" | "structure" | "clarify";
+  category: "context" | "project" | "writing" | "structure" | "clarify" | "review";
   icon: React.ComponentType<{ className?: string }>;
   description: string;
   prompt: string;
+  requiresSelection?: boolean;
+  needsLanguage?: boolean;
+  needsPromptHint?: boolean;
+  hintPlaceholder?: string;
 };
 
 function extractClarificationSuggestions(content: string): string[] {
@@ -214,6 +259,33 @@ export function AiChatSidebar({
   const [vaultMasterPassword, setVaultMasterPassword] = React.useState("");
   const [isVerifyingVault, setIsVerifyingVault] = React.useState(false);
 
+  // Recommended Actions Popover state
+  const [actionsMenuOpen, setActionsMenuOpen] = React.useState(false);
+
+  // Prompt Dialog state (for actions that need user parameters like language or hint)
+  const [promptDialog, setPromptDialog] = React.useState<{
+    actionId: string;
+    label: string;
+    needsLanguage?: boolean;
+    needsHint?: boolean;
+    hintPlaceholder?: string;
+  } | null>(null);
+  const [targetLanguage, setTargetLanguage] = React.useState("English");
+  const [actionPromptHint, setActionPromptHint] = React.useState("");
+
+  // Review & Organize Tasks modal state
+  const [planningOpen, setPlanningOpen] = React.useState(false);
+  const [planningLoading, setPlanningLoading] = React.useState(false);
+  const [insertingTasks, setInsertingTasks] = React.useState(false);
+  const [planningContext, setPlanningContext] = React.useState<PlanningContext | null>(null);
+  const [plannedTasks, setPlannedTasks] = React.useState<PlannedTask[]>([]);
+  const [destinationKind, setDestinationKind] = React.useState<"current" | "existing" | "new" | "subproject">("current");
+  const [existingProjectId, setExistingProjectId] = React.useState("");
+  const [projectTitle, setProjectTitle] = React.useState("");
+  const [parentProjectId, setParentProjectId] = React.useState("");
+  const [projectDueDate, setProjectDueDate] = React.useState("");
+  const [projectPriority, setProjectPriority] = React.useState<"none" | "low" | "medium" | "high">("none");
+
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const refreshSelection = React.useCallback(() => {
@@ -243,14 +315,25 @@ export function AiChatSidebar({
           icon: SpellCheck,
           description: "Detects typos, spelling errors & grammar suggestions",
           prompt: "Carefully check the selected text for typos, spelling mistakes, punctuation errors, and grammar. Provide the corrected version and a bulleted list of detected typos with suggestions.",
+          requiresSelection: true,
+        },
+        {
+          id: "improve",
+          label: "Improve writing",
+          category: "writing",
+          icon: Wand2,
+          description: "Rewrites selection for stronger flow, tone & clarity",
+          prompt: "Improve the writing of the selected text, enhancing clarity, tone, and eloquence without altering core meaning.",
+          requiresSelection: true,
         },
         {
           id: "gently-polish",
           label: "Gently polish selection",
           category: "writing",
-          icon: Wand2,
+          icon: Sparkles,
           description: "Refines wording & grammar without changing meaning",
           prompt: "Gently polish the selected text, refining sentence flow, phrasing, and clarity without changing meaning.",
+          requiresSelection: true,
         },
         {
           id: "explain",
@@ -259,22 +342,37 @@ export function AiChatSidebar({
           icon: HelpCircle,
           description: "Explains concepts in simple terms",
           prompt: "Explain the concepts and background of the selected text in simple, clear terms.",
+          requiresSelection: true,
+        },
+        {
+          id: "translate",
+          label: "Translate selection...",
+          category: "writing",
+          icon: Languages,
+          description: "Translates selected text into your choice of language",
+          prompt: "Translate the selected text.",
+          requiresSelection: true,
+          needsLanguage: true,
+        },
+        {
+          id: "comment-selection",
+          label: "Add AI comments to selection...",
+          category: "review",
+          icon: MessageSquarePlus,
+          description: "Inserts inline review comments to selected text",
+          prompt: "Add inline review comments to the selected text.",
+          requiresSelection: true,
+          needsPromptHint: true,
+          hintPlaceholder: "e.g. focus on clarity, tone, and missing details",
         },
         {
           id: "extract-tasks",
           label: "Extract tasks from selection",
           category: "project",
           icon: ListChecks,
-          description: "Converts selection into actionable checklists",
+          description: "Converts selection into actionable checklists & project tasks",
           prompt: "Extract all actionable tasks and checklist items from the selected text into a clean task list.",
-        },
-        {
-          id: "translate",
-          label: "Translate selection to English",
-          category: "writing",
-          icon: Languages,
-          description: "Translates text cleanly",
-          prompt: "Translate the selected text into clear, fluent English.",
+          requiresSelection: true,
         },
       ];
     }
@@ -296,6 +394,8 @@ export function AiChatSidebar({
           icon: Target,
           description: "Structures project goals, milestones, and deliverables",
           prompt: "Draft a comprehensive project plan with milestones, deliverables, key risks, and immediate next steps.",
+          needsPromptHint: true,
+          hintPlaceholder: "e.g. focus on shipping MVP in 4 weeks",
         },
         {
           id: "check-typos",
@@ -320,12 +420,38 @@ export function AiChatSidebar({
           icon: GitGraph,
           description: "Creates a Mermaid flowchart of the project workflow",
           prompt: "Generate a Mermaid flowchart representing the lifecycle, stages, or architecture of this project.",
+          needsPromptHint: true,
+          hintPlaceholder: "e.g. show lifecycle stages or flowchart",
         },
       ];
     }
 
     // Default Note Quick Actions
-    return [
+    const actions: QuickAction[] = [
+      {
+        id: "summarize",
+        label: "Summarize note",
+        category: "context",
+        icon: FileText,
+        description: "Concise overview and key takeaways",
+        prompt: "Summarize the key points of this note concisely.",
+      },
+      {
+        id: "improve",
+        label: "Improve writing",
+        category: "writing",
+        icon: Wand2,
+        description: "Enhances eloquence, phrasing, flow, and structure",
+        prompt: "Improve the writing of this note, enhancing readability, phrasing, and flow.",
+      },
+      {
+        id: "gently-polish",
+        label: "Gently polish note",
+        category: "writing",
+        icon: Sparkles,
+        description: "Improves clarity and structure gently without altering tone",
+        prompt: "Gently polish the text, refining sentence flow, phrasing, and clarity without changing meaning or formatting.",
+      },
       {
         id: "check-typos",
         label: "Check typos & suggestions",
@@ -335,28 +461,32 @@ export function AiChatSidebar({
         prompt: "Carefully check this note for typos, spelling mistakes, punctuation errors, and grammatical issues. Provide the corrected text and a list of corrections and suggestions.",
       },
       {
-        id: "gently-polish",
-        label: "Gently polish note",
-        category: "writing",
-        icon: Wand2,
-        description: "Improves clarity and structure gently",
-        prompt: "Gently polish the text, refining sentence flow, phrasing, and clarity without changing meaning or formatting.",
-      },
-      {
-        id: "summarize",
-        label: "Summarize key points",
-        category: "context",
-        icon: Sparkles,
-        description: "Concise overview and takeaways",
-        prompt: "Summarize the key points of this note concisely.",
-      },
-      {
         id: "extract-tasks",
         label: "Extract actionable tasks",
         category: "project",
         icon: ListChecks,
-        description: "Creates checklist of next actions",
+        description: "Creates checklist of next actions & project tasks",
         prompt: "Extract all actionable tasks and checklist items from this note into a clean task list.",
+      },
+      {
+        id: "project-plan",
+        label: "Convert to project roadmap",
+        category: "project",
+        icon: Target,
+        description: "Turns concepts into structured milestones",
+        prompt: "Turn this note's goals and concepts into a structured project plan with milestones and next steps.",
+        needsPromptHint: true,
+        hintPlaceholder: "e.g. target completion in 1 month",
+      },
+      {
+        id: "mermaid",
+        label: "Generate concept diagram",
+        category: "structure",
+        icon: GitGraph,
+        description: "Visual Mermaid diagram of concepts",
+        prompt: "Generate a Mermaid flowchart or diagram representing the core concept in this note.",
+        needsPromptHint: true,
+        hintPlaceholder: "e.g. show relationships as mindmap or flowchart",
       },
       {
         id: "clarify-gaps",
@@ -366,24 +496,23 @@ export function AiChatSidebar({
         description: "Pinpoints ambiguity, blind spots and missing details",
         prompt: "Analyze this note for ambiguities, missing details, assumptions, and ask 2-3 specific clarifying questions to confirm.",
       },
-      {
-        id: "mermaid",
-        label: "Generate concept diagram",
-        category: "structure",
-        icon: GitGraph,
-        description: "Visual Mermaid diagram of concepts",
-        prompt: "Generate a Mermaid flowchart or diagram representing the core concept in this note.",
-      },
-      {
-        id: "project-plan",
-        label: "Convert to project roadmap",
-        category: "project",
-        icon: Target,
-        description: "Turns concepts into structured milestones",
-        prompt: "Turn this note's goals and concepts into a structured project plan with milestones and next steps.",
-      },
     ];
-  }, [selectedText, isProjectPage]);
+
+    if (activeNoteContent.includes("inkest-comment:")) {
+      actions.push({
+        id: "apply-comments",
+        label: "Apply inline comments...",
+        category: "review",
+        icon: MessagesSquare,
+        description: "Applies inkest comments to revise note",
+        prompt: "Apply inline comments in note.",
+        needsPromptHint: true,
+        hintPlaceholder: "e.g. keep tone casual and concise",
+      });
+    }
+
+    return actions;
+  }, [selectedText, isProjectPage, activeNoteContent]);
 
   // Search context items on query change or when picker opens
   React.useEffect(() => {
@@ -508,7 +637,11 @@ export function AiChatSidebar({
   };
 
   const handleSendPrompt = React.useCallback(
-    async (overridePrompt?: string, presetId?: string) => {
+    async (
+      overridePrompt?: string,
+      presetId?: string,
+      extraOptions?: { targetLanguage?: string; promptHint?: string },
+    ) => {
       const userText = (overridePrompt ?? input).trim();
       if (!userText || isGenerating) return;
 
@@ -535,6 +668,7 @@ export function AiChatSidebar({
         let transformType: string | undefined;
         let uncertaintyNote: string | undefined;
         let returnedThreadId: string | undefined;
+        let extractedTasks: ExtractedTask[] | undefined;
 
         if (presetId === "check-typos") {
           const res = await checkTyposAction({
@@ -606,6 +740,43 @@ export function AiChatSidebar({
           } else {
             errorMessage = res.error;
           }
+        } else if (presetId === "comment-selection") {
+          const res = await commentSelectionAction({
+            noteId: activeNoteId,
+            noteTitle: activeNoteTitle,
+            noteContent: activeNoteContent,
+            selectedText: currentSelection || activeNoteContent,
+            promptHint: extraOptions?.promptHint,
+            threadId: activeThreadId ?? undefined,
+          });
+          returnedThreadId = res.threadId;
+          if (res.ok) {
+            isSuccess = true;
+            resultOutput = res.output;
+            citations = res.citations;
+            transformType = "AI Comments";
+            uncertaintyNote = res.uncertaintyNote;
+          } else {
+            errorMessage = res.error;
+          }
+        } else if (presetId === "apply-comments") {
+          const res = await applyCommentsAction({
+            noteId: activeNoteId,
+            noteTitle: activeNoteTitle,
+            noteContent: activeNoteContent,
+            promptHint: extraOptions?.promptHint,
+            threadId: activeThreadId ?? undefined,
+          });
+          returnedThreadId = res.threadId;
+          if (res.ok) {
+            isSuccess = true;
+            resultOutput = res.output;
+            citations = res.citations;
+            transformType = "Applied Comments";
+            uncertaintyNote = res.uncertaintyNote;
+          } else {
+            errorMessage = res.error;
+          }
         } else if (presetId === "extract-tasks" || presetId === "project-tasks") {
           const res = await extractTasksAction({
             noteId: activeNoteId,
@@ -617,6 +788,7 @@ export function AiChatSidebar({
           returnedThreadId = res.threadId;
           if (res.ok) {
             isSuccess = true;
+            extractedTasks = res.output.tasks;
             resultOutput = res.output.tasks
               .map((t) => {
                 const meta = [];
@@ -638,6 +810,7 @@ export function AiChatSidebar({
             noteId: activeNoteId,
             noteTitle: activeNoteTitle,
             noteContent: activeNoteContent,
+            promptHint: extraOptions?.promptHint,
             threadId: activeThreadId ?? undefined,
           });
           returnedThreadId = res.threadId;
@@ -684,11 +857,12 @@ export function AiChatSidebar({
             errorMessage = res.error;
           }
         } else if (presetId === "translate") {
+          const targetLang = extraOptions?.targetLanguage || "English";
           const res = await translateTextAction({
             noteId: activeNoteId,
             noteTitle: activeNoteTitle,
             selectedText: currentSelection || activeNoteContent,
-            targetLanguage: "English",
+            targetLanguage: targetLang,
             threadId: activeThreadId ?? undefined,
           });
           returnedThreadId = res.threadId;
@@ -696,7 +870,7 @@ export function AiChatSidebar({
             isSuccess = true;
             resultOutput = res.output;
             citations = res.citations;
-            transformType = "Translation";
+            transformType = `Translation (${targetLang})`;
           } else {
             errorMessage = res.error;
           }
@@ -761,6 +935,7 @@ export function AiChatSidebar({
             timestamp: new Date(),
             targetScope,
             originalSourceSnippet,
+            extractedTasks,
           };
           setMessages((prev) => [...prev, assistantMsg]);
         } else {
@@ -781,6 +956,189 @@ export function AiChatSidebar({
     },
     [input, isGenerating, activeEditorRef, messages, activeNoteId, activeNoteTitle, activeNoteContent, activeThreadId, attachedContexts, isPageContextAttached],
   );
+
+  const handleTriggerAction = React.useCallback(
+    (action: QuickAction) => {
+      if (action.requiresSelection && !selectedText) {
+        toast.error("Select text in the editor first.");
+        return;
+      }
+
+      if (action.needsLanguage) {
+        setPromptDialog({
+          actionId: action.id,
+          label: action.label,
+          needsLanguage: true,
+        });
+        return;
+      }
+
+      if (action.needsPromptHint) {
+        setPromptDialog({
+          actionId: action.id,
+          label: action.label,
+          needsHint: true,
+          hintPlaceholder: action.hintPlaceholder,
+        });
+        return;
+      }
+
+      void handleSendPrompt(action.prompt, action.id);
+    },
+    [handleSendPrompt, selectedText],
+  );
+
+  const handleSubmitPromptDialog = React.useCallback(() => {
+    if (!promptDialog) return;
+    const { actionId, needsLanguage, needsHint } = promptDialog;
+    const lang = needsLanguage ? targetLanguage : undefined;
+    const hint = needsHint ? actionPromptHint.trim() : undefined;
+
+    setPromptDialog(null);
+    setActionPromptHint("");
+
+    const action = quickActions.find((a) => a.id === actionId);
+    let prompt = action?.prompt || "";
+    if (hint) {
+      prompt = `${prompt} (${hint})`;
+    }
+
+    void handleSendPrompt(prompt, actionId, { targetLanguage: lang, promptHint: hint });
+  }, [handleSendPrompt, promptDialog, targetLanguage, actionPromptHint, quickActions]);
+
+  const handleOpenTaskPlanning = React.useCallback(
+    async (tasks: ExtractedTask[]) => {
+      setPlanningLoading(true);
+      try {
+        const context = await getAiPlanningContextAction(activeNoteId);
+        setPlanningContext(context);
+        setPlannedTasks(
+          tasks.map((t) => ({
+            title: t.title,
+            description: t.description ?? null,
+            priority: t.priority || "none",
+            status: "todo",
+            dueDate: t.dueDate ? new Date(t.dueDate).toISOString().slice(0, 10) : "",
+            startDate: t.startDate ? new Date(t.startDate).toISOString().slice(0, 10) : "",
+          })),
+        );
+        if (context.currentProject) {
+          setDestinationKind("current");
+          setProjectDueDate(
+            context.currentProject.dueDate
+              ? new Date(context.currentProject.dueDate).toISOString().slice(0, 10)
+              : "",
+          );
+        } else if (context.projects.length > 0) {
+          setDestinationKind("existing");
+          setExistingProjectId(context.projects[0]?.id ?? "");
+        } else {
+          setDestinationKind("new");
+          setProjectTitle(activeNoteTitle || "New Project");
+        }
+        setPlanningOpen(true);
+      } catch {
+        toast.error("Failed to load project planning context");
+      } finally {
+        setPlanningLoading(false);
+      }
+    },
+    [activeNoteId, activeNoteTitle],
+  );
+
+  const updatePlannedTask = React.useCallback(
+    (index: number, patch: Partial<PlannedTask>) => {
+      setPlannedTasks((prev) =>
+        prev.map((task, i) => (i === index ? { ...task, ...patch } : task)),
+      );
+    },
+    [],
+  );
+
+  const savePlan = React.useCallback(async () => {
+    if (plannedTasks.length === 0) {
+      toast.error("Add at least one task before saving.");
+      return;
+    }
+    if (destinationKind === "existing" && !existingProjectId) {
+      toast.error("Select a destination project.");
+      return;
+    }
+    if ((destinationKind === "new" || destinationKind === "subproject") && !projectTitle.trim()) {
+      toast.error("Provide a project title.");
+      return;
+    }
+    if (destinationKind === "subproject" && !parentProjectId) {
+      toast.error("Select a parent project.");
+      return;
+    }
+
+    setInsertingTasks(true);
+    try {
+      const destination =
+        destinationKind === "current"
+          ? {
+              kind: "current" as const,
+              projectDueDate: projectDueDate ? new Date(projectDueDate) : undefined,
+            }
+          : destinationKind === "existing"
+            ? {
+                kind: "existing" as const,
+                projectId: existingProjectId,
+                projectDueDate: projectDueDate ? new Date(projectDueDate) : undefined,
+              }
+            : destinationKind === "new"
+              ? {
+                  kind: "new" as const,
+                  title: projectTitle,
+                  dueDate: projectDueDate ? new Date(projectDueDate) : undefined,
+                  priority: projectPriority,
+                }
+              : {
+                  kind: "subproject" as const,
+                  parentProjectId,
+                  title: projectTitle,
+                  dueDate: projectDueDate ? new Date(projectDueDate) : undefined,
+                  priority: projectPriority,
+                };
+
+      const result = await saveAiTaskPlanAction({
+        sourceNoteId: activeNoteId,
+        destination,
+        tasks: plannedTasks.map(({ title, description, priority, status, dueDate, startDate }) => ({
+          title,
+          description: description?.trim() || null,
+          priority,
+          status,
+          dueDate: dueDate ? new Date(dueDate) : null,
+          startDate: startDate ? new Date(startDate) : null,
+        })),
+      });
+
+      toast.success(
+        `Created ${result.created} task${result.created === 1 ? "" : "s"}${result.skipped ? `; skipped ${result.skipped} duplicate${result.skipped === 1 ? "" : "s"}.` : "."}`,
+      );
+      setPlanningOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save the plan.";
+      toast.error(
+        message === "DUPLICATE_PROJECT"
+          ? "A project with that name already exists there. Choose it instead."
+          : "Failed to save the plan.",
+      );
+    } finally {
+      setInsertingTasks(false);
+    }
+  }, [
+    plannedTasks,
+    destinationKind,
+    existingProjectId,
+    projectTitle,
+    parentProjectId,
+    projectDueDate,
+    projectPriority,
+    activeNoteId,
+  ]);
 
   const handleCopy = (id: string, text: string) => {
     void navigator.clipboard.writeText(text);
@@ -954,43 +1312,6 @@ export function AiChatSidebar({
         </div>
 
         <div className="flex items-center gap-0.5 shrink-0">
-          {/* Quick Actions Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="inline-flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
-              title="Quick Actions"
-            >
-              <Lightbulb className="size-3.5" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 text-xs">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="flex items-center justify-between">
-                  <span>Quick Actions</span>
-                  {isProjectPage && (
-                    <span className="text-[10px] font-normal text-blue-500">Project mode</span>
-                  )}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {quickActions.map((action) => {
-                  const Icon = action.icon;
-                  return (
-                    <DropdownMenuItem
-                      key={action.id}
-                      onClick={() => void handleSendPrompt(action.prompt, action.id)}
-                      className="gap-2 text-xs cursor-pointer py-1.5"
-                    >
-                      <Icon className="size-3.5 text-violet-500 shrink-0" />
-                      <div className="truncate">
-                        <p className="font-medium text-foreground truncate">{action.label}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{action.description}</p>
-                      </div>
-                    </DropdownMenuItem>
-                  );
-                })}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           <Button
             variant="ghost"
             size="icon-sm"
@@ -1080,7 +1401,7 @@ export function AiChatSidebar({
                       <button
                         key={action.id}
                         type="button"
-                        onClick={() => void handleSendPrompt(action.prompt, action.id)}
+                        onClick={() => handleTriggerAction(action)}
                         className="group flex items-start gap-2.5 rounded-xl border border-border/70 bg-card/60 p-2.5 text-left transition-all hover:border-violet-500/40 hover:bg-violet-500/5 hover:shadow-xs cursor-pointer"
                       >
                         <div className="mt-0.5 flex size-6 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500 shrink-0 group-hover:bg-violet-500 group-hover:text-white transition-colors">
@@ -1174,9 +1495,22 @@ export function AiChatSidebar({
                         </div>
                       )}
 
-                      {/* Action Bar (Gently Edit / Replace / Add / Copy) */}
+                      {/* Action Bar (Organize Tasks / Gently Edit / Replace / Add / Copy) */}
                       {msg.role === "assistant" && !msg.isError && (
                         <div className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-border/40 pt-2">
+                          {msg.extractedTasks && msg.extractedTasks.length > 0 && (
+                            <Button
+                              variant="secondary"
+                              size="xs"
+                              onClick={() => void handleOpenTaskPlanning(msg.extractedTasks!)}
+                              disabled={planningLoading}
+                              className="h-6 gap-1 rounded-lg px-2 text-[10px] font-medium text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 dark:text-emerald-300"
+                              title="Review and organize tasks into a project"
+                            >
+                              <ListChecks className="size-2.5 text-emerald-600 dark:text-emerald-400" />
+                              Organize tasks
+                            </Button>
+                          )}
                           <Button
                             variant="secondary"
                             size="xs"
@@ -1497,6 +1831,58 @@ export function AiChatSidebar({
                 </PopoverContent>
               </Popover>
 
+              {/* Recommended Actions Popover */}
+              <Popover open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
+                <PopoverTrigger
+                  className="inline-flex items-center h-6 gap-1 px-2 text-[10px] font-medium text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
+                  title="Recommended Actions"
+                >
+                  <Sparkles className="size-3 text-violet-500" />
+                  <span>Actions</span>
+                </PopoverTrigger>
+
+                <PopoverContent side="top" align="start" className="w-[300px] p-2 space-y-1 text-xs shadow-lg">
+                  <div className="flex items-center justify-between border-b pb-1.5 px-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Recommended Actions
+                    </span>
+                    <span className="text-[9px] text-muted-foreground/70">
+                      {selectedText ? "Selected text" : isProjectPage ? "Project" : "Note"}
+                    </span>
+                  </div>
+                  <ScrollArea className="max-h-[260px] pr-1">
+                    <div className="space-y-1 pt-1">
+                      {quickActions.map((action) => {
+                        const Icon = action.icon;
+                        return (
+                          <button
+                            key={action.id}
+                            type="button"
+                            onClick={() => {
+                              setActionsMenuOpen(false);
+                              handleTriggerAction(action);
+                            }}
+                            className="flex w-full items-start gap-2 rounded-lg p-1.5 text-left text-xs transition-colors hover:bg-muted cursor-pointer group"
+                          >
+                            <div className="mt-0.5 flex size-5 items-center justify-center rounded-md bg-violet-500/10 text-violet-500 shrink-0 group-hover:bg-violet-500 group-hover:text-white transition-colors">
+                              <Icon className="size-3" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium text-foreground leading-tight truncate">
+                                {action.label}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground leading-tight truncate">
+                                {action.description}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+
               <span className="text-[10px] text-muted-foreground/50 hidden sm:inline">
                 Shift+Enter for newline
               </span>
@@ -1607,6 +1993,372 @@ export function AiChatSidebar({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Action Prompt Dialog (Language & Custom Guidance) */}
+      <Dialog
+        open={Boolean(promptDialog)}
+        onOpenChange={(open) => !open && setPromptDialog(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {promptDialog?.needsLanguage
+                ? "Translate selection"
+                : promptDialog?.label || "AI Action"}
+            </DialogTitle>
+            <DialogDescription>
+              {promptDialog?.needsLanguage
+                ? "Pick the language to translate the selected text into."
+                : "Optionally specify focus, constraints, or custom instructions."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {promptDialog?.needsLanguage ? (
+            <div className="flex flex-col gap-1.5 py-1">
+              <Label htmlFor="ai-target-language" className="text-xs text-muted-foreground font-medium">
+                Target Language
+              </Label>
+              <Input
+                id="ai-target-language"
+                value={targetLanguage}
+                onChange={(e) => setTargetLanguage(e.target.value)}
+                placeholder="e.g. English, Persian, French, German, Spanish..."
+                list="ai-common-languages"
+                className="text-xs"
+              />
+              <datalist id="ai-common-languages">
+                <option value="English" />
+                <option value="Persian" />
+                <option value="French" />
+                <option value="German" />
+                <option value="Spanish" />
+                <option value="Arabic" />
+                <option value="Italian" />
+                <option value="Russian" />
+                <option value="Japanese" />
+                <option value="Chinese" />
+              </datalist>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5 py-1">
+              <Label htmlFor="ai-prompt-hint" className="text-xs text-muted-foreground font-medium">
+                Instructions (optional)
+              </Label>
+              <Input
+                id="ai-prompt-hint"
+                value={actionPromptHint}
+                onChange={(e) => setActionPromptHint(e.target.value)}
+                placeholder={
+                  promptDialog?.hintPlaceholder ||
+                  "e.g. focus on clarity, key risks, or tone"
+                }
+                className="text-xs"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSubmitPromptDialog();
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setPromptDialog(null);
+                setActionPromptHint("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSubmitPromptDialog}
+            >
+              Run Action
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Review & Organize Tasks Dialog */}
+      <Dialog open={planningOpen} onOpenChange={setPlanningOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ListChecks className="size-5 text-primary" />
+              Review & Organize Tasks
+            </DialogTitle>
+            <DialogDescription>
+              Organize extracted tasks into a new or existing project, adjust timing heuristics, and confirm before creation.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Destination Configuration Card */}
+            <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                  1. Project Destination
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Personal workspace
+                </span>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="ai-plan-destination" className="text-xs font-medium">
+                    Destination Type
+                  </Label>
+                  <select
+                    id="ai-plan-destination"
+                    className="h-9 w-full rounded-md border bg-background px-3 text-xs"
+                    value={destinationKind}
+                    onChange={(event) => setDestinationKind(event.target.value as typeof destinationKind)}
+                  >
+                    {planningContext?.currentProject ? (
+                      <option value="current">Current: {planningContext.currentProject.title}</option>
+                    ) : null}
+                    <option value="existing">Add to existing project</option>
+                    <option value="new">Create new top-level project</option>
+                    <option value="subproject">Create new subproject</option>
+                  </select>
+                </div>
+
+                {destinationKind === "existing" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ai-plan-existing" className="text-xs font-medium">
+                      Select Project
+                    </Label>
+                    <select
+                      id="ai-plan-existing"
+                      className="h-9 w-full rounded-md border bg-background px-3 text-xs"
+                      value={existingProjectId}
+                      onChange={(event) => {
+                        setExistingProjectId(event.target.value);
+                        const sel = planningContext?.projects.find((p) => p.id === event.target.value);
+                        if (sel?.dueDate) {
+                          setProjectDueDate(new Date(sel.dueDate).toISOString().slice(0, 10));
+                        }
+                      }}
+                    >
+                      <option value="">Choose a project...</option>
+                      {planningContext?.projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.parentId ? "↳ " : ""}{project.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {destinationKind === "subproject" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ai-plan-parent" className="text-xs font-medium">
+                      Parent Project
+                    </Label>
+                    <select
+                      id="ai-plan-parent"
+                      className="h-9 w-full rounded-md border bg-background px-3 text-xs"
+                      value={parentProjectId}
+                      onChange={(event) => setParentProjectId(event.target.value)}
+                    >
+                      <option value="">Choose parent project...</option>
+                      {planningContext?.projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {(destinationKind === "new" || destinationKind === "subproject") && (
+                <div className="grid gap-3 sm:grid-cols-4 pt-1">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="ai-plan-title" className="text-xs font-medium">
+                      {destinationKind === "new" ? "New Project Name" : "New Subproject Name"}
+                    </Label>
+                    <Input
+                      id="ai-plan-title"
+                      value={projectTitle}
+                      onChange={(event) => setProjectTitle(event.target.value)}
+                      placeholder="e.g. Q4 Marketing Campaign"
+                      className="h-9 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ai-project-due" className="text-xs font-medium">
+                      Target Due Date
+                    </Label>
+                    <Input
+                      id="ai-project-due"
+                      type="date"
+                      value={projectDueDate}
+                      onChange={(event) => setProjectDueDate(event.target.value)}
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ai-project-priority" className="text-xs font-medium">
+                      Priority
+                    </Label>
+                    <select
+                      id="ai-project-priority"
+                      className="h-9 w-full rounded-md border bg-background px-2 text-xs"
+                      value={projectPriority}
+                      onChange={(e) => setProjectPriority(e.target.value as typeof projectPriority)}
+                    >
+                      <option value="none">No priority</option>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {(destinationKind === "current" || destinationKind === "existing") && (
+                <div className="grid gap-3 sm:grid-cols-2 pt-1 border-t border-border/50">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ai-project-target-date" className="text-xs text-muted-foreground">
+                      Project Target Due Date (optional update)
+                    </Label>
+                    <Input
+                      id="ai-project-target-date"
+                      type="date"
+                      value={projectDueDate}
+                      onChange={(event) => setProjectDueDate(event.target.value)}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Task Items List */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                  2. Tasks & Timing ({plannedTasks.length})
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Due dates pre-calculated by AI timing heuristics
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {plannedTasks.map((task, index) => (
+                  <div
+                    key={`${task.title}-${index}`}
+                    className="grid gap-2.5 rounded-xl border border-border/70 bg-card p-3 shadow-2xs sm:grid-cols-[1fr_8.5rem_8.5rem]"
+                  >
+                    {/* Task Title & Description */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`ai-task-title-${index}`} className="text-[11px] font-medium text-muted-foreground">
+                        Task Title
+                      </Label>
+                      <Input
+                        id={`ai-task-title-${index}`}
+                        value={task.title}
+                        onChange={(event) => updatePlannedTask(index, { title: event.target.value })}
+                        className="h-8 text-xs font-medium"
+                      />
+                      <Input
+                        aria-label={`Description for ${task.title || "task"}`}
+                        value={task.description ?? ""}
+                        onChange={(event) => updatePlannedTask(index, { description: event.target.value || null })}
+                        placeholder="Description (optional)"
+                        className="h-7 text-[11px] text-muted-foreground"
+                      />
+                    </div>
+
+                    {/* Status & Priority */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`ai-task-status-${index}`} className="text-[11px] font-medium text-muted-foreground">
+                        Status & Priority
+                      </Label>
+                      <select
+                        id={`ai-task-status-${index}`}
+                        className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+                        value={task.status}
+                        onChange={(event) => updatePlannedTask(index, { status: event.target.value as PlannedTask["status"] })}
+                      >
+                        <option value="todo">To do</option>
+                        <option value="doing">In progress</option>
+                        <option value="done">Done</option>
+                        <option value="canceled">Canceled</option>
+                      </select>
+                      <select
+                        aria-label={`Priority for ${task.title || "task"}`}
+                        className="h-7 w-full rounded-md border bg-background px-2 text-[11px]"
+                        value={task.priority}
+                        onChange={(event) => updatePlannedTask(index, { priority: event.target.value as PlannedTask["priority"] })}
+                      >
+                        <option value="none">No priority</option>
+                        <option value="low">Low priority</option>
+                        <option value="medium">Medium priority</option>
+                        <option value="high">High priority</option>
+                      </select>
+                    </div>
+
+                    {/* Start & Due Dates */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={`ai-task-due-${index}`} className="text-[11px] font-medium text-muted-foreground">
+                          Due Date
+                        </Label>
+                        <button
+                          type="button"
+                          onClick={() => setPlannedTasks((tasks) => tasks.filter((_, taskIndex) => taskIndex !== index))}
+                          className="text-[10px] text-destructive hover:underline cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <Input
+                        id={`ai-task-due-${index}`}
+                        type="date"
+                        value={task.dueDate}
+                        onChange={(event) => updatePlannedTask(index, { dueDate: event.target.value })}
+                        className="h-8 text-xs font-mono"
+                      />
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground">Start:</span>
+                        <Input
+                          id={`ai-task-start-${index}`}
+                          type="date"
+                          value={task.startDate}
+                          onChange={(event) => updatePlannedTask(index, { startDate: event.target.value })}
+                          className="h-7 text-[11px] font-mono flex-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 pt-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={() => setPlanningOpen(false)} disabled={insertingTasks}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={() => void savePlan()} disabled={insertingTasks} className="gap-1.5">
+              {insertingTasks ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+              Confirm and create
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

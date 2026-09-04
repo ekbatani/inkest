@@ -974,6 +974,7 @@ export function MarkdownEditor({
   documentId,
   externalVersion = 0,
 }: Props) {
+  const initialValueRef = React.useRef(value);
   const lastDocumentIdRef = React.useRef(documentId);
   const lastExternalVersionRef = React.useRef(externalVersion);
 
@@ -1025,6 +1026,8 @@ export function MarkdownEditor({
     if (!isDocSwitch && !isVersionBump) {
       return;
     }
+
+    initialValueRef.current = value;
 
     const view = editorRef?.current?.view;
     if (view && view.state.doc.toString() !== value) {
@@ -1712,7 +1715,7 @@ export function MarkdownEditor({
     <div className={cn("relative h-full", usesRtlFont && "rtl-vazir", className)} dir={dir}>
       <CodeMirror
         ref={editorRef}
-        value={value}
+        value={initialValueRef.current}
         onChange={handleCodeMirrorChange}
         extensions={extensions}
         height="100%"

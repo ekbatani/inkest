@@ -94,12 +94,8 @@ const SuperFocusReader = dynamic(
   () => import("@/components/notes/super-focus-reader").then((m) => m.SuperFocusReader),
   { ssr: false },
 );
-// The AI panel and focus timer are opt-in tools; keep them out of the editor's
-// initial chunk and load them on first render of the toolbar.
-const AiPanel = dynamic(
-  () => import("@/components/ai/ai-panel").then((m) => m.AiPanel),
-  { ssr: false },
-);
+// The focus timer is an opt-in tool; keep it out of the editor's
+// initial chunk and load it on first render of the toolbar.
 const FocusTimer = dynamic(
   () => import("@/components/notes/focus-timer").then((m) => m.FocusTimer),
   { ssr: false },
@@ -112,6 +108,39 @@ type NoteSnapshot = {
 
 function sameSnapshot(a: NoteSnapshot, b: NoteSnapshot) {
   return a.title === b.title && a.content === b.content;
+}function getInitialNoteDraft(
+  noteId: string,
+  fallback: { title: string; contentMd: string; updatedAt?: Date | null },
+): { title: string; content: string; hasUnsavedDraft: boolean } {
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const raw = window.localStorage.getItem(`inkest_draft_${noteId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.content === "string") {
+          const noteUpdatedAtMs = fallback.updatedAt ? new Date(fallback.updatedAt).getTime() : 0;
+          const isNewer = parsed.timestamp && parsed.timestamp > noteUpdatedAtMs;
+          const contentDiffers =
+            parsed.content !== fallback.contentMd ||
+            (parsed.title !== undefined && parsed.title !== fallback.title);
+          if ((parsed.synced === false || isNewer) && contentDiffers) {
+            return {
+              title: typeof parsed.title === "string" ? parsed.title : fallback.title,
+              content: parsed.content,
+              hasUnsavedDraft: true,
+            };
+          }
+        }
+      }
+    } catch {
+      // Ignore JSON parse or storage errors
+    }
+  }
+  return {
+    title: fallback.title,
+    content: fallback.contentMd,
+    hasUnsavedDraft: false,
+  };
 }
 
 export function NoteEditor({
@@ -126,6 +155,7 @@ export function NoteEditor({
   superFocusPrefs,
   ttsPrefs,
   editorPrefs,
+  aiOnboardingDismissed = false,
   projectTaskCount = 0,
 }: {
   note: Note;
@@ -156,8 +186,19 @@ export function NoteEditor({
   };
 }) {
   const router = useRouter();
-  const [title, setTitle] = React.useState(note.title);
-  const [content, setContent] = React.useState(note.contentMd);
+
+  const initialDraft = React.useMemo(
+    () =>
+      getInitialNoteDraft(note.id, {
+        title: note.title,
+        contentMd: note.contentMd,
+        updatedAt: note.updatedAt,
+      }),
+    [note.id, note.title, note.contentMd, note.updatedAt],
+  );
+
+  const [title, setTitle] = React.useState(initialDraft.title);
+  const [content, setContent] = React.useState(initialDraft.content);
   const [versionHistoryOpen, setVersionHistoryOpen] = React.useState(false);
   const [isArchiving, setIsArchiving] = React.useState(false);
   const [showSuperFocus, setShowSuperFocus] = React.useState(false);
@@ -203,9 +244,9 @@ export function NoteEditor({
   const previewCopyRef = React.useRef<HTMLDivElement>(null);
   const [copyMenuTouched, setCopyMenuTouched] = React.useState(false);
   const initialCheckpoint = React.useMemo<NoteSnapshot>(() => ({
-    title: note.title,
-    content: note.contentMd,
-  }), [note.contentMd, note.title]);
+    title: initialDraft.title,
+    content: initialDraft.content,
+  }), [initialDraft.content, initialDraft.title]);
   const [lastCheckpointSnapshot, setLastCheckpointSnapshot] =
     React.useState<NoteSnapshot>(initialCheckpoint);
   const lastCheckpointRef = React.useRef<NoteSnapshot>(initialCheckpoint);
@@ -215,9 +256,9 @@ export function NoteEditor({
     content: string;
     hash: string;
   }>({
-    title: note.title,
-    content: note.contentMd,
-    hash: computeContentHash(note.contentMd),
+    title: initialDraft.hasUnsavedDraft ? "" : note.title,
+    content: initialDraft.hasUnsavedDraft ? "" : note.contentMd,
+    hash: initialDraft.hasUnsavedDraft ? "" : computeContentHash(note.contentMd),
   });
 
   const { setPageContext, clearPageContext } = usePageContext();
@@ -247,9 +288,27 @@ export function NoteEditor({
   const pendingSaveAfterInFlightRef = React.useRef(false);
   const localDraftTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const contentStateTimerRef = React.useRef<NodeJS.Timeout | null>(null);
-  const latestContentRef = React.useRef<NoteSnapshot>({ title: note.title, content: note.contentMd });
+  const latestContentRef = React.useRef<NoteSnapshot>({ title: initialDraft.title, content: initialDraft.content });
   const persistenceManagerRef = React.useRef<DocumentPersistenceManager | null>(null);
   const activeNoteIdRef = React.useRef(note.id);
+
+  const performSaveRef = React.useRef<
+    ((options?: { forceRevalidate?: boolean; forceFull?: boolean }) => Promise<void>) | null
+  >(null);
+
+  const triggerSave = React.useCallback((delay = 1200) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      void performSaveRef.current?.({ forceRevalidate: false });
+    }, delay);
+
+    if (!maxWaitTimer.current) {
+      maxWaitTimer.current = setTimeout(() => {
+        maxWaitTimer.current = null;
+        void performSaveRef.current?.({ forceRevalidate: false });
+      }, 4000);
+    }
+  }, []);
 
   const scheduleLocalDraftSave = React.useCallback(() => {
     if (localDraftTimerRef.current) clearTimeout(localDraftTimerRef.current);
@@ -269,31 +328,83 @@ export function NoteEditor({
     }, 500);
   }, [note.id]);
 
-  // CodeMirror keeps the keystroke path local. Parent React state is debounced so
-  // route-level renders and AI context never compete with the user's keystrokes.
-  const handleEditorChange = React.useCallback((nextContent: string) => {
-    latestContentRef.current = {
-      title: latestContentRef.current?.title ?? title,
-      content: nextContent,
-    };
-    scheduleLocalDraftSave();
+  // Immediate synchronous persistence on keystrokes, direct save scheduling, and debounced parent React state
+  const handleEditorChange = React.useCallback(
+    (nextContent: string) => {
+      const currentTitle = latestContentRef.current?.title ?? title;
+      latestContentRef.current = {
+        title: currentTitle,
+        content: nextContent,
+      };
 
-    if (contentStateTimerRef.current) clearTimeout(contentStateTimerRef.current);
-    contentStateTimerRef.current = setTimeout(() => {
-      React.startTransition(() => {
-        setContent(nextContent);
-      });
-    }, 450);
-  }, [scheduleLocalDraftSave, title]);
+      // 1. Immediately persist to localStorage synchronously (< 0.05ms) so keystrokes are NEVER lost
+      try {
+        if (typeof window !== "undefined" && window.localStorage) {
+          window.localStorage.setItem(
+            `inkest_draft_${note.id}`,
+            JSON.stringify({
+              documentId: note.id,
+              version: Date.now(),
+              title: currentTitle,
+              content: nextContent,
+              timestamp: Date.now(),
+              synced: false,
+            }),
+          );
+        }
+      } catch {
+        // Ignore quota errors
+      }
 
-  const handleTitleChange = React.useCallback((nextTitle: string) => {
-    latestContentRef.current = {
-      title: nextTitle,
-      content: latestContentRef.current?.content ?? content,
-    };
-    setTitle(nextTitle);
-    scheduleLocalDraftSave();
-  }, [content, scheduleLocalDraftSave]);
+      // 2. Schedule IndexedDB persistence in the background
+      scheduleLocalDraftSave();
+
+      // 3. Trigger auto-save debounce directly from keystroke stream
+      triggerSave(1200);
+
+      // 4. Update parent React state (debounced for AI panel / word counter)
+      if (contentStateTimerRef.current) clearTimeout(contentStateTimerRef.current);
+      contentStateTimerRef.current = setTimeout(() => {
+        React.startTransition(() => {
+          setContent(nextContent);
+        });
+      }, 450);
+    },
+    [note.id, scheduleLocalDraftSave, title, triggerSave],
+  );
+
+  const handleTitleChange = React.useCallback(
+    (nextTitle: string) => {
+      const currentContent = latestContentRef.current?.content ?? content;
+      latestContentRef.current = {
+        title: nextTitle,
+        content: currentContent,
+      };
+      setTitle(nextTitle);
+
+      try {
+        if (typeof window !== "undefined" && window.localStorage) {
+          window.localStorage.setItem(
+            `inkest_draft_${note.id}`,
+            JSON.stringify({
+              documentId: note.id,
+              version: Date.now(),
+              title: nextTitle,
+              content: currentContent,
+              timestamp: Date.now(),
+              synced: false,
+            }),
+          );
+        }
+      } catch {
+        // Ignore
+      }
+
+      scheduleLocalDraftSave();
+      triggerSave(1200);
+    },
+    [content, note.id, scheduleLocalDraftSave, triggerSave],
+  );
 
   const [historyState, setHistoryState] = React.useState<{
     past: NoteSnapshot[];
@@ -385,14 +496,8 @@ export function NoteEditor({
         // Ignore
       }
 
-      // 2. Manage in-flight save request
+      // 2. Manage in-flight save request: abort non-keepalive request so keepalive save takes over
       if (isSavingRef.current) {
-        const inFlight = inFlightSnapshotRef.current;
-        if (inFlight && sameSnapshot(snapshot, inFlight)) {
-          // Already in flight with the exact latest snapshot
-          return;
-        }
-        // In-flight request has stale content; abort it so it won't race or overwrite newer content
         try {
           inFlightAbortControllerRef.current?.abort();
         } catch {
@@ -632,6 +737,16 @@ export function NoteEditor({
     [note.id, router],
   );
 
+  React.useEffect(() => {
+    performSaveRef.current = performSave;
+  }, [performSave]);
+
+  React.useEffect(() => {
+    if (initialDraft.hasUnsavedDraft) {
+      void performSave({ forceRevalidate: false });
+    }
+  }, [initialDraft.hasUnsavedDraft, performSave]);
+
   const hasCheckedRecoveryRef = React.useRef(false);
 
   // Mount recovery: check IndexedDB / local storage for unsaved drafts (runs once per note mount)
@@ -717,58 +832,43 @@ export function NoteEditor({
     return () => clearInterval(interval);
   }, [performSave]);
 
-  // Adaptive debounce with max throttle interval
+  // Global navigation click capture, custom flush events, visibilitychange, beforeunload, and unmount
   React.useEffect(() => {
-    if (skipNextPersist.current) {
-      skipNextPersist.current = false;
-      return;
-    }
-    if (skipNextSave.current) {
-      skipNextSave.current = false;
-      return;
-    }
-
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-
-    saveTimer.current = setTimeout(() => {
-      void performSave({ forceRevalidate: false });
-    }, 1500);
-
-    if (!maxWaitTimer.current) {
-      maxWaitTimer.current = setTimeout(() => {
-        maxWaitTimer.current = null;
-        void performSave({ forceRevalidate: false });
-      }, 5000);
-    }
-
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const link = target.closest("a");
+      if (link && link.href) {
+        // User clicked a link in sidebar, breadcrumbs, or tree: flush immediately before navigation!
+        flushPendingChanges("navigation");
+      }
     };
-  }, [title, content, performSave]);
 
-  // Flush pending changes on unmount (e.g. note navigation switch)
-  React.useEffect(() => {
-    return () => {
-      flushPendingChanges("unmount");
+    const handleCustomFlush = () => {
+      flushPendingChanges("navigation");
     };
-  }, [flushPendingChanges]);
 
-  // Flush pending changes on visibilitychange / beforeunload
-  React.useEffect(() => {
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
         flushPendingChanges("visibility");
       }
     };
+
     const onBeforeUnload = () => {
       flushPendingChanges("unload");
     };
 
+    window.addEventListener("click", handleGlobalClick, { capture: true });
+    window.addEventListener("inkest:flush-active-save", handleCustomFlush);
     window.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("beforeunload", onBeforeUnload);
+
     return () => {
+      window.removeEventListener("click", handleGlobalClick, { capture: true });
+      window.removeEventListener("inkest:flush-active-save", handleCustomFlush);
       window.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("beforeunload", onBeforeUnload);
+      flushPendingChanges("unmount");
     };
   }, [flushPendingChanges]);
 
@@ -1341,8 +1441,6 @@ export function NoteEditor({
               </span>
             </span>
           )}
-
-          <AiPanel noteId={note.id} editorRef={editorRef} />
 
           <NoteDetailsPopover
             note={note}

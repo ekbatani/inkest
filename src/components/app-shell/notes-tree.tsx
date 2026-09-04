@@ -250,6 +250,9 @@ export function NotesTree({
 
   const handleCreateSubproject = React.useCallback(
     (parentId: string) => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
+      }
       setOpen((current) => ({ ...current, [parentId]: true }));
       onNavigate?.();
       router.push(`/notes/new?parent=${parentId}&as=project`);
@@ -259,6 +262,9 @@ export function NotesTree({
 
   const handleCreateNote = React.useCallback(
     (parentId: string) => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
+      }
       setOpen((current) => ({ ...current, [parentId]: true }));
       onNavigate?.();
       router.push(`/notes/new?parent=${parentId}`);

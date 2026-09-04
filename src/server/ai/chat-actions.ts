@@ -13,6 +13,8 @@ import { generateMermaid } from "./generate-mermaid";
 import { translateText } from "./translate-text";
 import { explainText } from "./explain-text";
 import { createProjectPlan } from "./create-project-plan";
+import { commentOnSelection } from "./comment-selection";
+import { applyInlineComments } from "./apply-comments";
 import {
   createChatThread,
   listChatThreads,
@@ -822,6 +824,103 @@ export async function checkTyposAction(args: {
     ...res,
     transformType: "Typo & Grammar Check",
   };
+}
+
+export async function commentSelectionAction(args: {
+  noteId: string;
+  noteTitle: string;
+  noteContent: string;
+  selectedText: string;
+  promptHint?: string;
+  threadId?: string;
+}): Promise<AiActionResult<string> & { threadId?: string }> {
+  let activeThreadId = args.threadId;
+  if (!activeThreadId) {
+    try {
+      const thread = await createChatThread("Add AI comment");
+      activeThreadId = thread.id;
+    } catch {}
+  }
+  if (activeThreadId) {
+    try {
+      await addChatMessage({
+        threadId: activeThreadId,
+        role: "user",
+        content: args.promptHint ? `Add AI comment: ${args.promptHint}` : "Add AI comment on selection",
+      });
+    } catch {}
+  }
+
+  const res = await commentOnSelection(args);
+
+  if (activeThreadId) {
+    try {
+      if (res.ok) {
+        await addChatMessage({
+          threadId: activeThreadId,
+          role: "assistant",
+          content: res.output,
+        });
+      } else {
+        await addChatMessage({
+          threadId: activeThreadId,
+          role: "assistant",
+          content: res.error,
+          isError: true,
+        });
+      }
+    } catch {}
+  }
+
+  return { ...res, threadId: activeThreadId };
+}
+
+export async function applyCommentsAction(args: {
+  noteId: string;
+  noteTitle: string;
+  noteContent: string;
+  promptHint?: string;
+  threadId?: string;
+}): Promise<AiActionResult<string> & { threadId?: string }> {
+  let activeThreadId = args.threadId;
+  if (!activeThreadId) {
+    try {
+      const thread = await createChatThread("Apply comments");
+      activeThreadId = thread.id;
+    } catch {}
+  }
+  if (activeThreadId) {
+    try {
+      await addChatMessage({
+        threadId: activeThreadId,
+        role: "user",
+        content: args.promptHint ? `Apply comments: ${args.promptHint}` : "Apply comments to note",
+      });
+    } catch {}
+  }
+
+  const res = await applyInlineComments(args);
+
+  if (activeThreadId) {
+    try {
+      if (res.ok) {
+        await addChatMessage({
+          threadId: activeThreadId,
+          role: "assistant",
+          content: res.output,
+        });
+      } else {
+        await addChatMessage({
+          threadId: activeThreadId,
+          role: "assistant",
+          content: res.error,
+          isError: true,
+        });
+      }
+    } catch {}
+  }
+
+  return { ...res, threadId: activeThreadId };
 }
 
 
