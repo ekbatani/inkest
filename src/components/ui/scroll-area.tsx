@@ -16,9 +16,12 @@ function ScrollArea({
       className={cn("relative", className)}
       {...props}
     >
+      {/* `max-height: inherit` lets `max-h-*` on the Root cap the scrolling
+          viewport — `height: 100%` alone can't, since it resolves to `auto`
+          against a parent whose height is auto. */}
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        className="size-full max-h-[inherit] rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
