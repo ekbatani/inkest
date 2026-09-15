@@ -23,7 +23,7 @@ describe("ProjectModeToggle component", () => {
 
     expect(html).toContain('aria-label="Project mode switcher"');
     expect(html).toContain('aria-current="page"');
-    expect(html).toContain("Project mode");
+    expect(html).toContain("Project");
     expect(html).toContain('href="/notes/test-note-1"');
     expect(html).toContain('aria-label="Switch to Note mode"');
   });
@@ -35,7 +35,7 @@ describe("ProjectModeToggle component", () => {
 
     expect(html).toContain('aria-label="Project mode switcher"');
     expect(html).toContain('aria-current="page"');
-    expect(html).toContain("Note mode");
+    expect(html).toContain("Note");
     expect(html).toContain('href="/projects/test-note-2"');
     expect(html).toContain('aria-label="Switch to Project mode"');
   });
@@ -45,7 +45,7 @@ describe("ProjectModeToggle component", () => {
       <ProjectModeToggle noteId="test-note-3" currentMode="project" canEdit={false} />,
     );
 
-    expect(html).toContain("Project mode");
+    expect(html).toContain("Project");
     expect(html).not.toContain('href="/notes/test-note-3"');
   });
 });

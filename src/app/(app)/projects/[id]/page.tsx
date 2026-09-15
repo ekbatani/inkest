@@ -126,22 +126,22 @@ export default async function ProjectDetailPage({
         >
           <ChevronLeft className="size-4" />
         </Button>
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 shrink">
           {parentProject && (
             <>
               <Link
                 href={`/projects/${parentProject.id}`}
-                className="hidden sm:inline truncate max-w-[130px] text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="hidden md:inline truncate max-w-[120px] text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
                 title={parentProject.title}
               >
                 {parentProject.title || "Parent project"}
               </Link>
-              <span className="hidden sm:inline text-muted-foreground/50">/</span>
+              <span className="hidden md:inline text-muted-foreground/50 shrink-0">/</span>
             </>
           )}
           <ProjectTitleEditor id={note.id} title={note.title} readOnly={!canEdit} />
         </div>
-        <div className="ml-2 flex items-center gap-2">
+        <div className="ml-1 sm:ml-2 flex items-center gap-1.5 sm:gap-2 shrink-0">
           <ProjectParentPicker
             projectId={note.id}
             parentId={note.parentId}
@@ -150,19 +150,19 @@ export default async function ProjectDetailPage({
           />
           <NoteStatusBadge status={note.status} />
           {note.priority !== "none" && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs hidden md:inline-flex">
               {note.priority}
             </Badge>
           )}
           {note.dueDate && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs hidden lg:inline-flex">
               Due {formatRelativeDate(note.dueDate)}
             </Badge>
           )}
         </div>
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1 sm:gap-1.5 shrink-0">
           {shareInfo && shareInfo.members.length > 0 && (
-            <AvatarGroup className="me-1" aria-label="Shared with">
+            <AvatarGroup className="me-1 hidden sm:flex" aria-label="Shared with">
               {shareInfo.members.slice(0, 4).map((member) => (
                 <Avatar key={member.userId} size="sm" title={member.name ?? member.email}>
                   {member.image ? (
@@ -197,10 +197,12 @@ export default async function ProjectDetailPage({
                   variant="outline"
                   size="sm"
                   type="submit"
-                  className="gap-1.5"
+                  className="gap-1.5 h-7 px-2 text-xs sm:h-8 sm:px-2.5"
                   aria-label="Create subproject"
+                  title="Create subproject"
                 >
-                  <FolderPlus className="size-4" /> Subproject
+                  <FolderPlus className="size-3.5 sm:size-4 shrink-0" />
+                  <span className="hidden xl:inline">Subproject</span>
                 </Button>
               </form>
               <ProjectModeToggle

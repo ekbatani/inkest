@@ -25,6 +25,11 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DueDatePicker } from "@/components/notes/due-date-picker";
 import { ParentPicker } from "@/components/notes/parent-picker";
@@ -61,6 +66,7 @@ type NoteDetailsPopoverProps = {
     };
   };
   projectTaskCount: number;
+  iconOnly?: boolean;
 };
 
 export function NoteDetailsPopover({
@@ -73,25 +79,41 @@ export function NoteDetailsPopover({
   backlinks,
   dailyAgenda,
   projectTaskCount,
+  iconOnly = false,
 }: NoteDetailsPopoverProps) {
   const showProjectLink = metadata.type === "project";
 
+  const triggerButton = (
+    <PopoverTrigger
+      render={
+        <Button
+          variant={iconOnly ? "ghost" : "outline"}
+          size={iconOnly ? "icon-sm" : "sm"}
+          className={
+            iconOnly
+              ? "text-muted-foreground hover:text-foreground"
+              : "h-8 gap-1.5 rounded-xl border-border/70 bg-background/50 px-2 text-xs shadow-none hover:bg-muted/50 sm:px-2.5"
+          }
+          aria-label="Note Details & Properties"
+          title={iconOnly ? undefined : "Note Details & Properties"}
+        />
+      }
+    >
+      <SlidersHorizontal className={iconOnly ? "size-4" : "size-3.5 text-muted-foreground"} />
+      {!iconOnly && <span className="hidden md:inline font-medium">Details</span>}
+    </PopoverTrigger>
+  );
+
   return (
     <Popover>
-      <PopoverTrigger
-        render={
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 rounded-xl border-border/70 bg-background/50 px-2.5 text-xs shadow-none hover:bg-muted/50"
-            aria-label="Note Details & Properties"
-            title="Note Details & Properties"
-          />
-        }
-      >
-        <SlidersHorizontal className="size-3.5 text-muted-foreground" />
-        <span className="hidden sm:inline font-medium">Details</span>
-      </PopoverTrigger>
+      {iconOnly ? (
+        <Tooltip>
+          <TooltipTrigger render={triggerButton} />
+          <TooltipContent>Note Details & Properties</TooltipContent>
+        </Tooltip>
+      ) : (
+        triggerButton
+      )}
       <PopoverContent align="end" className="w-88 p-0 rounded-2xl shadow-xl">
         <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/20">
           <div className="flex items-center gap-2">

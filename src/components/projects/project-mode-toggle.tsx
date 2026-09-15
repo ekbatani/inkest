@@ -67,13 +67,12 @@ export function ProjectModeToggle({
       {/* Project Mode Pill */}
       {currentMode === "project" ? (
         <span
-          className="flex h-7 items-center gap-1.5 rounded-md bg-background px-2.5 text-xs font-semibold text-foreground shadow-xs cursor-default select-none"
+          className="flex h-7 items-center gap-1.5 rounded-md bg-background px-2 text-xs font-semibold text-foreground shadow-xs cursor-default select-none sm:px-2.5"
           aria-current="page"
           data-testid="mode-project-active"
         >
-          <FolderKanban className="size-3.5 text-amber-500" />
-          <span className="hidden sm:inline">Project mode</span>
-          <span className="sm:hidden">Project</span>
+          <FolderKanban className="size-3.5 text-amber-500 shrink-0" />
+          <span className="hidden lg:inline">Project</span>
         </span>
       ) : (
         <Tooltip>
@@ -85,15 +84,14 @@ export function ProjectModeToggle({
                 aria-label="Switch to Project mode"
                 data-testid="mode-project-link"
                 className={cn(
-                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-background/50",
+                  "flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-background/50 sm:px-2.5",
                   isNavigating && "pointer-events-none opacity-60",
                 )}
               />
             }
           >
-            <FolderKanban className="size-3.5 text-amber-500/80" />
-            <span className="hidden sm:inline">Project mode</span>
-            <span className="sm:hidden">Project</span>
+            <FolderKanban className="size-3.5 text-amber-500/80 shrink-0" />
+            <span className="hidden lg:inline">Project</span>
           </TooltipTrigger>
           <TooltipContent side="bottom">
             Switch to Project mode (Overview, Tasks, Timeline)
@@ -104,13 +102,12 @@ export function ProjectModeToggle({
       {/* Note Mode Pill */}
       {currentMode === "note" ? (
         <span
-          className="flex h-7 items-center gap-1.5 rounded-md bg-background px-2.5 text-xs font-semibold text-foreground shadow-xs cursor-default select-none"
+          className="flex h-7 items-center gap-1.5 rounded-md bg-background px-2 text-xs font-semibold text-foreground shadow-xs cursor-default select-none sm:px-2.5"
           aria-current="page"
           data-testid="mode-note-active"
         >
-          <FileText className="size-3.5 text-primary" />
-          <span className="hidden sm:inline">Note mode</span>
-          <span className="sm:hidden">Note</span>
+          <FileText className="size-3.5 text-primary shrink-0" />
+          <span className="hidden lg:inline">Note</span>
         </span>
       ) : canEdit ? (
         <Tooltip>
@@ -122,15 +119,14 @@ export function ProjectModeToggle({
                 aria-label="Switch to Note mode"
                 data-testid="mode-note-link"
                 className={cn(
-                  "flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-background/50",
+                  "flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-background/50 sm:px-2.5",
                   isNavigating && "pointer-events-none opacity-60",
                 )}
               />
             }
           >
-            <FileText className="size-3.5 text-primary/80" />
-            <span className="hidden sm:inline">Note mode</span>
-            <span className="sm:hidden">Note</span>
+            <FileText className="size-3.5 text-primary/80 shrink-0" />
+            <span className="hidden lg:inline">Note</span>
           </TooltipTrigger>
           <TooltipContent side="bottom">
             Switch to Note mode (Markdown document editor)

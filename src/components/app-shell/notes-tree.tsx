@@ -57,13 +57,38 @@ function getNodeHref(node: NoteTreeNode) {
 
 type TreeItem = NoteTreeNode;
 
-function hasDescendant(node: TreeItem, targetId: string): boolean {
+export function hasDescendant(node: TreeItem, targetId: string): boolean {
   return node.children.some(
-    (child) => child.id === targetId || hasDescendant(child, targetId),
+    (child) =>
+      child.id === targetId ||
+      (child.documentId && child.documentId === targetId) ||
+      hasDescendant(child, targetId),
   );
 }
 
-function getActiveItemId(pathname: string): string | null {
+export function getAncestorIds(nodes: TreeItem[], targetId: string): string[] {
+  const ancestors: string[] = [];
+
+  function find(list: TreeItem[]): boolean {
+    for (const item of list) {
+      if (item.id === targetId || (item.documentId && item.documentId === targetId)) {
+        return true;
+      }
+      if (item.children && item.children.length > 0) {
+        if (find(item.children)) {
+          ancestors.push(item.id);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  find(nodes);
+  return ancestors;
+}
+
+export function getActiveItemId(pathname: string): string | null {
   const match = /(?:\/notes\/|\/projects\/|\/reader\/)([^/?#]+)/.exec(pathname);
   const id = match?.[1];
   return id && id !== "new" ? id : null;
@@ -304,6 +329,40 @@ export function NotesTree({
   );
 
   const activeId = getActiveItemId(pathname);
+  const [prevActiveId, setPrevActiveId] = React.useState(activeId);
+
+  if (activeId !== prevActiveId) {
+    setPrevActiveId(activeId);
+    if (activeId) {
+      const ancestors = getAncestorIds(treeNodes, activeId);
+      if (ancestors.length > 0) {
+        setOpen((current) => {
+          let changed = false;
+          const next = { ...current };
+          for (const id of ancestors) {
+            if (next[id] !== true) {
+              next[id] = true;
+              changed = true;
+            }
+          }
+          return changed ? next : current;
+        });
+      }
+    }
+  }
+
+  const handleToggle = React.useCallback(
+    (nodeId: string, isAncestor: boolean) => {
+      setOpen((current) => {
+        const currentlyOpen = current[nodeId] ?? isAncestor;
+        return {
+          ...current,
+          [nodeId]: !currentlyOpen,
+        };
+      });
+    },
+    [],
+  );
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const activeId = extractNoteId(String(event.active.id));
@@ -407,7 +466,7 @@ export function NotesTree({
           ) : (
             treeNodes.map((node) => {
               const isAncestorOfActive = Boolean(activeId && hasDescendant(node, activeId));
-              const isOpen = Boolean(open[node.id]) || isAncestorOfActive;
+              const isOpen = open[node.id] ?? isAncestorOfActive;
               const hasChildren = node.children.length > 0;
               const isProject = node.type === "project";
               return (
@@ -441,12 +500,7 @@ export function NotesTree({
                     {hasChildren ? (
                       <button
                         type="button"
-                        onClick={() =>
-                          setOpen((current) => ({
-                            ...current,
-                            [node.id]: !current[node.id],
-                          }))
-                        }
+                        onClick={() => handleToggle(node.id, isAncestorOfActive)}
                         className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted"
                         aria-label={isOpen ? "Collapse" : "Expand"}
                       >
@@ -468,7 +522,7 @@ export function NotesTree({
                       pathname={pathname}
                       activeId={activeId}
                       open={open}
-                      setOpen={setOpen}
+                      onToggle={handleToggle}
                       dragState={dragState}
                       onCreateSubproject={handleCreateSubproject}
                       onCreateNote={handleCreateNote}
@@ -499,7 +553,7 @@ function TreeChildren({
   pathname,
   activeId,
   open,
-  setOpen,
+  onToggle,
   dragState,
   onCreateSubproject,
   onCreateNote,
@@ -509,7 +563,7 @@ function TreeChildren({
   pathname: string;
   activeId: string | null;
   open: Record<string, boolean>;
-  setOpen: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  onToggle: (nodeId: string, isAncestor: boolean) => void;
   dragState: { activeId: string | null; overId: string | null };
   onCreateSubproject: (parentId: string) => void;
   onCreateNote: (parentId: string) => void;
@@ -519,7 +573,7 @@ function TreeChildren({
     <ul className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l pl-1.5">
       {nodes.map((node) => {
         const isAncestorOfActive = Boolean(activeId && hasDescendant(node, activeId));
-        const isOpen = Boolean(open[node.id]) || isAncestorOfActive;
+        const isOpen = open[node.id] ?? isAncestorOfActive;
         const hasChildren = node.children.length > 0;
         const isProject = node.type === "project";
         return (
@@ -545,7 +599,7 @@ function TreeChildren({
               {hasChildren ? (
                 <button
                   type="button"
-                  onClick={() => setOpen((current) => ({ ...current, [node.id]: !current[node.id] }))}
+                  onClick={() => onToggle(node.id, isAncestorOfActive)}
                   className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted"
                   aria-label={isOpen ? "Collapse" : "Expand"}
                 >
@@ -559,7 +613,7 @@ function TreeChildren({
                 pathname={pathname}
                 activeId={activeId}
                 open={open}
-                setOpen={setOpen}
+                onToggle={onToggle}
                 dragState={dragState}
                 onCreateSubproject={onCreateSubproject}
                 onCreateNote={onCreateNote}

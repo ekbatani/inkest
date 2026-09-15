@@ -18,8 +18,6 @@ import {
   Headphones,
   Archive,
   ArchiveRestore,
-  FileText,
-  MoreHorizontal,
   History,
   Search,
   Link2,
@@ -28,21 +26,12 @@ import {
   PenLine,
   Code,
   Eye,
-  FolderKanban,
 } from "lucide-react";
 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -1635,12 +1624,12 @@ export function NoteEditor({
         </div>
 
         {/* Right Section: Save Status, Note Details, Pin, More Actions */}
-        <div className="flex items-center gap-1 sm:gap-1.5">
+        <div className="flex items-center gap-0.5 sm:gap-1">
           {saveState !== "idle" && (
             <span
               key={saveState}
               className={cn(
-                "save-indicator flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                "save-indicator mr-1 flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium transition-colors sm:px-2.5",
                 saveState === "offline"
                   ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                   : saveState === "error"
@@ -1657,7 +1646,7 @@ export function NoteEditor({
               ) : (
                 <AlertCircle className="size-3 text-rose-500" />
               )}
-              <span className="hidden sm:inline">
+              <span className="hidden xl:inline">
                 {saveState === "saving"
                   ? "Saving…"
                   : saveState === "saved"
@@ -1666,17 +1655,29 @@ export function NoteEditor({
                       ? "Saved locally (offline)"
                       : "Saved locally · Syncing…"}
               </span>
+              <span className="hidden sm:inline xl:hidden">
+                {saveState === "saving"
+                  ? "Saving…"
+                  : saveState === "saved"
+                    ? "Saved"
+                    : saveState === "offline"
+                      ? "Offline"
+                      : "Syncing…"}
+              </span>
             </span>
           )}
 
           {metadata.type === "project" && (
-            <ProjectModeToggle
-              noteId={note.id}
-              currentMode="note"
-              onBeforeNavigate={async () => {
-                await performSaveRef.current?.({ forceRevalidate: true });
-              }}
-            />
+            <>
+              <ProjectModeToggle
+                noteId={note.id}
+                currentMode="note"
+                onBeforeNavigate={async () => {
+                  await performSaveRef.current?.({ forceRevalidate: true });
+                }}
+              />
+              <div className="h-4 w-px bg-border/60" />
+            </>
           )}
 
           <NoteDetailsPopover
@@ -1689,7 +1690,70 @@ export function NoteEditor({
             backlinks={backlinks}
             dailyAgenda={dailyAgenda}
             projectTaskCount={projectTaskCount}
+            iconOnly
           />
+
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setVersionHistoryOpen(true)}
+                  aria-label="Version history"
+                  className="text-muted-foreground hover:text-foreground"
+                />
+              }
+            >
+              <History className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>Version history (⌘⇧H)</TooltipContent>
+          </Tooltip>
+
+          <div className="h-4 w-px bg-border/60" />
+
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={(e) => void (e.shiftKey ? onCopyPreview() : onCopyMarkdown())}
+                  onMouseEnter={() => setCopyMenuTouched(true)}
+                  aria-label="Copy Markdown (Shift+click for preview)"
+                  className="text-muted-foreground hover:text-foreground"
+                />
+              }
+            >
+              <Copy className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>Copy Markdown (Shift+click for preview)</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  nativeButton={false}
+                  render={
+                    <a
+                      href={`/api/export/note/${note.id}`}
+                      aria-label="Export Markdown"
+                      rel="noopener"
+                    />
+                  }
+                  className="text-muted-foreground hover:text-foreground"
+                />
+              }
+            >
+              <Download className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>Export Markdown</TooltipContent>
+          </Tooltip>
+
+          <div className="h-4 w-px bg-border/60" />
 
           <Tooltip>
             <TooltipTrigger
@@ -1718,115 +1782,50 @@ export function NoteEditor({
             </TooltipContent>
           </Tooltip>
 
-          <DropdownMenu onOpenChange={(open) => open && setCopyMenuTouched(true)}>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <DropdownMenuTrigger
-                    render={
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="More actions"
-                        className="text-muted-foreground hover:text-foreground"
-                      />
-                    }
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </DropdownMenuTrigger>
-                }
-              />
-              <TooltipContent>More actions</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuGroup>
-                {metadata.type === "project" ? (
-                  <>
-                    <DropdownMenuItem
-                      onClick={async () => {
-                        await performSaveRef.current?.({ forceRevalidate: true });
-                        router.push(`/projects/${note.id}`);
-                      }}
-                    >
-                      <FolderKanban className="size-4 text-muted-foreground" />
-                      Switch to Project mode
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => void onMetadataChange("type", "note")}
-                    >
-                      <FileText className="size-4 text-muted-foreground" />
-                      Convert to regular note
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <DropdownMenuItem
-                    onClick={() => void onMetadataChange("type", "project")}
-                  >
-                    <FolderKanban className="size-4 text-muted-foreground" />
-                    Convert to project note
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem onClick={() => void onCopyMarkdown()}>
-                  <Copy className="size-4 text-muted-foreground" />
-                  Copy Markdown
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => void onCopyPreview()}>
-                  <FileText className="size-4 text-muted-foreground" />
-                  Copy preview
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  render={
-                    <a
-                      href={`/api/export/note/${note.id}`}
-                      aria-label="Download this note as Markdown"
-                      rel="noopener"
-                      className="flex w-full items-center gap-2"
-                    />
-                  }
-                >
-                  <Download className="size-4 text-muted-foreground" />
-                  Export Markdown
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setVersionHistoryOpen(true)}>
-                  <History className="size-4 text-muted-foreground" />
-                  <span className="flex-1">Version history</span>
-                  <span className="text-[10px] tracking-widest text-muted-foreground/70">⌘⇧H</span>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant={metadata.archived ? "secondary" : "ghost"}
+                  size="icon-sm"
                   onClick={() => void onToggleArchive()}
                   disabled={isArchiving}
-                >
-                  {metadata.archived ? (
-                    <>
-                      <ArchiveRestore className="size-4 text-muted-foreground" />
-                      Unarchive note
-                    </>
-                  ) : (
-                    <>
-                      <Archive className="size-4 text-muted-foreground" />
-                      Archive note
-                    </>
+                  aria-label={metadata.archived ? "Unarchive note" : "Archive note"}
+                  className={cn(
+                    "text-muted-foreground hover:text-foreground",
+                    metadata.archived &&
+                      "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400",
                   )}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
+                />
+              }
+            >
+              {metadata.archived ? (
+                <ArchiveRestore className="size-4" />
+              ) : (
+                <Archive className="size-4" />
+              )}
+            </TooltipTrigger>
+            <TooltipContent>
+              {metadata.archived ? "Unarchive note" : "Archive note"}
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={onDelete}
-                >
-                  <Trash2 className="size-4" />
-                  Delete note
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  aria-label="Delete note"
+                  className="text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400"
+                />
+              }
+            >
+              <Trash2 className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>Delete note</TooltipContent>
+          </Tooltip>
 
           <VersionHistoryButton
             noteId={note.id}
