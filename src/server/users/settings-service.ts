@@ -72,6 +72,7 @@ export const userSettingsSchema = z.object({
       pasteToPreview: z.boolean().optional(),
       spellcheck: z.boolean().optional(),
       spellcheckLanguage: z.enum(["auto", "en", "fa"]).optional(),
+      autocorrect: z.boolean().optional(),
     })
     .optional(),
   ai: aiProviderSettingsSchema.optional(),
@@ -173,6 +174,7 @@ export const DEFAULTS: UserSettings = {
     pasteToPreview: true,
     spellcheck: true,
     spellcheckLanguage: "auto",
+    autocorrect: true,
   },
   ai: {
     temperature: 0.4,

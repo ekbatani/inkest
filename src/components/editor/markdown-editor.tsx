@@ -56,6 +56,12 @@ import {
   createMarkdownLspExtension,
   createWorkspaceHeadingCompletionSource,
 } from "@/components/editor/extensions/markdown-lsp-extension";
+import {
+  getSavedNoteScroll,
+  saveNoteScroll,
+  calculateScrollRatio,
+  calculateTargetScrollTop,
+} from "@/lib/notes/scroll-position";
 
 type Props = {
   value: string;
@@ -68,11 +74,30 @@ type Props = {
   onLargeMarkdownPaste?: (content: string) => void;
   spellcheck?: boolean;
   spellcheckLanguage?: "auto" | "en" | "fa";
+  autocorrect?: boolean;
   documentId?: string;
   externalVersion?: number;
   viewMode?: "source" | "live-preview";
   enableLsp?: boolean;
 };
+
+export function createEditorContentAttributes({
+  spellcheck = true,
+  spellcheckLanguage = "auto",
+  autocorrect = true,
+}: {
+  spellcheck?: boolean;
+  spellcheckLanguage?: "auto" | "en" | "fa";
+  autocorrect?: boolean;
+} = {}) {
+  return EditorView.contentAttributes.of({
+    spellcheck: String(spellcheck),
+    autocorrect: autocorrect ? "on" : "off",
+    autocapitalize: autocorrect ? "sentences" : "off",
+    writingsuggestions: autocorrect ? "true" : "false",
+    ...(spellcheckLanguage === "auto" ? {} : { lang: spellcheckLanguage }),
+  });
+}
 
 const LARGE_PASTE_THRESHOLD = 1500;
 
@@ -1006,6 +1031,7 @@ export function MarkdownEditor({
   onLargeMarkdownPaste,
   spellcheck = true,
   spellcheckLanguage = "auto",
+  autocorrect = true,
   documentId,
   externalVersion = 0,
   viewMode = "live-preview",
@@ -1050,12 +1076,191 @@ export function MarkdownEditor({
       window.removeEventListener("inkest:open-insert-link-dialog", onOpenDialog);
   }, []);
 
+  // Note scroll position tracking and restoration
+  const isRestoringScrollRef = React.useRef(false);
+  const hasUserScrolledRef = React.useRef(false);
+  const pendingScrollSaveRef = React.useRef<{
+    docId: string;
+    scrollTop: number;
+    scrollRatio: number;
+    viewMode: "live-preview" | "source";
+  } | null>(null);
+  const scrollSaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushScrollSave = React.useCallback(() => {
+    if (scrollSaveTimerRef.current) {
+      clearTimeout(scrollSaveTimerRef.current);
+      scrollSaveTimerRef.current = null;
+    }
+    const pending = pendingScrollSaveRef.current;
+    if (pending) {
+      saveNoteScroll(pending.docId, {
+        scrollTop: pending.scrollTop,
+        scrollRatio: pending.scrollRatio,
+        viewMode: pending.viewMode,
+      });
+      pendingScrollSaveRef.current = null;
+    }
+  }, []);
+
+  const restoreScrollPosition = React.useCallback(
+    (view: EditorView, docId: string, mode: "live-preview" | "source") => {
+      const saved = getSavedNoteScroll(docId);
+      if (!saved || !view?.scrollDOM) return;
+
+      const scroller = view.scrollDOM;
+      const targetScrollTop = calculateTargetScrollTop(
+        saved,
+        {
+          scrollHeight: scroller.scrollHeight,
+          clientHeight: scroller.clientHeight,
+        },
+        mode,
+      );
+
+      if (targetScrollTop <= 0) return;
+
+      isRestoringScrollRef.current = true;
+      scroller.scrollTop = targetScrollTop;
+
+      // Re-apply once CodeMirror's initial line height measurements settle,
+      // unless the user has already initiated manual scrolling.
+      let cancelled = false;
+      const rafId = requestAnimationFrame(() => {
+        isRestoringScrollRef.current = false;
+        if (cancelled || hasUserScrolledRef.current || !view.scrollDOM) return;
+        const currentTarget = calculateTargetScrollTop(
+          saved,
+          {
+            scrollHeight: view.scrollDOM.scrollHeight,
+            clientHeight: view.scrollDOM.clientHeight,
+          },
+          mode,
+        );
+        if (Math.abs(view.scrollDOM.scrollTop - currentTarget) > 2) {
+          isRestoringScrollRef.current = true;
+          view.scrollDOM.scrollTop = currentTarget;
+          queueMicrotask(() => {
+            isRestoringScrollRef.current = false;
+          });
+        }
+      });
+
+      view.requestMeasure({
+        read: (v) =>
+          calculateTargetScrollTop(
+            saved,
+            {
+              scrollHeight: v.scrollDOM.scrollHeight,
+              clientHeight: v.scrollDOM.clientHeight,
+            },
+            mode,
+          ),
+        write: (currentTarget, v) => {
+          if (cancelled || hasUserScrolledRef.current || !v.scrollDOM) return;
+          if (Math.abs(v.scrollDOM.scrollTop - currentTarget) > 2) {
+            isRestoringScrollRef.current = true;
+            v.scrollDOM.scrollTop = currentTarget;
+            queueMicrotask(() => {
+              isRestoringScrollRef.current = false;
+            });
+          }
+        },
+      });
+
+      return () => {
+        cancelled = true;
+        cancelAnimationFrame(rafId);
+      };
+    },
+    [],
+  );
+
+  const handleEditorScroll = React.useCallback(
+    (view: EditorView) => {
+      if (!documentId || isRestoringScrollRef.current) return;
+      const scroller = view.scrollDOM;
+      if (!scroller) return;
+
+      hasUserScrolledRef.current = true;
+      const scrollTop = scroller.scrollTop;
+      const scrollRatio = calculateScrollRatio(
+        scrollTop,
+        scroller.scrollHeight,
+        scroller.clientHeight,
+      );
+
+      pendingScrollSaveRef.current = {
+        docId: documentId,
+        scrollTop,
+        scrollRatio,
+        viewMode: viewMode === "source" ? "source" : "live-preview",
+      };
+
+      if (scrollSaveTimerRef.current) {
+        clearTimeout(scrollSaveTimerRef.current);
+      }
+      scrollSaveTimerRef.current = setTimeout(flushScrollSave, 150);
+    },
+    [documentId, viewMode, flushScrollSave],
+  );
+
+  const handleCreateEditor = React.useCallback(
+    (view: EditorView) => {
+      if (documentId) {
+        hasUserScrolledRef.current = false;
+        restoreScrollPosition(
+          view,
+          documentId,
+          viewMode === "source" ? "source" : "live-preview",
+        );
+      }
+    },
+    [documentId, viewMode, restoreScrollPosition],
+  );
+
+  // Attach scroll listener to CodeMirror scroller
+  React.useEffect(() => {
+    const view = editorRef?.current?.view;
+    if (!view || !documentId) return;
+
+    const scroller = view.scrollDOM;
+    if (!scroller) return;
+
+    const onScroll = () => {
+      handleEditorScroll(view);
+    };
+
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      scroller.removeEventListener("scroll", onScroll);
+      flushScrollSave();
+    };
+  }, [documentId, viewMode, editorRef, handleEditorScroll, flushScrollSave]);
+
+  // Flush scroll on page unload
+  React.useEffect(() => {
+    const onBeforeUnload = () => {
+      flushScrollSave();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      flushScrollSave();
+    };
+  }, [flushScrollSave]);
+
   // Apply external changes (e.g. Note navigation switch, Version restore, toolbar Undo/Redo)
   // This explicitly prevents debounced keystroke echoes and in-flight server save confirmations
   // from resetting active typing or jumping the cursor.
   React.useEffect(() => {
     const isDocSwitch = documentId !== undefined && documentId !== lastDocumentIdRef.current;
     const isVersionBump = externalVersion !== lastExternalVersionRef.current;
+
+    if (isDocSwitch) {
+      flushScrollSave();
+      hasUserScrolledRef.current = false;
+    }
 
     lastDocumentIdRef.current = documentId;
     lastExternalVersionRef.current = externalVersion;
@@ -1077,7 +1282,15 @@ export function MarkdownEditor({
         selection: { anchor: newAnchor, head: newHead },
       });
     }
-  }, [value, documentId, externalVersion, editorRef]);
+
+    if (isDocSwitch && view && documentId) {
+      restoreScrollPosition(
+        view,
+        documentId,
+        viewMode === "source" ? "source" : "live-preview",
+      );
+    }
+  }, [value, documentId, externalVersion, editorRef, viewMode, flushScrollSave, restoreScrollPosition]);
 
   const handleCodeMirrorChange = React.useCallback(
     (nextValue: string) => {
@@ -1110,12 +1323,17 @@ export function MarkdownEditor({
       }),
       syntaxHighlighting(fencedCodeHighlightStyle),
       EditorView.lineWrapping,
-      // CodeMirror owns the editable DOM, so native browser spellcheck must
-      // be enabled on its content element rather than on the React wrapper.
+      // CodeMirror owns the editable DOM, so native browser spellcheck and
+      // autocorrection must be enabled on its content element rather than on
+      // the React wrapper. By default, CodeMirror disables autocorrect ("off"),
+      // autocapitalize ("off"), and writingsuggestions ("false") for code editing.
+      // For prose note-taking, we explicitly enable browser-native autocorrect,
+      // autocapitalize, and writing suggestions.
       // This stays entirely in the browser: no note text is sent anywhere.
-      EditorView.contentAttributes.of({
-        spellcheck: String(spellcheck),
-        ...(spellcheckLanguage === "auto" ? {} : { lang: spellcheckLanguage }),
+      createEditorContentAttributes({
+        spellcheck,
+        spellcheckLanguage,
+        autocorrect,
       }),
       ...(viewMode === "live-preview"
         ? [
@@ -1760,6 +1978,7 @@ export function MarkdownEditor({
       onLargeMarkdownPaste,
       spellcheck,
       spellcheckLanguage,
+      autocorrect,
       viewMode,
       enableLsp,
       documentId,
@@ -1774,6 +1993,7 @@ export function MarkdownEditor({
         ref={editorRef}
         value={initialValue}
         onChange={handleCodeMirrorChange}
+        onCreateEditor={handleCreateEditor}
         extensions={extensions}
         height="100%"
         className="h-full text-sm"

@@ -123,12 +123,12 @@ export function NoteDetailsPopover({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 rounded-full px-2.5 text-xs"
+                    className="h-7 rounded-full px-2.5 text-xs gap-1.5"
                     nativeButton={false}
-                    render={<Link href={`/projects/${note.id}?tab=tasks`} />}
+                    render={<Link href={`/projects/${note.id}`} />}
                   >
-                    <FolderKanban className="size-3" />
-                    Tasks
+                    <FolderKanban className="size-3 text-amber-500" />
+                    Project mode
                   </Button>
                 </div>
               </div>

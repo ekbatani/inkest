@@ -518,12 +518,109 @@ export type BacklinkItem = Note & { snippet?: string };
 /**
  * Find notes whose content references this note via `[[slug]]`, `[[title]]`,
  * `![[embed]]`, or markdown links like `/notes/${id}` or `/projects/${id}`.
- * Matches are case-insensitive and stripped of section anchors.
+ *
+ * Primary path: indexed lookup via the `documentLinks` table (fast, O(1)).
+ * Fallback: in-memory regex scan when no indexed links exist yet.
  */
 export async function getBacklinks(noteId: string): Promise<BacklinkItem[]> {
   const target = await getNoteById(noteId);
   if (!target) return [];
 
+  // ── Fast path: indexed backlinks via documentLinks table ──────────────
+  const indexedLinks = await db
+    .select({ sourceDocumentId: schema.documentLinks.sourceDocumentId })
+    .from(schema.documentLinks)
+    .where(
+      and(
+        eq(schema.documentLinks.targetDocumentId, noteId),
+        eq(schema.documentLinks.workspaceId, target.workspaceId),
+      ),
+    );
+
+  if (indexedLinks.length > 0) {
+    const sourceIds = indexedLinks.map((l) => l.sourceDocumentId);
+    const sourceNotes = await db
+      .select()
+      .from(schema.notes)
+      .where(
+        and(
+          inArray(schema.notes.id, sourceIds),
+          isNull(schema.notes.deletedAt),
+        ),
+      );
+
+    return sourceNotes.map((n) => {
+      const snippet = extractSnippetForTarget(n.contentMd, target, noteId);
+      return { ...n, snippet };
+    });
+  }
+
+  // ── Fallback: in-memory scan for unindexed workspaces ─────────────────
+  return getBacklinksFallback(target, noteId);
+}
+
+/** Extract a short snippet showing the line that links to the target note. */
+function extractSnippetForTarget(
+  contentMd: string,
+  target: Note,
+  noteId: string,
+): string | undefined {
+  const slugNeedle = normalizeSearch(target.slug);
+  const titleNeedle = normalizeSearch(target.title);
+  const noteHrefNeedle = `/notes/${noteId}`;
+  const projectHrefNeedle = `/projects/${noteId}`;
+
+  const lines = contentMd.split("\n");
+  let inFence = false;
+
+  for (const line of lines) {
+    if (/^\s*```/.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+
+    // Check wiki-links
+    if (line.includes("[[")) {
+      WIKI_TOKEN_RE.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = WIKI_TOKEN_RE.exec(line)) !== null) {
+        const rawName = match[2] ?? match[1];
+        const name = rawName?.split("#")[0]?.trim() ?? "";
+        if (!name) continue;
+        const norm = normalizeSearch(name);
+        if (norm === slugNeedle || norm === titleNeedle) {
+          const trimmed = line.trim();
+          return trimmed.length > 120
+            ? `${trimmed.slice(0, 117)}...`
+            : trimmed;
+        }
+      }
+    }
+
+    // Check path links
+    if (
+      line.includes(noteHrefNeedle) ||
+      line.includes(projectHrefNeedle)
+    ) {
+      const trimmed = line.trim();
+      return trimmed.length > 120
+        ? `${trimmed.slice(0, 117)}...`
+        : trimmed;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Legacy in-memory backlink scan. Used as a fallback when the documentLinks
+ * table has not been populated yet for a workspace.
+ */
+async function getBacklinksFallback(
+  target: Note,
+  noteId: string,
+): Promise<BacklinkItem[]> {
   const candidates = await db
     .select()
     .from(schema.notes)
@@ -537,61 +634,12 @@ export async function getBacklinks(noteId: string): Promise<BacklinkItem[]> {
     )
     .limit(500);
 
-  const slugNeedle = normalizeSearch(target.slug);
-  const titleNeedle = normalizeSearch(target.title);
-  const noteHrefNeedle = `/notes/${noteId}`;
-  const projectHrefNeedle = `/projects/${noteId}`;
-
   const results: BacklinkItem[] = [];
 
   for (const n of candidates) {
-    const hasWiki = n.contentMd.includes("[[");
-    const hasPathLink =
-      n.contentMd.includes(noteHrefNeedle) ||
-      n.contentMd.includes(projectHrefNeedle);
-
-    if (!hasWiki && !hasPathLink) continue;
-
-    const lines = n.contentMd.split("\n");
-    let matchSnippet: string | null = null;
-
-    let inFence = false;
-    for (const line of lines) {
-      if (/^\s*```/.test(line)) {
-        inFence = !inFence;
-        continue;
-      }
-      if (inFence) continue;
-
-      if (hasWiki) {
-        WIKI_TOKEN_RE.lastIndex = 0;
-        let match: RegExpExecArray | null;
-        while ((match = WIKI_TOKEN_RE.exec(line)) !== null) {
-          const rawName = match[2] ?? match[1];
-          const name = rawName?.split("#")[0]?.trim() ?? "";
-          if (!name) continue;
-          const norm = normalizeSearch(name);
-          if (norm === slugNeedle || norm === titleNeedle) {
-            matchSnippet = line.trim();
-            break;
-          }
-        }
-      }
-
-      if (!matchSnippet && hasPathLink) {
-        if (line.includes(noteHrefNeedle) || line.includes(projectHrefNeedle)) {
-          matchSnippet = line.trim();
-        }
-      }
-
-      if (matchSnippet) break;
-    }
-
-    if (matchSnippet) {
-      results.push({
-        ...n,
-        snippet: matchSnippet.length > 120 ? `${matchSnippet.slice(0, 117)}...` : matchSnippet,
-      });
+    const snippet = extractSnippetForTarget(n.contentMd, target, noteId);
+    if (snippet) {
+      results.push({ ...n, snippet });
     }
   }
 

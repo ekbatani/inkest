@@ -13,15 +13,25 @@ import {
 } from "./service";
 import { syncMarkdownTasks } from "@/server/tasks/service";
 
-export async function createNoteAction() {
-  const note = await createNote({ title: "Untitled" });
+export async function revalidateTreeAndLayout() {
   revalidatePath("/", "layout");
+  revalidatePath("/(app)", "layout");
+  revalidatePath("/projects");
+  revalidatePath("/notes");
+}
+
+export async function createNoteAction(parentId?: string | null) {
+  const note = await createNote({
+    title: "Untitled",
+    parentId: parentId || undefined,
+  });
+  revalidateTreeAndLayout();
   redirect(`/notes/${note.id}`);
 }
 
 export async function createNoteWithTitleAction(title: string) {
   const note = await createNote({ title: title.trim() || "Untitled" });
-  revalidatePath("/", "layout");
+  revalidateTreeAndLayout();
   return note;
 }
 
@@ -41,7 +51,7 @@ export async function createProjectAction(
     parentId: parentId || undefined,
     status: "todo",
   });
-  revalidatePath("/", "layout");
+  revalidateTreeAndLayout();
   redirect(`/projects/${note.id}`);
 }
 
@@ -49,26 +59,60 @@ export async function createSubprojectAction(parentId: string) {
   return createProjectAction(parentId);
 }
 
+export async function createNoteFromNewPageAction(params: {
+  parent?: string | null;
+  as?: string | null;
+  title?: string | null;
+}) {
+  const parentId =
+    params.parent && typeof params.parent === "string" ? params.parent : null;
+  const isTask = params.as === "task";
+  const isProject = params.as === "project";
+  const defaultTitle = isProject ? "New subproject" : isTask ? "New task" : "Untitled";
+  const noteTitle =
+    typeof params.title === "string" && params.title.trim() ? params.title.trim() : defaultTitle;
+
+  const note = await createNote({
+    title: noteTitle,
+    parentId,
+    type: isProject ? "project" : "note",
+    status: isTask ? "todo" : "none",
+  });
+  revalidateTreeAndLayout();
+  return isProject ? `/projects/${note.id}` : `/notes/${note.id}?focus=title`;
+}
+
 export async function setProjectParentAction(
   projectId: string,
   parentId: string | null,
 ) {
   const updated = await updateNote(projectId, { parentId });
-  revalidatePath("/", "layout");
+  revalidateTreeAndLayout();
   return updated;
 }
 
 export async function createProjectTaskNoteAction(
   projectId: string,
   title: string,
+  status: "todo" | "doing" | "paused" | "done" = "todo",
 ) {
   const note = await createNote({
     title: title.trim() || "New task",
     parentId: projectId,
-    status: "todo",
+    status,
   });
-  revalidatePath("/", "layout");
+  revalidateTreeAndLayout();
   return note;
+}
+
+export async function deleteProjectTaskNoteAction(id: string) {
+  await deleteNoteSoft(id);
+  revalidateTreeAndLayout();
+}
+
+export async function archiveProjectTaskNoteAction(id: string) {
+  await archiveNote(id);
+  revalidateTreeAndLayout();
 }
 
 export async function autoSaveNoteAction(
@@ -91,30 +135,30 @@ export async function updateNoteAction(
   input: Parameters<typeof updateNote>[1],
 ) {
   const updated = await autoSaveNoteAction(id, input);
-  revalidatePath("/", "layout");
+  revalidateTreeAndLayout();
   return updated;
 }
 
 export async function archiveNoteAction(id: string) {
   await archiveNote(id);
-  revalidatePath("/", "layout");
+  revalidateTreeAndLayout();
   redirect("/notes");
 }
 
 export async function unarchiveNoteAction(id: string) {
   await unarchiveNote(id);
-  revalidatePath("/", "layout");
+  revalidateTreeAndLayout();
 }
 
 export async function deleteNoteAction(id: string) {
   await deleteNoteSoft(id);
-  revalidatePath("/", "layout");
+  revalidateTreeAndLayout();
   redirect("/notes");
 }
 
 export async function togglePinnedAction(id: string) {
   await togglePinned(id);
-  revalidatePath("/", "layout");
+  revalidateTreeAndLayout();
 }
 
 export async function moveNoteInTreeAction(
@@ -127,7 +171,7 @@ export async function moveNoteInTreeAction(
     throw new Error("NOTE_NOT_FOUND");
   }
 
-  revalidatePath("/", "layout");
+  revalidateTreeAndLayout();
   return note;
 }
 

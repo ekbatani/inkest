@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import {
   Search,
@@ -653,13 +654,13 @@ export function InsertLinkDialog({
                             </span>
                           ) : item.type === "asset" ? (
                             isImageAsset(item) ? (
-                              <div className="size-7 shrink-0 rounded-lg overflow-hidden border border-border/60 bg-muted/40 flex items-center justify-center">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
+                              <div className="relative size-7 shrink-0 rounded-lg overflow-hidden border border-border/60 bg-muted/40 flex items-center justify-center">
+                                <Image
                                   src={`/api/attachments/${item.id}`}
                                   alt={item.title}
-                                  className="size-full object-cover"
-                                  loading="lazy"
+                                  fill
+                                  sizes="28px"
+                                  className="object-cover"
                                 />
                               </div>
                             ) : (

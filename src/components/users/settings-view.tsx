@@ -245,11 +245,12 @@ export function SettingsView({
                 font={settings.theme?.font}
               />
               <EditorPrefsSection
-                key={`editor:${settings.editor?.autosaveDelayMs}:${settings.editor?.showLineNumbers}:${settings.editor?.spellcheck}:${settings.editor?.spellcheckLanguage}`}
+                key={`editor:${settings.editor?.autosaveDelayMs}:${settings.editor?.showLineNumbers}:${settings.editor?.spellcheck}:${settings.editor?.spellcheckLanguage}:${settings.editor?.autocorrect}`}
                 autosaveDelayMs={settings.editor?.autosaveDelayMs}
                 showLineNumbers={settings.editor?.showLineNumbers}
                 spellcheck={settings.editor?.spellcheck}
                 spellcheckLanguage={settings.editor?.spellcheckLanguage}
+                autocorrect={settings.editor?.autocorrect}
               />
             </div>
           )}

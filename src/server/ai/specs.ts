@@ -676,6 +676,47 @@ export function buildAiUserPrompt(action: AiActionId, context: Record<string, un
   ].join("\n\n");
 }
 
+export function buildAiStreamingSystemPrompt(action: AiActionId) {
+  const spec = AI_ACTION_SPECS[action];
+
+  return [
+    `You are the Inkest AI Assistant, deeply integrated into Inkest — a private, Markdown-first personal workspace.`,
+    `Executing Action: "${action}"`,
+    spec.goal,
+    "",
+    "WORKSPACE DOMAIN CONVENTIONS:",
+    "- Notes: Markdown notes with live preview, wiki-links ([[Note Title]]), tags (#tag), and checklist items (- [ ]).",
+    "- Output pristine Markdown directly without any JSON or code fence wrapping around the whole response.",
+    "- Do NOT output conversational commentary (such as 'Here is your note:'). Start directly with the markdown content.",
+    "",
+    "RULES & CONSTRAINTS:",
+    ...spec.rules.map((rule) => `- ${rule}`),
+  ].join("\n");
+}
+
+export function buildAiStreamingUserPrompt(action: AiActionId, context: Record<string, unknown>) {
+  const parts: string[] = [
+    `Execute the "${action}" action on the following content:`,
+  ];
+
+  if (context.selectedText && typeof context.selectedText === "string" && context.selectedText.trim()) {
+    parts.push(`Selected text to transform:\n${context.selectedText}`);
+  } else if (context.noteContent && typeof context.noteContent === "string") {
+    parts.push(`Note Title: ${context.noteTitle ?? "Untitled"}`);
+    parts.push(`Note content:\n${context.noteContent}`);
+  }
+
+  if (context.promptHint && typeof context.promptHint === "string" && context.promptHint.trim()) {
+    parts.push(`User instructions / prompt hint: ${context.promptHint}`);
+  }
+
+  if (context.targetLanguage && typeof context.targetLanguage === "string" && context.targetLanguage.trim()) {
+    parts.push(`Target language: ${context.targetLanguage}`);
+  }
+
+  return parts.join("\n\n");
+}
+
 export function createSchemaParser<T>(
   schema: z.ZodType<T>,
   normalizer?: (val: unknown) => unknown,

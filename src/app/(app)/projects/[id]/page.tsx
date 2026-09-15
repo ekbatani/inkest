@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ChevronLeft,
-  Pencil,
   FileText,
   ListChecks,
   FolderClosed,
@@ -16,6 +15,7 @@ import {
   listProjectTaskNotes,
   listParentCandidates,
 } from "@/server/notes/service";
+import { createProjectAction, createNoteAction } from "@/server/notes/actions";
 import { listTasks } from "@/server/tasks/service";
 import { listAttachmentsForUser } from "@/server/attachments/service";
 import { getProjectShareInfo } from "@/server/projects/service";
@@ -32,6 +32,7 @@ import {
 import { ProjectTitleEditor } from "@/components/projects/project-title-editor";
 import { ProjectParentPicker } from "@/components/projects/project-parent-picker";
 import { ProjectShareMenu } from "@/components/projects/project-share-dialog";
+import { ProjectModeToggle } from "@/components/projects/project-mode-toggle";
 import { NoteStatusBadge } from "@/components/notes/note-status-badge";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
 import { ProjectTaskNotesPanel } from "@/components/projects/project-task-notes-panel";
@@ -190,24 +191,23 @@ export default async function ProjectDetailPage({
           ) : null}
           {canEdit && (
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                nativeButton={false}
-                render={<Link href={`/notes/new?parent=${note.id}&as=project`} aria-label="Create subproject" />}
-              >
-                <FolderPlus className="size-4" /> Subproject
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                nativeButton={false}
-                render={<Link href={`/notes/${note.id}`} aria-label="Edit as note" />}
-              >
-                <Pencil className="size-4" /> Edit
-              </Button>
+              <form action={createProjectAction}>
+                <input type="hidden" name="parentId" value={note.id} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="submit"
+                  className="gap-1.5"
+                  aria-label="Create subproject"
+                >
+                  <FolderPlus className="size-4" /> Subproject
+                </Button>
+              </form>
+              <ProjectModeToggle
+                noteId={note.id}
+                currentMode="project"
+                canEdit={canEdit}
+              />
             </>
           )}
         </div>
@@ -315,15 +315,17 @@ function OverviewTab({
         </p>
         {canEdit && (
           <div className="mt-2 flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              nativeButton={false}
-              render={<Link href={`/notes/new?parent=${note.id}&as=project`} />}
-            >
-              <FolderPlus className="size-4" /> Create subproject
-            </Button>
+            <form action={createProjectAction}>
+              <input type="hidden" name="parentId" value={note.id} />
+              <Button
+                variant="outline"
+                size="sm"
+                type="submit"
+                className="gap-1.5"
+              >
+                <FolderPlus className="size-4" /> Create subproject
+              </Button>
+            </form>
           </div>
         )}
       </div>
@@ -355,15 +357,17 @@ function OverviewTab({
               <p className="mt-0.5 text-xs text-muted-foreground">Task boards stay local to each project; use a subproject for its own workstream.</p>
             </div>
             {canEdit && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs h-7"
-                nativeButton={false}
-                render={<Link href={`/notes/new?parent=${note.id}&as=project`} />}
-              >
-                <FolderPlus className="size-3.5" /> Add subproject
-              </Button>
+              <form action={createProjectAction}>
+                <input type="hidden" name="parentId" value={note.id} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="submit"
+                  className="gap-1.5 text-xs h-7"
+                >
+                  <FolderPlus className="size-3.5" /> Add subproject
+                </Button>
+              </form>
             )}
           </div>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -398,15 +402,17 @@ function NotesTab({
           Linked notes
         </h2>
         {canEdit && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            nativeButton={false}
-            render={<Link href={`/notes/new?parent=${projectId}`} aria-label="Add linked note" />}
-          >
-            Add note
-          </Button>
+          <form action={createNoteAction.bind(null, projectId)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              type="submit"
+              aria-label="Add linked note"
+            >
+              Add note
+            </Button>
+          </form>
         )}
       </div>
       {childNotes.length === 0 ? (

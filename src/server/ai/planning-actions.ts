@@ -173,6 +173,8 @@ export async function saveAiTaskPlanAction(input: z.input<typeof savePlanSchema>
   }
 
   revalidatePath("/", "layout");
+  revalidatePath("/(app)", "layout");
+  revalidatePath("/projects");
   revalidatePath(`/projects/${destinationNoteId}`);
   revalidatePath(`/notes/${parsed.sourceNoteId}`);
   return { created, skipped, destinationNoteId };

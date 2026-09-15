@@ -14,6 +14,11 @@ import { commentOnSelection } from "@/server/ai/comment-selection";
 import { applyInlineComments } from "@/server/ai/apply-comments";
 import { NoteEditorActionSchema } from "@/server/ai/specs";
 import { notifyAiActionResult } from "@/server/notifications/telegram";
+import { streamTextAction, type StreamTextActionResult } from "@/server/ai/runner";
+import {
+  buildAiStreamingSystemPrompt,
+  buildAiStreamingUserPrompt,
+} from "@/server/ai/specs";
 
 const RequestSchema = z.object({
   action: NoteEditorActionSchema,
@@ -21,13 +26,92 @@ const RequestSchema = z.object({
   selectedText: z.string().optional(),
   promptHint: z.string().optional(),
   targetLanguage: z.string().optional(),
+  stream: z.boolean().optional().default(false),
 });
+
+const STREAMABLE_ACTIONS = new Set([
+  "summarize",
+  "improve-writing",
+  "gently-edit",
+  "explain",
+  "translate",
+  "comment-selection",
+  "apply-comments",
+]);
 
 function statusFor(actionReturn: {
   ok: boolean;
   notConfigured?: boolean;
 }): number {
   return actionReturn.notConfigured ? 503 : 500;
+}
+
+function createSseStreamResponse(
+  streamResult: Extract<StreamTextActionResult, { ok: true }>,
+  noteTitle: string,
+  action: string,
+) {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      let fullText = "";
+      try {
+        for await (const chunk of streamResult.stream) {
+          fullText += chunk;
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: "chunk", text: chunk })}\n\n`),
+          );
+        }
+
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: "done",
+              output: fullText,
+              citations: streamResult.citations,
+              transformType: streamResult.transformType,
+              uncertaintyNote: streamResult.uncertaintyNote,
+            })}\n\n`,
+          ),
+        );
+
+        // Run persistence and notification asynchronously in background
+        void streamResult.onComplete(fullText).catch((err) => {
+          console.warn("[api/ai] stream onComplete error:", err);
+        });
+
+        void notifySuccessfulAiAction({
+          action,
+          noteTitle,
+          output: fullText,
+          model: streamResult.model,
+          provider: streamResult.provider,
+        }).catch((err) => {
+          console.warn("[api/ai] async notification error:", err);
+        });
+      } catch (err) {
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: "error",
+              error: err instanceof Error ? err.message : "Stream failed.",
+            })}\n\n`,
+          ),
+        );
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }
 
 function formatTasksForNotification(
@@ -64,7 +148,11 @@ async function notifySuccessfulAiAction(args: {
   model?: string;
   provider?: string;
 }) {
-  await notifyAiActionResult(args);
+  try {
+    await notifyAiActionResult(args);
+  } catch (err) {
+    console.warn("[api/ai] async notification error:", err);
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -82,7 +170,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { action, noteId, selectedText, promptHint, targetLanguage } =
+  const { action, noteId, selectedText, promptHint, targetLanguage, stream } =
     parsed.data;
 
   const note = await getNoteById(noteId);
@@ -124,6 +212,48 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // ── Streaming execution for text actions ────────────────────────────────
+  if (stream && STREAMABLE_ACTIONS.has(action)) {
+    const hasSelection = Boolean(selection);
+    const inputForAudit = hasSelection ? selection! : `# ${note.title}\n\n${note.contentMd}`;
+
+    const streamResult = await streamTextAction({
+      noteId: note.id,
+      action,
+      systemPrompt: buildAiStreamingSystemPrompt(action),
+      inputForAudit,
+      promptToModel: buildAiStreamingUserPrompt(action, {
+        noteTitle: note.title,
+        noteContent: note.contentMd,
+        selectedText: hasSelection ? selection : undefined,
+        promptHint,
+        targetLanguage,
+      }),
+      enableGrounding: action === "explain" || action === "summarize",
+      transformType:
+        action === "gently-edit"
+          ? "Gentle Polish"
+          : action === "improve-writing"
+            ? "Improve Writing"
+            : action === "summarize"
+              ? "Summary"
+              : action === "explain"
+                ? "Explanation"
+                : action === "translate"
+                  ? `Translation (${targetLanguage ?? "English"})`
+                  : undefined,
+    });
+
+    if (!streamResult.ok) {
+      return NextResponse.json(
+        { error: streamResult.error, notConfigured: streamResult.notConfigured },
+        { status: statusFor(streamResult) },
+      );
+    }
+
+    return createSseStreamResponse(streamResult, note.title, action);
+  }
+
   if (action === "summarize") {
     const r = await summarizeNote({
       noteId: note.id,
@@ -136,7 +266,7 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
-    await notifySuccessfulAiAction({
+    void notifySuccessfulAiAction({
       action,
       noteTitle: note.title,
       output: r.output,
@@ -164,7 +294,7 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
-    await notifySuccessfulAiAction({
+    void notifySuccessfulAiAction({
       action,
       noteTitle: note.title,
       output: r.output,
@@ -193,7 +323,7 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
-    await notifySuccessfulAiAction({
+    void notifySuccessfulAiAction({
       action,
       noteTitle: note.title,
       output: r.output,
@@ -221,7 +351,7 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
-    await notifySuccessfulAiAction({
+    void notifySuccessfulAiAction({
       action,
       noteTitle: note.title,
       output: r.output,
@@ -250,7 +380,7 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
-    await notifySuccessfulAiAction({
+    void notifySuccessfulAiAction({
       action,
       noteTitle: note.title,
       output: r.output,
@@ -277,7 +407,7 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
-    await notifySuccessfulAiAction({
+    void notifySuccessfulAiAction({
       action,
       noteTitle: note.title,
       output: r.output,
@@ -305,7 +435,7 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
-    await notifySuccessfulAiAction({
+    void notifySuccessfulAiAction({
       action,
       noteTitle: note.title,
       output: r.output,
@@ -334,7 +464,7 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
-    await notifySuccessfulAiAction({
+    void notifySuccessfulAiAction({
       action,
       noteTitle: note.title,
       output: r.output,
@@ -362,7 +492,7 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
-    await notifySuccessfulAiAction({
+    void notifySuccessfulAiAction({
       action,
       noteTitle: note.title,
       output: r.output,
@@ -390,7 +520,7 @@ export async function POST(request: NextRequest) {
         { error: r.error, notConfigured: r.notConfigured },
         { status: statusFor(r) },
       );
-    await notifySuccessfulAiAction({
+    void notifySuccessfulAiAction({
       action,
       noteTitle: note.title,
       output: formatTasksForNotification(r.output.tasks),

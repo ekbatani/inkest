@@ -101,7 +101,12 @@ export const notes = pgTable("notes", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("notes_user_ws_idx").on(table.userId, table.workspaceId),
+  index("notes_ws_status_idx").on(table.workspaceId, table.status),
+  uniqueIndex("notes_ws_slug_uq").on(table.workspaceId, table.slug),
+  index("notes_parent_idx").on(table.parentId),
+]);
 
 // ── tags ─────────────────────────────────────────────────────────────────
 export const tags = pgTable("tags", {
@@ -118,7 +123,10 @@ export const tags = pgTable("tags", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("tags_user_ws_idx").on(table.userId, table.workspaceId),
+  uniqueIndex("tags_ws_slug_uq").on(table.workspaceId, table.slug),
+]);
 
 // ── note_tags ────────────────────────────────────────────────────
 export const noteTags = pgTable("note_tags", {
@@ -128,7 +136,10 @@ export const noteTags = pgTable("note_tags", {
   tagId: text("tag_id")
     .notNull()
     .references(() => tags.id, { onDelete: "cascade" }),
-});
+}, (table) => [
+  uniqueIndex("note_tags_note_tag_uq").on(table.noteId, table.tagId),
+  index("note_tags_tag_idx").on(table.tagId),
+]);
 
 // ── project_members ──────────────────────────────────────────────
 export const projectMembers = pgTable(
@@ -194,7 +205,10 @@ export const tasks = pgTable("tasks", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("tasks_note_idx").on(table.noteId),
+  index("tasks_user_status_idx").on(table.userId, table.status),
+]);
 
 // ── notifications ────────────────────────────────────────────────────────
 export const notifications = pgTable(
@@ -255,7 +269,10 @@ export const attachments = pgTable("attachments", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("attachments_user_idx").on(table.userId),
+  index("attachments_note_idx").on(table.noteId),
+]);
 
 // ── note_versions ────────────────────────────────────────────────────────
 export const noteVersions = pgTable("note_versions", {
@@ -271,7 +288,9 @@ export const noteVersions = pgTable("note_versions", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("note_versions_note_idx").on(table.noteId, table.createdAt),
+]);
 
 // ── ai_events ────────────────────────────────────────────────────────────
 export const aiEvents = pgTable("ai_events", {
@@ -291,7 +310,10 @@ export const aiEvents = pgTable("ai_events", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("ai_events_user_idx").on(table.userId, table.createdAt),
+  index("ai_events_note_idx").on(table.noteId),
+]);
 
 // ── google_calendar_connections ──────────────────────────────────────────
 export const googleCalendarConnections = pgTable(
@@ -358,7 +380,10 @@ export const googleCalendarEvents = pgTable("google_calendar_events", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("gcal_events_user_ws_idx").on(table.userId, table.workspaceId),
+  index("gcal_events_starts_at_idx").on(table.startsAt),
+]);
 
 // ── documents ─────────────────────────────────────────────────────────────
 export const documents = pgTable("documents", {
@@ -389,7 +414,10 @@ export const documents = pgTable("documents", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("documents_user_ws_idx").on(table.userId, table.workspaceId),
+  index("documents_parent_idx").on(table.parentId),
+]);
 
 // ── annotations ───────────────────────────────────────────────────────────
 export const annotations = pgTable("annotations", {
@@ -414,7 +442,10 @@ export const annotations = pgTable("annotations", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("annotations_doc_idx").on(table.documentId),
+  index("annotations_user_idx").on(table.userId),
+]);
 
 // ── citations ─────────────────────────────────────────────────────────────
 export const citations = pgTable("citations", {
@@ -439,7 +470,10 @@ export const citations = pgTable("citations", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("citations_user_ws_idx").on(table.userId, table.workspaceId),
+  index("citations_source_idx").on(table.sourceType, table.sourceId),
+]);
 
 // ── saved_views ───────────────────────────────────────────────────────────
 export const savedViews = pgTable("saved_views", {
@@ -460,7 +494,9 @@ export const savedViews = pgTable("saved_views", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("saved_views_user_ws_idx").on(table.userId, table.workspaceId),
+]);
 
 // ── journal_entries ───────────────────────────────────────────────────────
 export const journalEntries = pgTable("journal_entries", {
@@ -492,7 +528,10 @@ export const journalEntries = pgTable("journal_entries", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("journal_entries_user_ws_idx").on(table.userId, table.workspaceId),
+  index("journal_entries_note_idx").on(table.noteId),
+]);
 
 // ── vault_items ───────────────────────────────────────────────────────────
 export const vaultItems = pgTable("vault_items", {
@@ -518,7 +557,9 @@ export const vaultItems = pgTable("vault_items", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("vault_items_user_ws_idx").on(table.userId, table.workspaceId),
+]);
 
 // ── audit_logs ────────────────────────────────────────────────────────────
 export const auditLogs = pgTable("audit_logs", {
@@ -537,7 +578,10 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("audit_logs_user_ws_idx").on(table.userId, table.workspaceId),
+  index("audit_logs_entity_idx").on(table.entityType, table.entityId),
+]);
 
 // ── chat_threads ──────────────────────────────────────────────────────────
 export const chatThreads = pgTable("chat_threads", {
@@ -555,7 +599,9 @@ export const chatThreads = pgTable("chat_threads", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("chat_threads_user_ws_idx").on(table.userId, table.workspaceId),
+]);
 
 // ── chat_messages ─────────────────────────────────────────────────────────
 export const chatMessages = pgTable("chat_messages", {
@@ -575,7 +621,10 @@ export const chatMessages = pgTable("chat_messages", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("chat_messages_thread_idx").on(table.threadId, table.createdAt),
+  index("chat_messages_user_ws_idx").on(table.userId, table.workspaceId),
+]);
 
 // ── document_blocks ──────────────────────────────────────────────────────
 export const documentBlocks = pgTable(
@@ -757,7 +806,10 @@ export const documentIndexState = pgTable("document_index_state", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("doc_index_state_ws_idx").on(table.workspaceId),
+  index("doc_index_state_status_idx").on(table.status),
+]);
 
 // ── payments ─────────────────────────────────────────────────────────────
 export const payments = pgTable(

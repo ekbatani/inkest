@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MermaidRenderer } from "@/components/markdown/mermaid-renderer";
@@ -196,12 +197,14 @@ export const DocumentBlockView = React.memo(
           const src = block.metadata.src || "";
           return (
             <figure className="my-4 flex flex-col items-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={src}
                 alt={alt}
-                loading="lazy"
-                className="max-h-[480px] w-auto rounded-lg border object-contain shadow-xs"
+                width={0}
+                height={0}
+                sizes="100vw"
+                unoptimized
+                className="max-h-[480px] w-auto max-w-full rounded-lg border object-contain shadow-xs"
               />
               {alt && <figcaption className="mt-1.5 text-xs text-muted-foreground">{alt}</figcaption>}
             </figure>
@@ -344,13 +347,14 @@ function renderInlineMarkdown(
 
       if (isEmbed && href?.startsWith("/api/attachments/") && /\.(png|jpe?g|webp|gif|svg|avif)$/i.test(parsed.targetName)) {
         parts.push(
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
+          <Image
             key={keyIdx}
             src={href}
             alt={label}
-            className="my-2 max-h-96 max-w-full rounded-xl border border-border/60 shadow-xs"
-            loading="lazy"
+            width={0}
+            height={0}
+            sizes="100vw"
+            className="my-2 max-h-96 w-auto max-w-full rounded-xl border border-border/60 shadow-xs object-contain"
           />,
         );
       } else if (href?.startsWith("/api/attachments/")) {

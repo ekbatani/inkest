@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/server/auth";
 import { MarketingNav } from "@/components/marketing/marketing-nav";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
+import "./marketing.css";
 
 export default async function MarketingLayout({
   children,

@@ -175,27 +175,13 @@ export async function listUpcomingTasks(
 
 // ── Markdown checkbox sync ────────────────────────────────────────────────
 
-export type ParsedCheckbox = {
-  line: number;
-  checked: boolean;
-  title: string;
-};
+import {
+  parseMarkdownCheckboxes,
+  type ParsedCheckbox,
+} from "@/lib/markdown/checkboxes";
 
-const CHECKBOX_RE = /^(\s*(?:[-*+]|\d+\.)\s+)\[(?:(x| )|X)\]\s+(.+)$/i;
+export { parseMarkdownCheckboxes, type ParsedCheckbox };
 
-export function parseMarkdownCheckboxes(content: string): ParsedCheckbox[] {
-  const out: ParsedCheckbox[] = [];
-  const lines = content.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    const m = CHECKBOX_RE.exec(lines[i] ?? "");
-    if (!m) continue;
-    const checked = (m[2] ?? "").toLowerCase() === "x";
-    const rest = (m[3] ?? "").trim();
-    if (!rest) continue;
-    out.push({ line: i, checked, title: rest });
-  }
-  return out;
-}
 
 /**
  * Pure reconciliation rule for a markdown-sourced task's status:

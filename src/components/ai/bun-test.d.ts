@@ -14,5 +14,9 @@ declare module "bun:test" {
   export const afterAll: (fn: () => void | Promise<void>) => void;
   export const beforeEach: (fn: () => void | Promise<void>) => void;
   export const afterEach: (fn: () => void | Promise<void>) => void;
+  export const mock: {
+    module: (moduleName: string, factory: () => unknown) => void;
+    fn: <T extends (...args: unknown[]) => unknown>(impl?: T) => T;
+  };
 }
 

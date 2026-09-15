@@ -75,10 +75,10 @@ export async function getProviderOrUnconfigured() {
     return {
       ok: false as const,
       result: {
-        ok: false,
+        ok: false as const,
         error: AI_NOT_CONFIGURED_ERROR,
-        notConfigured: true,
-      } as AiActionResult<never>,
+        notConfigured: true as const,
+      },
     };
   }
   return { ok: true as const, provider };
@@ -173,6 +173,126 @@ export async function runTextAction(args: {
       citations: citations.length > 0 ? citations : undefined,
       transformType: args.transformType ?? args.action,
       uncertaintyNote,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: formatAiErrorMessage(err),
+    };
+  }
+}
+
+export type StreamTextActionResult =
+  | {
+      ok: true;
+      stream: AsyncIterable<string>;
+      model: string;
+      provider: string;
+      citations?: CitationItem[];
+      transformType?: string;
+      uncertaintyNote?: string;
+      onComplete: (fullText: string) => Promise<void>;
+    }
+  | { ok: false; error: string; notConfigured?: boolean };
+
+/**
+ * Run a text-in/streaming-text-out AI action and asynchronously persist audit upon completion.
+ */
+export async function streamTextAction(args: {
+  noteId: string | null;
+  workspaceId?: string;
+  action: string;
+  systemPrompt: string;
+  inputForAudit: string;
+  promptToModel: string;
+  enableGrounding?: boolean;
+  transformType?: string;
+}): Promise<StreamTextActionResult> {
+  const user = await getCurrentUserOrError();
+  if (!user.ok) return { ok: false, error: user.error };
+
+  const [providerResult, settings] = await Promise.all([
+    getProviderOrUnconfigured(),
+    getUserSettings(),
+  ]);
+  if (!providerResult.ok) {
+    return { ok: false, error: providerResult.result.error, notConfigured: true };
+  }
+  const { provider } = providerResult;
+
+  const sanitizedInput = sanitizePromptInput(args.promptToModel);
+  let finalPrompt = sanitizedInput;
+  let citations: CitationItem[] = [];
+  let resolvedWorkspaceId = args.workspaceId;
+
+  if (args.enableGrounding) {
+    if (!resolvedWorkspaceId) {
+      const ws = await getWorkspaceForUser(user.userId);
+      if (ws) resolvedWorkspaceId = ws.id;
+    }
+
+    if (resolvedWorkspaceId) {
+      const grounded = await getGroundedContext({
+        userId: user.userId,
+        workspaceId: resolvedWorkspaceId,
+        query: args.inputForAudit,
+      });
+      finalPrompt += grounded.contextBlock;
+      citations = grounded.citations;
+    }
+  }
+
+  const inputHash = createHash("sha256").update(args.inputForAudit).digest("hex");
+  const providerName = provider.id;
+  const eventId = randomId();
+
+  try {
+    const stream = provider.stream(
+      limitPromptToInputBudget(finalPrompt, settings.ai?.maxInputTokens ?? 8_000),
+      args.systemPrompt,
+    );
+
+    const uncertaintyNote = citations.length === 0 && args.enableGrounding
+      ? "Note: No specific note/document sources matched this query; response is generated without external citations."
+      : undefined;
+
+    const onComplete = async (fullText: string) => {
+      const output = stripReasoningTags(fullText);
+      try {
+        await db.insert(schema.aiEvents).values({
+          id: eventId,
+          userId: user.userId,
+          noteId: args.noteId,
+          action: args.action,
+          inputHash,
+          outputMd: output,
+          provider: providerName,
+          model: provider.model,
+        });
+
+        if (citations.length > 0 && resolvedWorkspaceId) {
+          await persistCitations({
+            userId: user.userId,
+            workspaceId: resolvedWorkspaceId,
+            targetNoteId: args.noteId,
+            targetAiEventId: eventId,
+            citations,
+          });
+        }
+      } catch (err) {
+        console.warn("[ai-runner] failed to persist ai event/citations:", err);
+      }
+    };
+
+    return {
+      ok: true,
+      stream,
+      model: provider.model,
+      provider: providerName,
+      citations: citations.length > 0 ? citations : undefined,
+      transformType: args.transformType ?? args.action,
+      uncertaintyNote,
+      onComplete,
     };
   } catch (err) {
     return {

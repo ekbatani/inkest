@@ -95,7 +95,13 @@ type AiTarget = {
 
 type AiState =
   | { status: "idle" }
-  | { status: "loading"; label: string }
+  | {
+      status: "loading";
+      label: string;
+      action?: ActionId;
+      streamOutput?: string;
+      target?: AiTarget;
+    }
   | {
       status: "result";
       output: string;
@@ -178,6 +184,14 @@ export function AiPanel({
   const [showOnboarding, setShowOnboarding] = React.useState(!onboardingDismissed);
   const [dismissingOnboarding, setDismissingOnboarding] = React.useState(false);
 
+  const abortRef = React.useRef<AbortController | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   const dismissOnboarding = async () => {
     setDismissingOnboarding(true);
     try {
@@ -220,13 +234,83 @@ export function AiPanel({
     target = getTarget(),
   ) => {
     const label = ACTION_LABELS[action] ?? "Running AI...";
-    setState({ status: "loading", label });
+    setState({ status: "loading", label, action, target, streamOutput: "" });
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, noteId, ...payload }),
+        body: JSON.stringify({ action, noteId, stream: true, ...payload }),
+        signal: controller.signal,
       });
+
+      const contentType = res.headers.get("content-type") || "";
+
+      if (contentType.includes("text/event-stream") && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let accumulatedText = "";
+        let finalCitations: CitationItem[] | undefined;
+        let finalTransformType: string | undefined;
+        let finalUncertaintyNote: string | undefined;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() ?? "";
+
+          for (const ev of events) {
+            const trimmed = ev.trim();
+            if (!trimmed.startsWith("data: ")) continue;
+            const dataStr = trimmed.slice(6);
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.type === "chunk" && typeof parsed.text === "string") {
+                accumulatedText += parsed.text;
+                setState({
+                  status: "loading",
+                  label,
+                  action,
+                  target,
+                  streamOutput: accumulatedText,
+                });
+              } else if (parsed.type === "done") {
+                accumulatedText = parsed.output ?? accumulatedText;
+                finalCitations = parsed.citations;
+                finalTransformType = parsed.transformType;
+                finalUncertaintyNote = parsed.uncertaintyNote;
+              } else if (parsed.type === "error") {
+                setState({
+                  status: "error",
+                  message: parsed.error || "Generation error.",
+                });
+                return;
+              }
+            } catch {
+              // ignore parse errors on partial chunks
+            }
+          }
+        }
+
+        setState({
+          status: "result",
+          output: accumulatedText,
+          action,
+          target,
+          citations: finalCitations,
+          transformType: finalTransformType,
+          uncertaintyNote: finalUncertaintyNote,
+        });
+        return;
+      }
+
       const data = await res.json();
       if (!res.ok) {
         setState({
@@ -256,8 +340,14 @@ export function AiPanel({
         transformType: data.transformType,
         uncertaintyNote: data.uncertaintyNote,
       });
-    } catch {
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") {
+        setState({ status: "idle" });
+        return;
+      }
       setState({ status: "error", message: "Network error." });
+    } finally {
+      abortRef.current = null;
     }
   }, [getTarget, noteId]);
 
@@ -303,6 +393,7 @@ export function AiPanel({
   };
 
   const close = () => {
+    abortRef.current?.abort();
     setState({ status: "idle" });
     onClose?.();
   };
@@ -996,11 +1087,39 @@ export function AiPanel({
         open={
           variant === "menu" && (state.status === "result" ||
           state.status === "error" ||
-          state.status === "tasks")
+          state.status === "tasks" ||
+          (state.status === "loading" && Boolean(state.streamOutput)))
         }
         onOpenChange={(open) => !open && close()}
       >
         <DialogContent className="sm:max-w-2xl">
+          {state.status === "loading" && state.streamOutput && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AiBadge label="Generating..." />
+                    <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={close}
+                    className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Stop
+                  </Button>
+                </DialogTitle>
+                <DialogDescription>{state.label}</DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="max-h-[50vh] rounded-lg border p-4">
+                <MarkdownPreview content={state.streamOutput} />
+              </ScrollArea>
+              <div className="flex items-center justify-end text-xs text-muted-foreground animate-pulse">
+                Streaming response...
+              </div>
+            </>
+          )}
           {state.status === "error" && (
             <>
               <DialogHeader>
@@ -1145,7 +1264,7 @@ export function AiPanel({
         </DialogContent>
       </Dialog>
 
-      {variant === "menu" && state.status === "loading" && (
+      {variant === "menu" && state.status === "loading" && !state.streamOutput && (
         <div className="surface-card fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 shadow-lg">
           <span className="relative">
             <AiIcon />

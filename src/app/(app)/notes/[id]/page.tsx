@@ -22,6 +22,7 @@ import { getCurrentUser } from "@/server/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MarkdownPreview } from "@/components/markdown/markdown-preview";
+import { NoteScrollRestorer } from "@/components/notes/note-scroll-restorer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -95,6 +96,7 @@ export default async function NoteDetailPage({
           linkableNotes={linkableTargets}
           className="max-w-3xl font-sans text-[0.98rem] leading-8 tracking-[-0.01em] text-foreground/90 sm:text-[1.02rem]"
         />
+        <NoteScrollRestorer noteId={id} />
       </div>
     );
   }
@@ -146,6 +148,7 @@ export default async function NoteDetailPage({
         pasteToPreview: settings.editor?.pasteToPreview ?? true,
         spellcheck: settings.editor?.spellcheck ?? true,
         spellcheckLanguage: settings.editor?.spellcheckLanguage ?? "auto",
+        autocorrect: settings.editor?.autocorrect ?? true,
       }}
       aiOnboardingDismissed={settings.ai?.onboardingDismissed ?? false}
       dailyAgenda={

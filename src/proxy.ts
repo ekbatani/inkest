@@ -20,5 +20,13 @@ export const config = {
     "/settings/:path*",
     "/billing/:path*",
     "/onboarding/:path*",
+    "/vault/:path*",
+    "/calendar/:path*",
+    "/journal/:path*",
+    "/reader/:path*",
+    "/review/:path*",
+    "/planner/:path*",
+    "/views/:path*",
+    "/admin/:path*",
   ],
 };

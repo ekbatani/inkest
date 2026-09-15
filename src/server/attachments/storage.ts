@@ -64,7 +64,10 @@ function getLocalFilePath(storagePath: string) {
     /* turbopackIgnore: true */ process.cwd(),
     LOCAL_STORAGE_ROOT,
   );
-  const filePath = path.resolve(root, ...storagePath.split("/"));
+  const filePath = path.resolve(
+    /* turbopackIgnore: true */ root,
+    ...storagePath.split("/"),
+  );
   if (!filePath.startsWith(`${root}${path.sep}`)) {
     throw new Error("Invalid attachment storage path.");
   }

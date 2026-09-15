@@ -131,7 +131,7 @@ flowchart TD
           <h2>Customizing Editor Behavior</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          Configure autosave debounce delays, line numbering, spellcheck language, and typography choices from{" "}
+          Configure autosave debounce delays, line numbering, spellcheck language, browser autocorrect, and typography choices from{" "}
           <Link href="/settings?tab=appearance" className="text-primary underline underline-offset-4">
             Settings → Appearance & Editor
           </Link>.

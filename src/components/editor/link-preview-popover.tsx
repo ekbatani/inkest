@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import {
   ExternalLink,
@@ -287,12 +288,13 @@ export function LinkPreviewPopover({
 
           {linkData.isAttachment && linkData.target && isImageAsset(linkData.target) && (
             <div className="mt-2 overflow-hidden rounded-xl border border-border/50 bg-muted/20">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={linkData.href}
                 alt={linkData.target.title}
+                width={0}
+                height={0}
+                sizes="100vw"
                 className="max-h-28 w-full object-cover"
-                loading="lazy"
               />
             </div>
           )}

@@ -25,7 +25,11 @@ import {
 } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { createProjectAction, moveNoteInTreeAction } from "@/server/notes/actions";
+import {
+  createProjectAction,
+  createNoteAction,
+  moveNoteInTreeAction,
+} from "@/server/notes/actions";
 import { cn } from "@/lib/utils";
 import type { NoteTreeNode } from "@/server/notes/service";
 import { usesRtlTitleFont } from "@/lib/text/rtl";
@@ -42,6 +46,9 @@ function getNodeIcon(node: NoteTreeNode) {
 }
 
 function getNodeHref(node: NoteTreeNode) {
+  if (node.type === "project") {
+    return `/projects/${node.id}`;
+  }
   if (node.type === "document") {
     return `/reader/${node.documentId || node.id}`;
   }
@@ -49,6 +56,18 @@ function getNodeHref(node: NoteTreeNode) {
 }
 
 type TreeItem = NoteTreeNode;
+
+function hasDescendant(node: TreeItem, targetId: string): boolean {
+  return node.children.some(
+    (child) => child.id === targetId || hasDescendant(child, targetId),
+  );
+}
+
+function getActiveItemId(pathname: string): string | null {
+  const match = /(?:\/notes\/|\/projects\/|\/reader\/)([^/?#]+)/.exec(pathname);
+  const id = match?.[1];
+  return id && id !== "new" ? id : null;
+}
 
 type DropTarget =
   | { kind: "root"; beforeId: string | null }
@@ -255,9 +274,15 @@ export function NotesTree({
       }
       setOpen((current) => ({ ...current, [parentId]: true }));
       onNavigate?.();
-      router.push(`/notes/new?parent=${parentId}&as=project`);
+      React.startTransition(async () => {
+        try {
+          await createProjectAction(parentId);
+        } catch {
+          // Next.js redirect throws NEXT_REDIRECT which is expected
+        }
+      });
     },
-    [onNavigate, router],
+    [onNavigate],
   );
 
   const handleCreateNote = React.useCallback(
@@ -267,24 +292,18 @@ export function NotesTree({
       }
       setOpen((current) => ({ ...current, [parentId]: true }));
       onNavigate?.();
-      router.push(`/notes/new?parent=${parentId}`);
+      React.startTransition(async () => {
+        try {
+          await createNoteAction(parentId);
+        } catch {
+          // Next.js redirect throws NEXT_REDIRECT which is expected
+        }
+      });
     },
-    [onNavigate, router],
+    [onNavigate],
   );
 
-  if (treeNodes.length === 0) return null;
-
-  const ancestorId = (() => {
-    const match = /(\/notes\/[^/]+)/.exec(pathname);
-    const activeId = match?.[1].split("/").pop();
-    if (!activeId) return null;
-    return (
-      treeNodes.find(
-        (node) =>
-          node.id !== activeId && node.children.some((child) => child.id === activeId),
-      )?.id ?? null
-    );
-  })();
+  const activeId = getActiveItemId(pathname);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const activeId = extractNoteId(String(event.active.id));
@@ -381,77 +400,85 @@ export function NotesTree({
         onDragCancel={() => setDragState({ activeId: null, overId: null })}
       >
         <ul className="flex flex-col gap-0.5">
-          {treeNodes.map((node) => {
-            const isOpen = Boolean(open[node.id]) || ancestorId === node.id;
-            const hasChildren = node.children.length > 0;
-            const isProject = node.type === "project";
-            return (
-              <li key={node.id} className="notes-tree-row">
-                <DropZone
-                  id={makeRootDropId(node.id)}
-                  active={isDropTargetActive(
-                    dragState.activeId,
-                    makeRootDropId(node.id),
-                    dragState.overId,
-                  )}
-                />
-                <TreeRow
-                  noteId={node.id}
-                  title={node.title}
-                  href={getNodeHref(node)}
-                  isActive={pathname === getNodeHref(node)}
-                  icon={getNodeIcon(node)}
-                  canAcceptChildren={isProject}
-                  projectDropId={isProject ? makeProjectDropId(node.id) : null}
-                  projectDropActive={isProject && isDropTargetActive(
-                    dragState.activeId,
-                    makeProjectDropId(node.id),
-                    dragState.overId,
-                  )}
-                  isProject={isProject}
-                  onCreateSubproject={() => handleCreateSubproject(node.id)}
-                  onCreateNote={() => handleCreateNote(node.id)}
-                  onNavigate={onNavigate}
-                >
-                  {hasChildren ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpen((current) => ({
-                          ...current,
-                          [node.id]: !current[node.id],
-                        }))
-                      }
-                      className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted"
-                      aria-label={isOpen ? "Collapse" : "Expand"}
-                    >
-                      <ChevronRight
-                        className={cn(
-                          "size-3 transition-transform",
-                          isOpen && "rotate-90",
-                        )}
-                      />
-                    </button>
-                  ) : (
-                    <span className="block size-4 shrink-0" />
-                  )}
-                </TreeRow>
-
-                {isOpen && (
-                  <TreeChildren
-                    nodes={node.children}
-                    pathname={pathname}
-                    open={open}
-                    setOpen={setOpen}
-                    dragState={dragState}
-                    onCreateSubproject={handleCreateSubproject}
-                    onCreateNote={handleCreateNote}
-                    onNavigate={onNavigate}
+          {treeNodes.length === 0 ? (
+            <li className="px-2 py-3 text-xs italic text-muted-foreground/70">
+              No notes or projects yet
+            </li>
+          ) : (
+            treeNodes.map((node) => {
+              const isAncestorOfActive = Boolean(activeId && hasDescendant(node, activeId));
+              const isOpen = Boolean(open[node.id]) || isAncestorOfActive;
+              const hasChildren = node.children.length > 0;
+              const isProject = node.type === "project";
+              return (
+                <li key={node.id} className="notes-tree-row">
+                  <DropZone
+                    id={makeRootDropId(node.id)}
+                    active={isDropTargetActive(
+                      dragState.activeId,
+                      makeRootDropId(node.id),
+                      dragState.overId,
+                    )}
                   />
-                )}
-              </li>
-            );
-          })}
+                  <TreeRow
+                    noteId={node.id}
+                    title={node.title}
+                    href={getNodeHref(node)}
+                    isActive={pathname === getNodeHref(node)}
+                    icon={getNodeIcon(node)}
+                    canAcceptChildren={isProject}
+                    projectDropId={isProject ? makeProjectDropId(node.id) : null}
+                    projectDropActive={isProject && isDropTargetActive(
+                      dragState.activeId,
+                      makeProjectDropId(node.id),
+                      dragState.overId,
+                    )}
+                    isProject={isProject}
+                    onCreateSubproject={() => handleCreateSubproject(node.id)}
+                    onCreateNote={() => handleCreateNote(node.id)}
+                    onNavigate={onNavigate}
+                  >
+                    {hasChildren ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpen((current) => ({
+                            ...current,
+                            [node.id]: !current[node.id],
+                          }))
+                        }
+                        className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted"
+                        aria-label={isOpen ? "Collapse" : "Expand"}
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "size-3 transition-transform",
+                            isOpen && "rotate-90",
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      <span className="block size-4 shrink-0" />
+                    )}
+                  </TreeRow>
+
+                  {isOpen && (
+                    <TreeChildren
+                      nodes={node.children}
+                      pathname={pathname}
+                      activeId={activeId}
+                      open={open}
+                      setOpen={setOpen}
+                      dragState={dragState}
+                      onCreateSubproject={handleCreateSubproject}
+                      onCreateNote={handleCreateNote}
+                      onNavigate={onNavigate}
+                    />
+                  )}
+                </li>
+              );
+            })
+          )}
           <DropZone
             id={DROP_ROOT_END}
             active={isDropTargetActive(
@@ -470,6 +497,7 @@ export function NotesTree({
 function TreeChildren({
   nodes,
   pathname,
+  activeId,
   open,
   setOpen,
   dragState,
@@ -479,6 +507,7 @@ function TreeChildren({
 }: {
   nodes: TreeItem[];
   pathname: string;
+  activeId: string | null;
   open: Record<string, boolean>;
   setOpen: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   dragState: { activeId: string | null; overId: string | null };
@@ -489,7 +518,8 @@ function TreeChildren({
   return (
     <ul className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l pl-1.5">
       {nodes.map((node) => {
-        const isOpen = Boolean(open[node.id]);
+        const isAncestorOfActive = Boolean(activeId && hasDescendant(node, activeId));
+        const isOpen = Boolean(open[node.id]) || isAncestorOfActive;
         const hasChildren = node.children.length > 0;
         const isProject = node.type === "project";
         return (
@@ -527,6 +557,7 @@ function TreeChildren({
               <TreeChildren
                 nodes={node.children}
                 pathname={pathname}
+                activeId={activeId}
                 open={open}
                 setOpen={setOpen}
                 dragState={dragState}

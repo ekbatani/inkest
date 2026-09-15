@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/brand/logo-mark";
+import "../(marketing)/marketing.css";
 
 export default function AuthLayout({
   children,

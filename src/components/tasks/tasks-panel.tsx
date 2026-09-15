@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { AiBadge } from "@/components/ai/ai-badge";
+import { KanbanDueDatePopover } from "@/components/projects/kanban-due-date-popover";
 import { cn } from "@/lib/utils";
 import {
   createTaskAction,
@@ -140,6 +141,7 @@ export function TasksPanel({
           tasks={tasks}
           noteId={noteId}
           onUpdate={(id, next) => update(id, next, noteId)}
+          onRemove={remove}
         />
       )}
     </div>
@@ -303,6 +305,11 @@ function TaskRow({
               {task.priority}
             </span>
           )}
+          <KanbanDueDatePopover
+            dueDate={task.dueDate}
+            isDone={task.status === "done"}
+            onSelectDate={(d) => onUpdate(task.id, { dueDate: d })}
+          />
         </div>
       </div>
       <button
@@ -323,10 +330,12 @@ function KanbanBoard({
   tasks,
   noteId,
   onUpdate,
+  onRemove,
 }: {
   tasks: Task[];
   noteId: string;
   onUpdate: (id: string, next: Partial<Task>) => void;
+  onRemove: (id: string) => void;
 }) {
   const dndContextId = React.useId();
   const sensors = useSensors(
@@ -344,7 +353,6 @@ function KanbanBoard({
     const task = tasks.find((t) => t.id === activeId);
     if (!task || task.status === newStatus) return;
     onUpdate(activeId, { status: newStatus });
-    // Dragging across columns changes status — leave title untouched.
     void noteId;
   };
 
@@ -366,6 +374,7 @@ function KanbanBoard({
               count={colTasks.length}
               tasks={colTasks}
               onUpdate={onUpdate}
+              onRemove={onRemove}
             />
           );
         })}
@@ -380,12 +389,14 @@ function KanbanColumn({
   count,
   tasks,
   onUpdate,
+  onRemove,
 }: {
   status: Task["status"];
   label: string;
   count: number;
   tasks: Task[];
   onUpdate: (id: string, next: Partial<Task>) => void;
+  onRemove: (id: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `column-${status}` });
   return (
@@ -407,6 +418,7 @@ function KanbanColumn({
           key={task.id}
           task={task}
           onUpdate={onUpdate}
+          onRemove={onRemove}
         />
       ))}
       {tasks.length === 0 && (
@@ -421,24 +433,40 @@ function KanbanColumn({
 function KanbanCard({
   task,
   onUpdate,
+  onRemove,
 }: {
   task: Task;
   onUpdate: (id: string, next: Partial<Task>) => void;
+  onRemove: (id: string) => void;
 }) {
+  const [editing, setEditing] = React.useState(false);
+  const [title, setTitle] = React.useState(task.title);
+
   const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: task.id });
+    useDraggable({ id: task.id, disabled: editing });
   const style = {
     transform: CSS.Translate.toString(transform),
   };
   const toggleDone = () => {
     onUpdate(task.id, { status: task.status === "done" ? "todo" : "done" });
   };
+
+  const saveTitle = () => {
+    const trimmed = title.trim();
+    if (trimmed && trimmed !== task.title) {
+      onUpdate(task.id, { title: trimmed });
+    } else {
+      setTitle(task.title);
+    }
+    setEditing(false);
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "surface-card group/card flex flex-col gap-1 p-2",
+        "surface-card group/card flex flex-col gap-2 p-2.5 transition-shadow",
         isDragging && "opacity-50",
       )}
       {...attributes}
@@ -451,8 +479,9 @@ function KanbanCard({
             e.stopPropagation();
             toggleDone();
           }}
+          onPointerDown={(e) => e.stopPropagation()}
           className={cn(
-            "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border",
+            "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
             task.status === "done"
               ? "border-foreground bg-foreground text-background"
               : "border-input hover:bg-muted",
@@ -461,36 +490,99 @@ function KanbanCard({
         >
           {task.status === "done" && <Check className="size-3" />}
         </button>
-        <p
-          className={cn(
-            "flex-1 text-xs",
-            task.status === "done" && "text-muted-foreground line-through",
+
+        <div className="min-w-0 flex-1">
+          {editing ? (
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  saveTitle();
+                } else if (e.key === "Escape") {
+                  setTitle(task.title);
+                  setEditing(false);
+                }
+              }}
+              onBlur={saveTitle}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="h-6 text-xs px-1.5 py-0"
+              autoFocus
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditing(true);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="block w-full text-left text-xs font-medium hover:underline"
+              title="Click to rename"
+            >
+              <span
+                className={cn(
+                  task.status === "done" && "text-muted-foreground line-through",
+                )}
+              >
+                {task.title}
+              </span>
+            </button>
           )}
+
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+            {task.source === "markdown" && (
+              <Badge variant="ghost" className="text-[9px] px-1 py-0 h-4">
+                md
+              </Badge>
+            )}
+            {task.source === "ai" && (
+              <AiBadge className="h-4 text-[9px]" label="AI" />
+            )}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (confirm(`Delete task “${task.title}”?`)) onRemove(task.id);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="size-5 shrink-0 opacity-0 group-hover/card:opacity-100 flex items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-destructive transition-opacity"
+          aria-label="Delete task"
         >
-          {task.title}
-        </p>
+          <Trash2 className="size-3" />
+        </button>
       </div>
-      {task.priority !== "none" && (
-        <div
-          className="ml-6 inline-flex w-fit items-center gap-1 text-[10px]"
+
+      {/* Card Controls: Priority & Due Date */}
+      <div className="ml-6 flex flex-wrap items-center gap-1.5 pt-0.5">
+        <select
+          aria-label={`Priority for ${task.title || "task"}`}
+          value={task.priority}
+          onChange={(event) =>
+            onUpdate(task.id, { priority: event.target.value as Task["priority"] })
+          }
+          onPointerDown={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+          className="h-5 rounded border bg-background px-1 text-[10px] cursor-pointer"
           style={{ color: PRIORITY_COLORS[task.priority] }}
         >
-          <span
-            className="size-1.5 rounded-full"
-            style={{ backgroundColor: PRIORITY_COLORS[task.priority] }}
-          />
-          {task.priority}
-        </div>
-      )}
-      {(task.source === "markdown" || task.source === "ai") && (
-        task.source === "ai" ? (
-          <AiBadge className="ml-6 text-[9px]" label="AI" />
-        ) : (
-          <span className="ml-6 inline-flex w-fit rounded bg-muted px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">
-            {task.source}
-          </span>
-        )
-      )}
+          <option value="none">No priority</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+
+        <KanbanDueDatePopover
+          dueDate={task.dueDate}
+          isDone={task.status === "done"}
+          onSelectDate={(date) => onUpdate(task.id, { dueDate: date })}
+        />
+      </div>
     </div>
   );
 }

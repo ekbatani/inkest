@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Feather,
@@ -480,10 +481,12 @@ export function ProfileSetupWizard({
               <div className="flex items-center gap-4">
                 <div className="relative">
                   {customAvatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={customAvatarUrl}
                       alt={name}
+                      width={56}
+                      height={56}
+                      unoptimized
                       className="size-14 rounded-2xl object-cover ring-2 ring-border"
                     />
                   ) : (

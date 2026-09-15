@@ -42,4 +42,27 @@ describe("User Settings Schema & Defaults", () => {
     const parsed = userSettingsSchema.safeParse(raw);
     assert.equal(parsed.success, false);
   });
+
+  test("DEFAULTS includes editor autocorrect enabled by default", () => {
+    assert.equal(DEFAULTS.editor?.autocorrect, true);
+    assert.equal(DEFAULTS.editor?.spellcheck, true);
+  });
+
+  test("userSettingsSchema parses and preserves editor autocorrect setting", () => {
+    const disabled = userSettingsSchema.safeParse({
+      editor: { autocorrect: false },
+    });
+    assert.equal(disabled.success, true);
+    if (disabled.success) {
+      assert.equal(disabled.data.editor?.autocorrect, false);
+    }
+
+    const enabled = userSettingsSchema.safeParse({
+      editor: { autocorrect: true },
+    });
+    assert.equal(enabled.success, true);
+    if (enabled.success) {
+      assert.equal(enabled.data.editor?.autocorrect, true);
+    }
+  });
 });

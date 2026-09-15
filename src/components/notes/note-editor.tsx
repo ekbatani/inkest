@@ -28,6 +28,7 @@ import {
   PenLine,
   Code,
   Eye,
+  FolderKanban,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -49,6 +50,7 @@ import {
 } from "@/components/ui/tooltip";
 import { usePageContext } from "@/components/providers/page-context-provider";
 import { NoteDetailsPopover } from "@/components/notes/note-details-popover";
+import { ProjectModeToggle } from "@/components/projects/project-mode-toggle";
 import type { Note, Tag } from "@/server/db/schema";
 import {
   updateNoteAction,
@@ -79,6 +81,13 @@ import {
 import { DocumentPersistenceManager } from "@/lib/document-engine/storage/persistence-manager";
 import { computeTextEdit, computeContentHash } from "@/lib/document-engine/diff-patch";
 import { compressPayload } from "@/lib/document-engine/compression";
+import {
+  getSavedNoteScroll,
+  saveNoteScroll,
+  clearNoteScroll,
+  calculateScrollRatio,
+  calculateTargetScrollTop,
+} from "@/lib/notes/scroll-position";
 
 // Dynamically imported so CodeMirror and the react-markdown preview
 // stack (read mode, copy-preview) split into separate chunks instead of always loading
@@ -174,6 +183,7 @@ export function NoteEditor({
     pasteToPreview: boolean;
     spellcheck: boolean;
     spellcheckLanguage: "auto" | "en" | "fa";
+    autocorrect?: boolean;
   };
   aiOnboardingDismissed?: boolean;
   projectTaskCount?: number;
@@ -259,14 +269,128 @@ export function NoteEditor({
     }
   }, []);
 
-  const handleViewModeChange = React.useCallback((mode: "live-preview" | "source" | "reading") => {
-    setViewMode(mode);
-    try {
-      window.localStorage.setItem("inkest_view_mode", mode);
-    } catch {
-      // ignore
-    }
-  }, []);
+  const handleViewModeChange = React.useCallback(
+    (mode: "live-preview" | "source" | "reading") => {
+      // Flush current mode scroll before switching
+      if (viewMode === "reading" && readingContainerRef.current) {
+        if (readingScrollSaveTimerRef.current) {
+          clearTimeout(readingScrollSaveTimerRef.current);
+          readingScrollSaveTimerRef.current = null;
+        }
+        const el = readingContainerRef.current;
+        saveNoteScroll(note.id, {
+          scrollTop: el.scrollTop,
+          scrollRatio: calculateScrollRatio(el.scrollTop, el.scrollHeight, el.clientHeight),
+          viewMode: "reading",
+        });
+      } else if (
+        (viewMode === "live-preview" || viewMode === "source") &&
+        editorRef.current?.view?.scrollDOM
+      ) {
+        const scroller = editorRef.current.view.scrollDOM;
+        saveNoteScroll(note.id, {
+          scrollTop: scroller.scrollTop,
+          scrollRatio: calculateScrollRatio(
+            scroller.scrollTop,
+            scroller.scrollHeight,
+            scroller.clientHeight,
+          ),
+          viewMode,
+        });
+      }
+
+      setViewMode(mode);
+      try {
+        window.localStorage.setItem("inkest_view_mode", mode);
+      } catch {
+        // ignore
+      }
+    },
+    [viewMode, note.id, editorRef],
+  );
+
+  // Reading mode scroll tracking & restoration
+  const readingContainerRef = React.useRef<HTMLDivElement>(null);
+  const readingScrollSaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isRestoringReadingScrollRef = React.useRef(false);
+  const hasUserScrolledReadingRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (viewMode !== "reading") return;
+
+    const el = readingContainerRef.current;
+    if (!el) return;
+
+    hasUserScrolledReadingRef.current = false;
+    const saved = getSavedNoteScroll(note.id);
+    if (!saved) return;
+
+    const targetScrollTop = calculateTargetScrollTop(
+      saved,
+      {
+        scrollHeight: el.scrollHeight,
+        clientHeight: el.clientHeight,
+      },
+      "reading",
+    );
+
+    if (targetScrollTop <= 0) return;
+
+    isRestoringReadingScrollRef.current = true;
+    el.scrollTop = targetScrollTop;
+
+    let cancelled = false;
+    const rafId = requestAnimationFrame(() => {
+      isRestoringReadingScrollRef.current = false;
+      if (cancelled || hasUserScrolledReadingRef.current || !readingContainerRef.current) return;
+      const currentTarget = calculateTargetScrollTop(
+        saved,
+        {
+          scrollHeight: readingContainerRef.current.scrollHeight,
+          clientHeight: readingContainerRef.current.clientHeight,
+        },
+        "reading",
+      );
+      if (Math.abs(readingContainerRef.current.scrollTop - currentTarget) > 2) {
+        isRestoringReadingScrollRef.current = true;
+        readingContainerRef.current.scrollTop = currentTarget;
+        queueMicrotask(() => {
+          isRestoringReadingScrollRef.current = false;
+        });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
+  }, [viewMode, note.id]);
+
+  const handleReadingScroll = React.useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      if (isRestoringReadingScrollRef.current) return;
+      hasUserScrolledReadingRef.current = true;
+      const target = e.currentTarget;
+      const scrollTop = target.scrollTop;
+      const scrollRatio = calculateScrollRatio(
+        scrollTop,
+        target.scrollHeight,
+        target.clientHeight,
+      );
+
+      if (readingScrollSaveTimerRef.current) {
+        clearTimeout(readingScrollSaveTimerRef.current);
+      }
+      readingScrollSaveTimerRef.current = setTimeout(() => {
+        saveNoteScroll(note.id, {
+          scrollTop,
+          scrollRatio,
+          viewMode: "reading",
+        });
+      }, 150);
+    },
+    [note.id],
+  );
   const initialCheckpoint = React.useMemo<NoteSnapshot>(() => ({
     title: initialDraft.title,
     content: initialDraft.content,
@@ -1082,9 +1206,19 @@ export function NoteEditor({
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+
+      if (metadata.type === "project" && e.altKey && key === "p") {
+        e.preventDefault();
+        void (async () => {
+          await performSaveRef.current?.({ forceRevalidate: true });
+          router.push(`/projects/${note.id}`);
+        })();
+        return;
+      }
+
       const mod = e.metaKey || e.ctrlKey;
       if (!mod) return;
-      const key = e.key.toLowerCase();
 
       if (key === "r" && e.shiftKey) {
         e.preventDefault();
@@ -1117,7 +1251,7 @@ export function NoteEditor({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [forceSave, openReader, redo, undo]);
+  }, [forceSave, metadata.type, note.id, openReader, redo, router, undo]);
 
   const onMetadataChange = async (
     field: string,
@@ -1137,6 +1271,7 @@ export function NoteEditor({
 
   const onDelete = async () => {
     if (!confirm("Delete this note? It will be moved to trash.")) return;
+    clearNoteScroll(note.id);
     await deleteNoteAction(note.id);
     toast.success("Note deleted.");
   };
@@ -1534,6 +1669,16 @@ export function NoteEditor({
             </span>
           )}
 
+          {metadata.type === "project" && (
+            <ProjectModeToggle
+              noteId={note.id}
+              currentMode="note"
+              onBeforeNavigate={async () => {
+                await performSaveRef.current?.({ forceRevalidate: true });
+              }}
+            />
+          )}
+
           <NoteDetailsPopover
             note={note}
             metadata={metadata}
@@ -1594,6 +1739,35 @@ export function NoteEditor({
               <TooltipContent>More actions</TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuGroup>
+                {metadata.type === "project" ? (
+                  <>
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        await performSaveRef.current?.({ forceRevalidate: true });
+                        router.push(`/projects/${note.id}`);
+                      }}
+                    >
+                      <FolderKanban className="size-4 text-muted-foreground" />
+                      Switch to Project mode
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => void onMetadataChange("type", "note")}
+                    >
+                      <FileText className="size-4 text-muted-foreground" />
+                      Convert to regular note
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() => void onMetadataChange("type", "project")}
+                  >
+                    <FolderKanban className="size-4 text-muted-foreground" />
+                    Convert to project note
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={() => void onCopyMarkdown()}>
                   <Copy className="size-4 text-muted-foreground" />
@@ -1708,7 +1882,11 @@ export function NoteEditor({
           >
             <div className="flex min-h-0 flex-1 flex-col py-6">
               {viewMode === "reading" ? (
-                <div className="flex-1 overflow-y-auto px-1">
+                <div
+                  ref={readingContainerRef}
+                  onScroll={handleReadingScroll}
+                  className="flex-1 overflow-y-auto px-1"
+                >
                   <MarkdownPreview
                     content={content}
                     direction={metadata.direction}
@@ -1730,6 +1908,7 @@ export function NoteEditor({
                     onLargeMarkdownPaste={onLargeMarkdownPaste}
                     spellcheck={editorPrefs?.spellcheck ?? true}
                     spellcheckLanguage={editorPrefs?.spellcheckLanguage ?? "auto"}
+                    autocorrect={editorPrefs?.autocorrect ?? true}
                     viewMode={viewMode === "source" ? "source" : "live-preview"}
                   />
                   <FloatingMarkdownFormatToolbar editorRef={editorRef} />

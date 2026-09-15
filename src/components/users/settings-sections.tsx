@@ -925,11 +925,13 @@ export function EditorPrefsSection({
   showLineNumbers,
   spellcheck,
   spellcheckLanguage,
+  autocorrect,
 }: {
   autosaveDelayMs?: number;
   showLineNumbers?: boolean;
   spellcheck?: boolean;
   spellcheckLanguage?: "auto" | "en" | "fa";
+  autocorrect?: boolean;
 }) {
   const [delay, setDelay] = React.useState(String(autosaveDelayMs ?? 1500));
   const [lineNumbers, setLineNumbers] = React.useState(!!showLineNumbers);
@@ -937,6 +939,9 @@ export function EditorPrefsSection({
     spellcheck ?? true,
   );
   const [language, setLanguage] = React.useState(spellcheckLanguage ?? "auto");
+  const [autocorrectEnabled, setAutocorrectEnabled] = React.useState(
+    autocorrect ?? true,
+  );
   const [saving, setSaving] = React.useState(false);
 
   const save = async () => {
@@ -950,6 +955,7 @@ export function EditorPrefsSection({
             showLineNumbers: lineNumbers,
             spellcheck: spellcheckEnabled,
             spellcheckLanguage: language,
+            autocorrect: autocorrectEnabled,
           },
         }),
       );
@@ -1051,6 +1057,20 @@ export function EditorPrefsSection({
           <Switch
             checked={spellcheckEnabled}
             onCheckedChange={(checked) => setSpellcheckEnabled(checked)}
+          />
+        </div>
+
+        {/* Autocorrect Switch */}
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-card/60 p-4">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-semibold">Browser Autocorrect</span>
+            <span className="text-[11px] text-muted-foreground">
+              Automatically correct typos and apply native writing suggestions.
+            </span>
+          </div>
+          <Switch
+            checked={autocorrectEnabled}
+            onCheckedChange={(checked) => setAutocorrectEnabled(checked)}
           />
         </div>
       </div>

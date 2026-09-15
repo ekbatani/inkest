@@ -12,6 +12,7 @@ export type AiProvider = {
   embeddingModel?: string;
   complete: (prompt: string, systemPrompt: string) => Promise<string>;
   completeJson: (prompt: string, systemPrompt: string) => Promise<string>;
+  stream: (prompt: string, systemPrompt: string) => AsyncIterable<string>;
   embed: (texts: string[]) => Promise<number[][]>;
 };
 
@@ -178,6 +179,22 @@ export async function getAiProvider(userId?: string): Promise<AiProvider | null>
         max_completion_tokens: maxOutputTokens,
       });
       return response.choices[0]?.message?.content ?? "";
+    },
+    stream: async function* (prompt: string, systemPrompt: string) {
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          { role: "system", content: applyUserControls(systemPrompt) },
+          { role: "user", content: prompt },
+        ],
+        temperature,
+        max_completion_tokens: maxOutputTokens,
+        stream: true,
+      });
+      for await (const chunk of response) {
+        const delta = chunk.choices[0]?.delta?.content;
+        if (delta) yield delta;
+      }
     },
     completeJson: async (prompt: string, systemPrompt: string) => {
       try {
