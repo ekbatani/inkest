@@ -12,6 +12,7 @@ import {
   X,
   Copy,
   MoreHorizontal,
+  NotebookPen,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -21,12 +22,12 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkspaceTab } from "./tabs-types";
 
-function TabIcon({ type, className }: { type?: string; className?: string }) {
+function TabIcon({ type, tabId, className }: { type?: string; tabId?: string; className?: string }) {
+  if (tabId === "notes-overview") return <NotebookPen className={className} />;
   if (type === "daily") return <CalendarDays className={className} />;
   if (type === "project") return <Folder className={className} />;
   if (type === "document") return <File className={className} />;
@@ -40,9 +41,6 @@ export function WorkspaceTabItem({
   index,
   onSelect,
   onClose,
-  onCloseOthers,
-  onCloseToRight,
-  onCloseAll,
   onTogglePin,
   onReorder,
 }: {
@@ -51,9 +49,6 @@ export function WorkspaceTabItem({
   index: number;
   onSelect: (tabId: string) => void;
   onClose: (tabId: string) => void;
-  onCloseOthers: (tabId: string) => void;
-  onCloseToRight: (tabId: string) => void;
-  onCloseAll: () => void;
   onTogglePin: (tabId: string) => void;
   onReorder: (srcIndex: number, destIndex: number) => void;
 }) {
@@ -146,7 +141,7 @@ export function WorkspaceTabItem({
             {tab.pinned ? (
               <Pin className="size-3.5 shrink-0 text-amber-500 fill-amber-500/20" />
             ) : (
-              <TabIcon type={tab.type} className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
+              <TabIcon type={tab.type} tabId={tab.id} className="size-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
             )}
 
             <span
@@ -212,41 +207,7 @@ export function WorkspaceTabItem({
         </div>
       </div>
 
-      <DropdownMenuContent align="start" side="bottom" className="w-44 text-xs">
-        <DropdownMenuItem
-          onClick={() => onClose(tab.id)}
-          className="gap-2"
-        >
-          <X className="size-3.5" />
-          <span>Close tab</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          onClick={() => onCloseOthers(tab.id)}
-          className="gap-2"
-        >
-          <X className="size-3.5" />
-          <span>Close other tabs</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          onClick={() => onCloseToRight(tab.id)}
-          className="gap-2"
-        >
-          <X className="size-3.5" />
-          <span>Close tabs to the right</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          onClick={onCloseAll}
-          className="gap-2"
-        >
-          <X className="size-3.5" />
-          <span>Close all tabs</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
+      <DropdownMenuContent align="start" side="bottom" className="w-40 text-xs">
         <DropdownMenuItem
           onClick={() => onTogglePin(tab.id)}
           className="gap-2"

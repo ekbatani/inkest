@@ -90,9 +90,6 @@ describe("WorkspaceTabBar component", () => {
         index={0}
         onSelect={() => {}}
         onClose={() => {}}
-        onCloseOthers={() => {}}
-        onCloseToRight={() => {}}
-        onCloseAll={() => {}}
         onTogglePin={() => {}}
         onReorder={() => {}}
       />,
@@ -116,9 +113,6 @@ describe("WorkspaceTabBar component", () => {
         index={0}
         onSelect={() => {}}
         onClose={() => {}}
-        onCloseOthers={() => {}}
-        onCloseToRight={() => {}}
-        onCloseAll={() => {}}
         onTogglePin={() => {}}
         onReorder={() => {}}
       />,
@@ -141,9 +135,6 @@ describe("WorkspaceTabBar component", () => {
         index={0}
         onSelect={() => {}}
         onClose={() => {}}
-        onCloseOthers={() => {}}
-        onCloseToRight={() => {}}
-        onCloseAll={() => {}}
         onTogglePin={() => {}}
         onReorder={() => {}}
       />,

@@ -3,18 +3,6 @@
 import * as React from "react";
 import { Plus, Trash2, Check } from "lucide-react";
 import { toast } from "sonner";
-import {
-  DndContext,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  closestCorners,
-  useDroppable,
-  useDraggable,
-} from "@dnd-kit/core";
-import type { DragEndEvent } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -27,13 +15,6 @@ import {
   deleteTaskAction,
 } from "@/server/tasks/actions";
 import type { Task } from "@/server/db/schema";
-
-const STATUS_LABELS: { id: Task["status"]; label: string }[] = [
-  { id: "todo", label: "To do" },
-  { id: "doing", label: "In progress" },
-  { id: "done", label: "Done" },
-  { id: "canceled", label: "Canceled" },
-];
 
 const PRIORITY_COLORS: Record<Task["priority"], string> = {
   none: "var(--muted-foreground)",
@@ -50,7 +31,6 @@ export function TasksPanel({
   initialTasks: Task[];
 }) {
   const [tasks, setTasks] = React.useState<Task[]>(initialTasks);
-  const [view, setView] = React.useState<"list" | "kanban">("kanban");
   const [newTitle, setNewTitle] = React.useState("");
   const [creating, setCreating] = React.useState(false);
 
@@ -75,7 +55,7 @@ export function TasksPanel({
 
   const update = async (id: string, next: Partial<Task>, noteIdForAction: string) => {
     setTasks((p) =>
-      p.map((t) => (t.id === id ? { ...t, ...next } as Task : t)),
+      p.map((t) => (t.id === id ? ({ ...t, ...next } as Task) : t)),
     );
     try {
       await updateTaskAction(id, next, noteIdForAction);
@@ -94,50 +74,26 @@ export function TasksPanel({
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 rounded-lg border p-0.5">
-          <Button
-            size="xs"
-            variant={view === "list" ? "secondary" : "ghost"}
-            onClick={() => setView("list")}
-          >
-            List
-          </Button>
-          <Button
-            size="xs"
-            variant={view === "kanban" ? "secondary" : "ghost"}
-            onClick={() => setView("kanban")}
-          >
-            Kanban
-          </Button>
-        </div>
-        <div className="ml-auto text-xs text-muted-foreground">
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <NewTaskForm
+          title={newTitle}
+          setTitle={setNewTitle}
+          onCreate={handleCreate}
+          disabled={creating}
+        />
+        <div className="shrink-0 text-xs text-muted-foreground">
           {tasks.length} task{tasks.length === 1 ? "" : "s"}
         </div>
       </div>
 
-      <NewTaskForm
-        title={newTitle}
-        setTitle={setNewTitle}
-        onCreate={handleCreate}
-        disabled={creating}
-      />
-
       {tasks.length === 0 ? (
-        <div className="surface-card-dashed p-8 text-center text-sm text-muted-foreground">
-          No tasks yet. Add one above, or write markdown checkboxes inside the
+        <div className="surface-card-dashed p-6 text-center text-xs text-muted-foreground">
+          No checklist items yet. Add one above, or write markdown checkboxes inside the
           project note content.
         </div>
-      ) : view === "list" ? (
-        <TaskList
-          tasks={tasks}
-          noteId={noteId}
-          onUpdate={(id, next) => update(id, next, noteId)}
-          onRemove={remove}
-        />
       ) : (
-        <KanbanBoard
+        <TaskList
           tasks={tasks}
           noteId={noteId}
           onUpdate={(id, next) => update(id, next, noteId)}
@@ -324,274 +280,4 @@ function TaskRow({
       </button>
     </div>
   );
-}
-
-function KanbanBoard({
-  tasks,
-  noteId,
-  onUpdate,
-  onRemove,
-}: {
-  tasks: Task[];
-  noteId: string;
-  onUpdate: (id: string, next: Partial<Task>) => void;
-  onRemove: (id: string) => void;
-}) {
-  const dndContextId = React.useId();
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor),
-  );
-
-  const handleDragEnd = (e: DragEndEvent) => {
-    const { active, over } = e;
-    if (!over) return;
-    const overId = String(over.id);
-    const newStatus = parseColumnId(overId);
-    if (!newStatus) return;
-    const activeId = String(active.id);
-    const task = tasks.find((t) => t.id === activeId);
-    if (!task || task.status === newStatus) return;
-    onUpdate(activeId, { status: newStatus });
-    void noteId;
-  };
-
-  return (
-    <DndContext
-      id={dndContextId}
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {STATUS_LABELS.map((col) => {
-          const colTasks = tasks.filter((t) => t.status === col.id);
-          return (
-            <KanbanColumn
-              key={col.id}
-              status={col.id}
-              label={col.label}
-              count={colTasks.length}
-              tasks={colTasks}
-              onUpdate={onUpdate}
-              onRemove={onRemove}
-            />
-          );
-        })}
-      </div>
-    </DndContext>
-  );
-}
-
-function KanbanColumn({
-  status,
-  label,
-  count,
-  tasks,
-  onUpdate,
-  onRemove,
-}: {
-  status: Task["status"];
-  label: string;
-  count: number;
-  tasks: Task[];
-  onUpdate: (id: string, next: Partial<Task>) => void;
-  onRemove: (id: string) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: `column-${status}` });
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        "flex min-h-40 flex-col gap-2 rounded-xl border bg-muted/30 p-2 transition-colors",
-        isOver && "border-foreground/40 bg-muted/60",
-      )}
-    >
-      <div className="flex items-center justify-between px-1">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {label}
-        </h3>
-        <span className="text-xs text-muted-foreground">{count}</span>
-      </div>
-      {tasks.map((task) => (
-        <KanbanCard
-          key={task.id}
-          task={task}
-          onUpdate={onUpdate}
-          onRemove={onRemove}
-        />
-      ))}
-      {tasks.length === 0 && (
-        <p className="px-1 py-3 text-center text-[11px] text-muted-foreground">
-          Drag here
-        </p>
-      )}
-    </div>
-  );
-}
-
-function KanbanCard({
-  task,
-  onUpdate,
-  onRemove,
-}: {
-  task: Task;
-  onUpdate: (id: string, next: Partial<Task>) => void;
-  onRemove: (id: string) => void;
-}) {
-  const [editing, setEditing] = React.useState(false);
-  const [title, setTitle] = React.useState(task.title);
-
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: task.id, disabled: editing });
-  const style = {
-    transform: CSS.Translate.toString(transform),
-  };
-  const toggleDone = () => {
-    onUpdate(task.id, { status: task.status === "done" ? "todo" : "done" });
-  };
-
-  const saveTitle = () => {
-    const trimmed = title.trim();
-    if (trimmed && trimmed !== task.title) {
-      onUpdate(task.id, { title: trimmed });
-    } else {
-      setTitle(task.title);
-    }
-    setEditing(false);
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "surface-card group/card flex flex-col gap-2 p-2.5 transition-shadow",
-        isDragging && "opacity-50",
-      )}
-      {...attributes}
-      {...listeners}
-    >
-      <div className="flex items-start gap-2">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleDone();
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          className={cn(
-            "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border transition-colors",
-            task.status === "done"
-              ? "border-foreground bg-foreground text-background"
-              : "border-input hover:bg-muted",
-          )}
-          aria-label="Toggle done"
-        >
-          {task.status === "done" && <Check className="size-3" />}
-        </button>
-
-        <div className="min-w-0 flex-1">
-          {editing ? (
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  saveTitle();
-                } else if (e.key === "Escape") {
-                  setTitle(task.title);
-                  setEditing(false);
-                }
-              }}
-              onBlur={saveTitle}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="h-6 text-xs px-1.5 py-0"
-              autoFocus
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditing(true);
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="block w-full text-left text-xs font-medium hover:underline"
-              title="Click to rename"
-            >
-              <span
-                className={cn(
-                  task.status === "done" && "text-muted-foreground line-through",
-                )}
-              >
-                {task.title}
-              </span>
-            </button>
-          )}
-
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-            {task.source === "markdown" && (
-              <Badge variant="ghost" className="text-[9px] px-1 py-0 h-4">
-                md
-              </Badge>
-            )}
-            {task.source === "ai" && (
-              <AiBadge className="h-4 text-[9px]" label="AI" />
-            )}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (confirm(`Delete task “${task.title}”?`)) onRemove(task.id);
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          className="size-5 shrink-0 opacity-0 group-hover/card:opacity-100 flex items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-destructive transition-opacity"
-          aria-label="Delete task"
-        >
-          <Trash2 className="size-3" />
-        </button>
-      </div>
-
-      {/* Card Controls: Priority & Due Date */}
-      <div className="ml-6 flex flex-wrap items-center gap-1.5 pt-0.5">
-        <select
-          aria-label={`Priority for ${task.title || "task"}`}
-          value={task.priority}
-          onChange={(event) =>
-            onUpdate(task.id, { priority: event.target.value as Task["priority"] })
-          }
-          onPointerDown={(event) => event.stopPropagation()}
-          onKeyDown={(event) => event.stopPropagation()}
-          onClick={(event) => event.stopPropagation()}
-          className="h-5 rounded border bg-background px-1 text-[10px] cursor-pointer"
-          style={{ color: PRIORITY_COLORS[task.priority] }}
-        >
-          <option value="none">No priority</option>
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-        </select>
-
-        <KanbanDueDatePopover
-          dueDate={task.dueDate}
-          isDone={task.status === "done"}
-          onSelectDate={(date) => onUpdate(task.id, { dueDate: date })}
-        />
-      </div>
-    </div>
-  );
-}
-
-function parseColumnId(s: string): Task["status"] | null {
-  if (!s.startsWith("column-")) return null;
-  const val = s.slice("column-".length);
-  if (val === "todo" || val === "doing" || val === "done" || val === "canceled") {
-    return val;
-  }
-  return null;
 }

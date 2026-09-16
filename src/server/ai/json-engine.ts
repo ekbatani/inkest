@@ -18,8 +18,14 @@ export function stripReasoningTags(raw: string): string {
   // Strip fenced thought blocks: ```thought ... ```
   cleaned = cleaned.replace(/```(?:thought|reasoning|thinking)[\s\S]*?```/gi, "");
 
-  // If there's an unclosed leading <think> (e.g. truncated output)
-  cleaned = cleaned.replace(/^<think>[\s\S]*?(?=\{|\n\n)/i, "");
+  // If there's an unclosed leading reasoning block, strip it up to start of JSON/markdown content
+  const unclosedMatch = cleaned.match(/^<(?:think|thought|reasoning|reflection)>[\s\S]*?(?=(?:\n\n|\r\n\r\n)(?:#|\*|-|\d+\.|`|\[|\{)|$)/i);
+  if (unclosedMatch && unclosedMatch[0].length < cleaned.length) {
+    cleaned = cleaned.slice(unclosedMatch[0].length);
+  } else if (/^<(?:think|thought|reasoning|reflection)>/i.test(cleaned)) {
+    // If the whole string was an unclosed thought tag, strip the leading tag so partial content isn't lost
+    cleaned = cleaned.replace(/^<(?:think|thought|reasoning|reflection)>/i, "");
+  }
 
   return cleaned.trim();
 }

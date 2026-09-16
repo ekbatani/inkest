@@ -123,6 +123,7 @@ export function useChatScroll<T extends HTMLElement = HTMLDivElement>({
 
     if (isNewMessage) {
       setTimeout(() => scrollToBottom("smooth"), 0);
+      setTimeout(() => scrollToBottom("smooth"), 120);
     } else if (isGenerating) {
       if (checkIsAtBottom()) {
         setTimeout(() => scrollToBottom("auto"), 0);

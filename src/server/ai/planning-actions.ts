@@ -2,8 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createNote, getNoteById, listNotes, updateNote } from "@/server/notes/service";
-import { createTask, listTasks } from "@/server/tasks/service";
+import {
+  createNote,
+  getNoteById,
+  listNotes,
+  listProjectTaskNotes,
+  updateNote,
+} from "@/server/notes/service";
+import { listTasks } from "@/server/tasks/service";
 
 const taskSchema = z.object({
   title: z.string().trim().min(1).max(300),
@@ -152,8 +158,14 @@ export async function saveAiTaskPlanAction(input: z.input<typeof savePlanSchema>
     parsed,
     context.currentProject?.id ?? null,
   );
-  const existing = await listTasks(destinationNoteId);
-  const seen = new Set(existing.map((task) => normalizedTitle(task.title)));
+  const [existingNotes, existingTasks] = await Promise.all([
+    listProjectTaskNotes(destinationNoteId),
+    listTasks(destinationNoteId),
+  ]);
+  const seen = new Set([
+    ...existingNotes.map((note) => normalizedTitle(note.title)),
+    ...existingTasks.map((task) => normalizedTitle(task.title)),
+  ]);
   let created = 0;
   let skipped = 0;
 
@@ -164,10 +176,24 @@ export async function saveAiTaskPlanAction(input: z.input<typeof savePlanSchema>
       continue;
     }
     seen.add(title);
-    await createTask({
-      ...task,
-      noteId: destinationNoteId,
-      source: "ai",
+
+    const taskStatus =
+      task.status === "canceled"
+        ? "paused"
+        : task.status === "doing"
+          ? "doing"
+          : task.status === "done"
+            ? "done"
+            : "todo";
+
+    await createNote({
+      title: task.title,
+      contentMd: task.description?.trim() || "",
+      type: "note",
+      parentId: destinationNoteId,
+      status: taskStatus,
+      priority: task.priority,
+      dueDate: task.dueDate ?? undefined,
     });
     created++;
   }

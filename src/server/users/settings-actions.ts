@@ -89,8 +89,8 @@ const aiOrchestrationInputSchema = z
     temperature: z.number().min(0).max(2),
     minInputTokens: z.number().int().min(0).max(32_768).default(0),
     maxInputTokens: z.number().int().min(64).max(128_000),
-    minOutputTokens: z.number().int().min(0).max(8_192).default(0),
-    maxOutputTokens: z.number().int().min(16).max(32_768),
+    minOutputTokens: z.number().int().min(0).max(16_384).default(0),
+    maxOutputTokens: z.number().int().min(16).max(128_000),
     instructions: z.string().trim().max(4_000).default(""),
     guardrails: z.string().trim().max(4_000).default(""),
     taskTimingPrompt: z.string().trim().max(4_000).optional(),
@@ -143,9 +143,9 @@ export async function resetAiOrchestrationSettingsAction() {
     ai: {
       temperature: 0.4,
       minInputTokens: 0,
-      maxInputTokens: 8_000,
+      maxInputTokens: 32_000,
       minOutputTokens: 0,
-      maxOutputTokens: 1_200,
+      maxOutputTokens: 8_192,
       instructions: "",
       guardrails: "",
       taskTimingPrompt:

@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import {
   Sparkles,
   Loader2,
+  AlertCircle,
   Send,
   Trash2,
   X,
@@ -1446,6 +1447,11 @@ export function AiChatSidebar({
                     ? extractClarificationSuggestions(msg.content)
                     : [];
 
+                const formattedTime = new Intl.DateTimeFormat(undefined, {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }).format(new Date(msg.timestamp));
+
                 return (
                   <div
                     key={msg.id}
@@ -1454,27 +1460,54 @@ export function AiChatSidebar({
                       msg.role === "user" ? "items-end" : "items-start",
                     )}
                   >
-                    <span className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider px-1">
-                      {msg.role === "user" ? "You" : "AI Assistant"}
-                    </span>
+                    {msg.role === "user" ? (
+                      <>
+                        <div className="flex items-center gap-1.5 px-1 text-[10px] text-muted-foreground/70">
+                          <span className="font-semibold">You</span>
+                          <span>•</span>
+                          <span className="font-mono">{formattedTime}</span>
+                        </div>
+                        <div
+                          className="rounded-2xl rounded-tr-xs bg-primary px-3.5 py-2.5 text-xs text-primary-foreground shadow-2xs max-w-[92%] leading-relaxed select-text"
+                          dir="auto"
+                        >
+                          <p className="whitespace-pre-wrap">{msg.content}</p>
+                        </div>
+                      </>
+                    ) : msg.isError ? (
+                      <div className="w-full rounded-2xl rounded-tl-xs border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive shadow-2xs">
+                        <div className="flex items-center gap-2 mb-1.5 font-medium">
+                          <AlertCircle className="size-3.5 shrink-0 text-destructive" />
+                          <span>Action failed</span>
+                        </div>
+                        <p className="leading-relaxed select-text text-foreground/90">{msg.content}</p>
+                      </div>
+                    ) : (
+                      <div className="w-full rounded-2xl rounded-tl-xs border border-border/80 bg-card/75 dark:bg-card/40 p-3.5 shadow-2xs transition-all hover:border-border/90 text-foreground">
+                        {/* Assistant Card Header */}
+                        <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2 mb-2.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="flex size-5 items-center justify-center rounded-md bg-gradient-to-br from-violet-500/20 to-purple-500/15 text-violet-600 dark:text-violet-400 shrink-0">
+                              <Sparkles className="size-3" />
+                            </div>
+                            <span className="font-semibold text-[11px] text-foreground tracking-tight">AI Assistant</span>
+                            {msg.transformType && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[9px] px-1.5 py-0 font-normal border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300 shrink-0 truncate max-w-[150px]"
+                              >
+                                {msg.transformType}
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground/60 shrink-0 font-mono">
+                            {formattedTime}
+                          </span>
+                        </div>
 
-                    <div
-                      className={cn(
-                        "rounded-2xl px-3 py-2.5 text-xs leading-relaxed max-w-[96%]",
-                        msg.role === "user"
-                          ? "bg-primary text-primary-foreground rounded-tr-xs shadow-xs"
-                          : msg.isError
-                            ? "bg-destructive/10 border border-destructive/20 text-destructive rounded-tl-xs"
-                            : "bg-muted/30 border border-border/70 text-foreground rounded-tl-xs w-full shadow-xs",
-                      )}
-                    >
-                      {msg.role === "user" ? (
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
-                      ) : msg.isError ? (
-                        <p>{msg.content}</p>
-                      ) : (
+                        {/* Content Body */}
                         <div className="space-y-2.5">
-                          {/* Refined Citations */}
+                          {/* Citations */}
                           {msg.citations && msg.citations.length > 0 && (
                             <AiCitationList
                               citations={msg.citations}
@@ -1483,8 +1516,13 @@ export function AiChatSidebar({
                             />
                           )}
 
-                          <div className="prose prose-xs dark:prose-invert max-w-none text-foreground leading-relaxed font-sans">
-                            <MarkdownPreview content={msg.content} />
+                          {/* Markdown Response Content */}
+                          <div className="w-full overflow-hidden select-text">
+                            <MarkdownPreview
+                              content={msg.content}
+                              compact={true}
+                              direction="auto"
+                            />
                           </div>
 
                           {/* Interactive Clarification Suggestion Chips */}
@@ -1510,11 +1548,9 @@ export function AiChatSidebar({
                             </div>
                           )}
                         </div>
-                      )}
 
-                      {/* Action Bar (Organize Tasks / Gently Edit / Replace / Add / Copy) */}
-                      {msg.role === "assistant" && !msg.isError && (
-                        <div className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-border/40 pt-2">
+                        {/* Action Bar (Organize Tasks / Gently Edit / Replace / Add / Copy) */}
+                        <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-border/40 pt-2 text-[10px]">
                           {msg.extractedTasks && msg.extractedTasks.length > 0 && (
                             <Button
                               variant="secondary"
@@ -1600,7 +1636,7 @@ export function AiChatSidebar({
                             variant="ghost"
                             size="xs"
                             onClick={() => handleCopy(msg.id, msg.content)}
-                            className="ml-auto h-6 gap-1 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+                            className="ml-auto h-6 gap-1 px-2 text-[10px] text-muted-foreground hover:text-foreground"
                             title="Copy to clipboard"
                           >
                             {copiedId === msg.id ? (
@@ -1611,16 +1647,21 @@ export function AiChatSidebar({
                             {copiedId === msg.id ? "Copied" : "Copy"}
                           </Button>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
 
               {isGenerating && (
-                <div className="flex items-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/5 p-2.5 text-xs text-muted-foreground">
-                  <Loader2 className="size-3.5 animate-spin text-violet-500 shrink-0" />
-                  <span className="text-[11px]">Reasoning with workspace context...</span>
+                <div className="flex items-center gap-2.5 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-3 text-xs text-muted-foreground">
+                  <div className="flex size-6 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400 shrink-0">
+                    <Loader2 className="size-3.5 animate-spin" />
+                  </div>
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-xs font-medium text-foreground leading-tight">Reasoning with workspace context...</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight">Generating comprehensive response</span>
+                  </div>
                 </div>
               )}
             </div>

@@ -3,7 +3,7 @@ import { Topbar } from "@/components/app-shell/topbar";
 import { SidebarToggleWrapper } from "@/components/app-shell/sidebar-toggle-wrapper";
 import { AiChatSidebar } from "@/components/ai/ai-chat-sidebar";
 import { PageContextProvider } from "@/components/providers/page-context-provider";
-import { TabsProvider, WorkspaceTabBar } from "@/components/tabs";
+import { TabsProvider, WorkspaceTabBar, TabContentKeeper } from "@/components/tabs";
 import { listNotesTree } from "@/server/notes/service";
 import { listInboxNotifications } from "@/server/notifications/service";
 import { isAdmin } from "@/server/auth/admin";
@@ -42,7 +42,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             tabIndex={-1}
             className="app-canvas min-h-0 min-w-0 flex-1 overflow-y-auto focus:outline-none"
           >
-            {children}
+            <TabContentKeeper>
+              {children}
+            </TabContentKeeper>
           </main>
         </SidebarToggleWrapper>
       </TabsProvider>

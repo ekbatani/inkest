@@ -609,6 +609,39 @@ export async function executeAgentTool(
         const dueDate = args.dueDate ? new Date(String(args.dueDate)) : undefined;
         const startDate = args.startDate ? new Date(String(args.startDate)) : undefined;
 
+        const targetNote = await getNoteById(noteId);
+        if (targetNote?.type === "project") {
+          const taskStatus =
+            status === "canceled"
+              ? "paused"
+              : status === "doing"
+                ? "doing"
+                : status === "done"
+                  ? "done"
+                  : "todo";
+          const created = await createNote({
+            title,
+            contentMd: description || "",
+            type: "note",
+            parentId: noteId,
+            status: taskStatus,
+            priority,
+            dueDate,
+          });
+          return {
+            success: true,
+            data: {
+              id: created.id,
+              noteId: created.parentId ?? noteId,
+              title: created.title,
+              status: created.status,
+              priority: created.priority,
+              dueDate: created.dueDate,
+              startDate: null,
+            },
+          };
+        }
+
         const created = await createTask({
           noteId,
           title,
@@ -641,6 +674,9 @@ export async function executeAgentTool(
           return { success: false, error: "tasks array cannot be empty" };
         }
 
+        const targetNote = await getNoteById(noteId);
+        const isProject = targetNote?.type === "project";
+
         const createdTasks = [];
         for (const t of rawTasks) {
           const item = t as Record<string, unknown>;
@@ -651,31 +687,59 @@ export async function executeAgentTool(
           const dueDate = item.dueDate ? new Date(String(item.dueDate)) : undefined;
           const startDate = item.startDate ? new Date(String(item.startDate)) : undefined;
 
-          const created = await createTask({
-            noteId,
-            title,
-            description,
-            priority,
-            status,
-            dueDate,
-            startDate,
-            source: "ai",
-          });
-          createdTasks.push({
-            id: created.id,
-            title: created.title,
-            status: created.status,
-            priority: created.priority,
-            dueDate: created.dueDate,
-            startDate: created.startDate,
-          });
+          if (isProject) {
+            const taskStatus =
+              status === "canceled"
+                ? "paused"
+                : status === "doing"
+                  ? "doing"
+                  : status === "done"
+                    ? "done"
+                    : "todo";
+            const created = await createNote({
+              title,
+              contentMd: description || "",
+              type: "note",
+              parentId: noteId,
+              status: taskStatus,
+              priority,
+              dueDate,
+            });
+            createdTasks.push({
+              id: created.id,
+              title: created.title,
+              status: created.status,
+              priority: created.priority,
+              dueDate: created.dueDate,
+              startDate: null,
+            });
+          } else {
+            const created = await createTask({
+              noteId,
+              title,
+              description,
+              priority,
+              status,
+              dueDate,
+              startDate,
+              source: "ai",
+            });
+            createdTasks.push({
+              id: created.id,
+              title: created.title,
+              status: created.status,
+              priority: created.priority,
+              dueDate: created.dueDate,
+              startDate: created.startDate,
+            });
+          }
         }
 
         return {
           success: true,
           data: {
             noteId,
-            createdCount: createdTasks.length,
+            count: createdTasks.length,
             tasks: createdTasks,
           },
         };

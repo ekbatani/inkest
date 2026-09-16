@@ -24,6 +24,10 @@ function findInTree(nodes: NoteTreeNode[], targetId: string): NoteTreeNode | nul
 }
 
 function parseRoute(pathname: string): { id: string; type: WorkspaceTabType; url: string } | null {
+  if (pathname === "/notes" || pathname === "/notes/") {
+    return { id: "notes-overview", type: "note", url: "/notes" };
+  }
+
   const notesMatch = /^\/notes\/([^/?#]+)/.exec(pathname);
   if (notesMatch) {
     const id = notesMatch[1];
@@ -62,6 +66,18 @@ export function TabsProvider({
   const router = useRouter();
   const pathname = usePathname();
 
+  // Track which tab contents are currently mounted and cached in client memory
+  const [loadedTabIds, setLoadedTabIds] = React.useState<Set<string>>(() => new Set());
+
+  const markTabLoaded = React.useCallback((tabId: string) => {
+    setLoadedTabIds((prev) => {
+      if (prev.has(tabId)) return prev;
+      const next = new Set(prev);
+      next.add(tabId);
+      return next;
+    });
+  }, []);
+
   // Initialize tabs from route and localStorage
   const [tabs, setTabs] = React.useState<WorkspaceTab[]>(() => {
     const routeInfo = parseRoute(pathname);
@@ -94,12 +110,14 @@ export function TabsProvider({
       if (!existing) {
         const treeNode = findInTree(notesTree, routeInfo.id);
         const title =
-          treeNode?.title ||
-          (routeInfo.id === "new-note"
-            ? "New Note"
-            : routeInfo.id === "daily"
-              ? "Daily Note"
-              : "Untitled Note");
+          routeInfo.id === "notes-overview"
+            ? "All Notes"
+            : treeNode?.title ||
+              (routeInfo.id === "new-note"
+                ? "New Note"
+                : routeInfo.id === "daily"
+                  ? "Daily Note"
+                  : "Untitled Note");
         const nodeType = (treeNode?.type as WorkspaceTabType) || routeInfo.type;
         initialTabs.push({
           id: routeInfo.id,
@@ -147,12 +165,14 @@ export function TabsProvider({
       const { id, type, url } = routeInfo;
       const treeNode = findInTree(notesTree, id);
       const title =
-        treeNode?.title ||
-        (id === "new-note"
-          ? "New Note"
-          : id === "daily"
-            ? "Daily Note"
-            : "Untitled Note");
+        id === "notes-overview"
+          ? "All Notes"
+          : treeNode?.title ||
+            (id === "new-note"
+              ? "New Note"
+              : id === "daily"
+                ? "Daily Note"
+                : "Untitled Note");
       const nodeType = (treeNode?.type as WorkspaceTabType) || type;
 
       setTabs((prevTabs) => {
@@ -200,6 +220,21 @@ export function TabsProvider({
     }
   }, [tabs, activeTabId]);
 
+  // Listen to popstate (browser back/forward navigation)
+  React.useEffect(() => {
+    const handlePopState = () => {
+      const rInfo = parseRoute(window.location.pathname);
+      if (rInfo) {
+        setActiveTabId(rInfo.id);
+      } else {
+        setActiveTabId(null);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   // Listen to custom events for real-time title & dirty state updates
   React.useEffect(() => {
     const handleTitleUpdate = (event: Event) => {
@@ -227,6 +262,28 @@ export function TabsProvider({
     };
   }, []);
 
+  const switchTab = React.useCallback(
+    (tabId: string) => {
+      const targetTab = tabs.find((t) => t.id === tabId);
+      if (!targetTab) return;
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
+      }
+
+      setActiveTabId(tabId);
+
+      // If target tab is already mounted and cached in memory, switch via history without triggering Next.js loading screen!
+      if (typeof window !== "undefined" && loadedTabIds.has(tabId)) {
+        window.history.pushState(null, "", targetTab.url);
+        window.dispatchEvent(new CustomEvent("inkest:tab-switched", { detail: { tabId } }));
+      } else {
+        router.push(targetTab.url);
+      }
+    },
+    [tabs, loadedTabIds, router],
+  );
+
   const openTab = React.useCallback(
     (tab: Omit<WorkspaceTab, "updatedAt">, activate = true) => {
       setTabs((prev) => {
@@ -240,29 +297,10 @@ export function TabsProvider({
       });
 
       if (activate) {
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
-        }
-        setActiveTabId(tab.id);
-        router.push(tab.url);
+        switchTab(tab.id);
       }
     },
-    [router],
-  );
-
-  const switchTab = React.useCallback(
-    (tabId: string) => {
-      const targetTab = tabs.find((t) => t.id === tabId);
-      if (!targetTab) return;
-
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
-      }
-
-      setActiveTabId(tabId);
-      router.push(targetTab.url);
-    },
-    [tabs, router],
+    [switchTab],
   );
 
   const closeTab = React.useCallback(
@@ -273,18 +311,33 @@ export function TabsProvider({
 
         const nextTabs = prevTabs.filter((t) => t.id !== tabId);
 
-        // If closing the currently active tab, pick a new active tab
+        // Evict from loaded memory set
+        setLoadedTabIds((prev) => {
+          if (!prev.has(tabId)) return prev;
+          const next = new Set(prev);
+          next.delete(tabId);
+          return next;
+        });
+
+        // If closing the currently active tab, pick an adjacent active tab
         if (activeTabId === tabId) {
           if (typeof window !== "undefined") {
             window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
           }
 
           if (nextTabs.length > 0) {
-            // Pick the tab at index (shifted left), or the last tab
             const nextActiveIndex = Math.min(index, nextTabs.length - 1);
             const nextActiveTab = nextTabs[nextActiveIndex];
             setActiveTabId(nextActiveTab.id);
-            router.push(nextActiveTab.url);
+
+            if (typeof window !== "undefined" && loadedTabIds.has(nextActiveTab.id)) {
+              window.history.pushState(null, "", nextActiveTab.url);
+              window.dispatchEvent(
+                new CustomEvent("inkest:tab-switched", { detail: { tabId: nextActiveTab.id } }),
+              );
+            } else {
+              router.push(nextActiveTab.url);
+            }
           } else {
             setActiveTabId(null);
             router.push("/notes");
@@ -294,7 +347,7 @@ export function TabsProvider({
         return nextTabs;
       });
     },
-    [activeTabId, router],
+    [activeTabId, loadedTabIds, router],
   );
 
   const closeOtherTabs = React.useCallback(
@@ -303,21 +356,34 @@ export function TabsProvider({
         const targetTab = prevTabs.find((t) => t.id === tabId);
         if (!targetTab) return prevTabs;
 
-        // Keep pinned tabs and targetTab
         const nextTabs = prevTabs.filter((t) => t.id === tabId || t.pinned);
+        const keptIds = new Set(nextTabs.map((t) => t.id));
+
+        setLoadedTabIds((prev) => {
+          const next = new Set<string>();
+          for (const id of prev) {
+            if (keptIds.has(id)) next.add(id);
+          }
+          return next;
+        });
 
         if (activeTabId !== tabId && !nextTabs.some((t) => t.id === activeTabId)) {
           if (typeof window !== "undefined") {
             window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
           }
           setActiveTabId(targetTab.id);
-          router.push(targetTab.url);
+
+          if (typeof window !== "undefined" && loadedTabIds.has(targetTab.id)) {
+            window.history.pushState(null, "", targetTab.url);
+          } else {
+            router.push(targetTab.url);
+          }
         }
 
         return nextTabs;
       });
     },
-    [activeTabId, router],
+    [activeTabId, loadedTabIds, router],
   );
 
   const closeTabsToTheRight = React.useCallback(
@@ -329,6 +395,15 @@ export function TabsProvider({
         const nextTabs = prevTabs.filter(
           (t, i) => i <= index || Boolean(t.pinned),
         );
+        const keptIds = new Set(nextTabs.map((t) => t.id));
+
+        setLoadedTabIds((prev) => {
+          const next = new Set<string>();
+          for (const id of prev) {
+            if (keptIds.has(id)) next.add(id);
+          }
+          return next;
+        });
 
         if (activeTabId && !nextTabs.some((t) => t.id === activeTabId)) {
           const targetTab = prevTabs[index];
@@ -336,26 +411,41 @@ export function TabsProvider({
             window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
           }
           setActiveTabId(targetTab.id);
-          router.push(targetTab.url);
+
+          if (typeof window !== "undefined" && loadedTabIds.has(targetTab.id)) {
+            window.history.pushState(null, "", targetTab.url);
+          } else {
+            router.push(targetTab.url);
+          }
         }
 
         return nextTabs;
       });
     },
-    [activeTabId, router],
+    [activeTabId, loadedTabIds, router],
   );
 
   const closeAllTabs = React.useCallback(() => {
     setTabs((prevTabs) => {
-      // Keep pinned tabs if any exist
       const pinnedTabs = prevTabs.filter((t) => t.pinned);
       if (pinnedTabs.length > 0) {
+        const keptIds = new Set(pinnedTabs.map((t) => t.id));
+        setLoadedTabIds((prev) => {
+          const next = new Set<string>();
+          for (const id of prev) {
+            if (keptIds.has(id)) next.add(id);
+          }
+          return next;
+        });
+
         if (!pinnedTabs.some((t) => t.id === activeTabId)) {
           setActiveTabId(pinnedTabs[0].id);
           router.push(pinnedTabs[0].url);
         }
         return pinnedTabs;
       }
+
+      setLoadedTabIds(new Set());
 
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
@@ -378,12 +468,10 @@ export function TabsProvider({
       const otherTabs = prevTabs.filter((t) => t.id !== tabId);
 
       if (isPinned) {
-        // Place at the end of pinned tabs
         const pinnedCount = otherTabs.filter((t) => t.pinned).length;
         otherTabs.splice(pinnedCount, 0, updatedTab);
         return otherTabs;
       } else {
-        // Place at the start of unpinned tabs
         const pinnedCount = otherTabs.filter((t) => t.pinned).length;
         otherTabs.splice(pinnedCount, 0, updatedTab);
         return otherTabs;
@@ -428,7 +516,6 @@ export function TabsProvider({
   // Keyboard navigation shortcuts
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      // Use Alt key combinations for clean cross-platform tab navigation
       if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
 
       const key = e.key.toLowerCase();
@@ -458,10 +545,15 @@ export function TabsProvider({
           switchTab(tabs[nextIndex].id);
         }
       }
-      // Alt + T: Open new note tab
+      // Alt + T: Open new tab (browses /notes)
       else if (key === "t") {
         e.preventDefault();
-        router.push("/notes/new");
+        openTab({
+          id: "notes-overview",
+          title: "All Notes",
+          url: "/notes",
+          type: "note",
+        });
       }
       // Alt + 1 ... 9: Jump to specific tab
       else if (/^[1-9]$/.test(key)) {
@@ -475,7 +567,7 @@ export function TabsProvider({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [tabs, activeTabId, closeTab, switchTab, router]);
+  }, [tabs, activeTabId, closeTab, switchTab, openTab]);
 
   const activeTab = React.useMemo(
     () => tabs.find((t) => t.id === activeTabId) ?? null,
@@ -487,6 +579,8 @@ export function TabsProvider({
       tabs,
       activeTabId,
       activeTab,
+      loadedTabIds,
+      markTabLoaded,
       openTab,
       closeTab,
       closeOtherTabs,
@@ -502,6 +596,8 @@ export function TabsProvider({
       tabs,
       activeTabId,
       activeTab,
+      loadedTabIds,
+      markTabLoaded,
       openTab,
       closeTab,
       closeOtherTabs,

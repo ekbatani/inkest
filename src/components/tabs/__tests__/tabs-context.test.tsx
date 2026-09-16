@@ -129,4 +129,22 @@ describe("TabsProvider & useWorkspaceTabs", () => {
     expect(ctx.activeTabId).toBeNull();
     expect(ctx.tabs.length).toBe(0);
   });
+
+  it("handles /notes route as All Notes tab", () => {
+    let contextValue: TabsContextValue | null = null;
+    currentPathname = "/notes";
+
+    renderToString(
+      <TabsProvider notesTree={mockTree}>
+        <TestConsumer onContext={(ctx) => (contextValue = ctx)} />
+      </TabsProvider>,
+    );
+
+    const ctx = contextValue!;
+    expect(ctx.activeTabId).toBe("notes-overview");
+    expect(ctx.tabs.length).toBe(1);
+    expect(ctx.tabs[0].id).toBe("notes-overview");
+    expect(ctx.tabs[0].title).toBe("All Notes");
+    expect(ctx.tabs[0].url).toBe("/notes");
+  });
 });

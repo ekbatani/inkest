@@ -81,7 +81,7 @@ export function MarkdownFormatToolbar({ editorRef, className, onAction }: Props)
   return (
     <div
       className={cn(
-        "flex min-w-0 items-center gap-0.5 rounded-lg border border-border/70 bg-background/95 p-0.5 shadow-lg backdrop-blur",
+        "flex min-w-0 max-w-[calc(100vw-24px)] overflow-x-auto scrollbar-none items-center gap-0.5 rounded-lg border border-border/70 bg-background/95 p-0.5 shadow-lg backdrop-blur",
         className,
       )}
       onMouseDown={(event) => event.preventDefault()}
@@ -188,7 +188,16 @@ export function MarkdownFormatToolbar({ editorRef, className, onAction }: Props)
 
 export function FloatingMarkdownFormatToolbar({ editorRef }: Props) {
   const toolbarRef = React.useRef<HTMLDivElement>(null);
-  const openSourceRef = React.useRef<"selection" | "context" | null>(null);
+  const isOpenRef = React.useRef<boolean>(false);
+  const openedSelectionRef = React.useRef<{ anchor: number; head: number } | null>(null);
+
+  // Mobile touch gesture tracking
+  const longTouchTimerRef = React.useRef<number | null>(null);
+  const touchStartPosRef = React.useRef<{ x: number; y: number } | null>(null);
+  const isLongTouchingRef = React.useRef<boolean>(false);
+  const justFinishedLongTouchRef = React.useRef<boolean>(false);
+  const finishLongTouchTimerRef = React.useRef<number | null>(null);
+
   const [position, setPosition] = React.useState<{
     open: boolean;
     x: number;
@@ -206,32 +215,41 @@ export function FloatingMarkdownFormatToolbar({ editorRef }: Props) {
     };
   }, []);
 
-  const showFromSelection = React.useCallback(() => {
-    if (openSourceRef.current === "context") return;
-
-    const view = editorRef.current?.view;
-    if (!view) return;
-
-    const selection = view.state.selection.main;
-    if (selection.empty) {
-      openSourceRef.current = null;
-      setPosition((current) => ({ ...current, open: false }));
-      return;
-    }
-
-    const from = view.coordsAtPos(selection.from);
-    const to = view.coordsAtPos(selection.to);
-    if (!from || !to) return;
-
-    const next = clampPosition((from.left + to.right) / 2 - 190, from.top - 48);
-    openSourceRef.current = "selection";
-    setPosition({ open: true, ...next });
-  }, [clampPosition, editorRef]);
-
   const closeToolbar = React.useCallback(() => {
-    openSourceRef.current = null;
-    setPosition((current) => ({ ...current, open: false }));
+    isOpenRef.current = false;
+    openedSelectionRef.current = null;
+    setPosition((current) => (current.open ? { ...current, open: false } : current));
   }, []);
+
+  const openToolbarAt = React.useCallback(
+    (clientX: number, clientY: number) => {
+      const view = editorRef.current?.view;
+      if (!view) return;
+
+      const pos = view.posAtCoords({ x: clientX, y: clientY });
+      const sel = view.state.selection.main;
+
+      // If clicked outside current selection or selection is empty, place cursor at target pos
+      if (pos !== null && (sel.empty || pos < sel.from || pos > sel.to)) {
+        view.dispatch({ selection: { anchor: pos } });
+      }
+
+      const width = toolbarRef.current?.offsetWidth ?? 380;
+      const targetX = clientX - width / 2;
+      const targetY = clientY - 48 < 12 ? clientY + 16 : clientY - 48;
+      const next = clampPosition(targetX, targetY);
+
+      const currentSel = view.state.selection.main;
+      openedSelectionRef.current = {
+        anchor: currentSel.anchor,
+        head: currentSel.head,
+      };
+      isOpenRef.current = true;
+      setPosition({ open: true, ...next });
+      view.focus();
+    },
+    [clampPosition, editorRef],
+  );
 
   React.useEffect(() => {
     let cleanup: (() => void) | undefined;
@@ -244,54 +262,183 @@ export function FloatingMarkdownFormatToolbar({ editorRef }: Props) {
         return;
       }
 
-      const showFromPointer = (event: MouseEvent) => {
-        if (!view.dom.contains(event.target as Node)) return;
-        window.setTimeout(showFromSelection, 0);
-      };
-
-      const showFromContextMenu = (event: MouseEvent) => {
+      // Context menu handler (desktop right-click and native mobile long-press)
+      const handleContextMenu = (event: MouseEvent) => {
         if (!view.dom.contains(event.target as Node)) return;
         event.preventDefault();
-
-        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-        if (pos !== null && view.state.selection.main.empty) {
-          view.dispatch({ selection: { anchor: pos } });
-        }
-
-        const next = clampPosition(event.clientX, event.clientY);
-        openSourceRef.current = "context";
-        setPosition({ open: true, ...next });
-        view.focus();
+        openToolbarAt(event.clientX, event.clientY);
       };
 
-      const hideOnOutsidePointer = (event: MouseEvent) => {
-        const target = event.target as Node;
-        if (view.dom.contains(target) || toolbarRef.current?.contains(target)) return;
+      // Long touch handling for mobile touch devices
+      const handleTouchStart = (event: TouchEvent) => {
+        if (event.touches.length !== 1) {
+          if (longTouchTimerRef.current) {
+            clearTimeout(longTouchTimerRef.current);
+            longTouchTimerRef.current = null;
+          }
+          return;
+        }
+
+        const touch = event.touches[0];
+        if (!touch) return;
+
+        touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+
+        if (longTouchTimerRef.current) {
+          clearTimeout(longTouchTimerRef.current);
+        }
+
+        longTouchTimerRef.current = window.setTimeout(() => {
+          isLongTouchingRef.current = true;
+          openToolbarAt(touch.clientX, touch.clientY);
+        }, 500);
+      };
+
+      const handleTouchMove = (event: TouchEvent) => {
+        if (!longTouchTimerRef.current || !touchStartPosRef.current) return;
+        const touch = event.touches[0];
+        if (!touch) return;
+
+        const dx = touch.clientX - touchStartPosRef.current.x;
+        const dy = touch.clientY - touchStartPosRef.current.y;
+        if (Math.hypot(dx, dy) > 10) {
+          clearTimeout(longTouchTimerRef.current);
+          longTouchTimerRef.current = null;
+        }
+      };
+
+      const handleTouchEnd = () => {
+        if (longTouchTimerRef.current) {
+          clearTimeout(longTouchTimerRef.current);
+          longTouchTimerRef.current = null;
+        }
+
+        if (isLongTouchingRef.current) {
+          isLongTouchingRef.current = false;
+          justFinishedLongTouchRef.current = true;
+
+          // Resync opened selection with current view selection in case mobile OS adjusted selection on touch release
+          const currentSel = view.state.selection.main;
+          openedSelectionRef.current = {
+            anchor: currentSel.anchor,
+            head: currentSel.head,
+          };
+
+          if (finishLongTouchTimerRef.current) {
+            clearTimeout(finishLongTouchTimerRef.current);
+          }
+          finishLongTouchTimerRef.current = window.setTimeout(() => {
+            justFinishedLongTouchRef.current = false;
+          }, 300);
+        }
+      };
+
+      const handleTouchCancel = () => {
+        if (longTouchTimerRef.current) {
+          clearTimeout(longTouchTimerRef.current);
+          longTouchTimerRef.current = null;
+        }
+        isLongTouchingRef.current = false;
+      };
+
+      // Hide popup when user clicks somewhere else
+      const handleOutsidePointer = (event: PointerEvent | MouseEvent) => {
+        if (!isOpenRef.current) return;
+        if (justFinishedLongTouchRef.current) return;
+
+        const target = event.target as Element | null;
+        if (!target) return;
+
+        // If right-clicking inside the editor, let contextmenu handle it
+        if (event.button === 2 && view.dom.contains(target)) {
+          return;
+        }
+
+        // Keep open when clicking inside the toolbar
+        if (toolbarRef.current?.contains(target)) {
+          return;
+        }
+
+        // Keep open when clicking inside dropdown or tooltip portals
+        if (
+          target.closest?.('[data-slot^="dropdown-menu"]') ||
+          target.closest?.('[data-slot^="tooltip"]')
+        ) {
+          return;
+        }
+
+        // User clicked somewhere else (in the editor or outside it)
         closeToolbar();
       };
 
-      const hideOnEscape = (event: KeyboardEvent) => {
-        if (event.key === "Escape") {
+      // Hide popup when cursor position changes
+      const handleSelectionChange = () => {
+        if (!isOpenRef.current) return;
+        if (isLongTouchingRef.current || justFinishedLongTouchRef.current) return;
+
+        const currentSel = view.state.selection.main;
+        const openedSel = openedSelectionRef.current;
+        if (!openedSel) return;
+
+        if (
+          currentSel.anchor !== openedSel.anchor ||
+          currentSel.head !== openedSel.head
+        ) {
           closeToolbar();
-        } else {
-          window.setTimeout(showFromSelection, 0);
         }
       };
 
-      view.dom.addEventListener("mouseup", showFromPointer);
-      view.dom.addEventListener("keyup", hideOnEscape);
-      view.dom.addEventListener("contextmenu", showFromContextMenu);
-      window.addEventListener("resize", showFromSelection);
-      document.addEventListener("selectionchange", showFromSelection);
-      document.addEventListener("mousedown", hideOnOutsidePointer);
+      // Hide popup on navigation or typing keys
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (!isOpenRef.current) return;
+
+        if (event.key === "Escape") {
+          closeToolbar();
+          return;
+        }
+
+        if (["Shift", "Control", "Alt", "Meta"].includes(event.key)) {
+          return;
+        }
+
+        // Arrow keys, typing, enter, backspace, delete, etc.
+        closeToolbar();
+      };
+
+      // Hide on scroll or window resize
+      const handleScrollOrResize = () => {
+        if (isOpenRef.current) {
+          closeToolbar();
+        }
+      };
+
+      view.dom.addEventListener("contextmenu", handleContextMenu);
+      view.dom.addEventListener("touchstart", handleTouchStart, { passive: true });
+      view.dom.addEventListener("touchmove", handleTouchMove, { passive: true });
+      view.dom.addEventListener("touchend", handleTouchEnd, { passive: true });
+      view.dom.addEventListener("touchcancel", handleTouchCancel, { passive: true });
+      view.dom.addEventListener("keydown", handleKeyDown);
+
+      document.addEventListener("pointerdown", handleOutsidePointer, true);
+      document.addEventListener("selectionchange", handleSelectionChange);
+      window.addEventListener("resize", handleScrollOrResize);
+      view.scrollDOM.addEventListener("scroll", handleScrollOrResize, { passive: true });
 
       cleanup = () => {
-        view.dom.removeEventListener("mouseup", showFromPointer);
-        view.dom.removeEventListener("keyup", hideOnEscape);
-        view.dom.removeEventListener("contextmenu", showFromContextMenu);
-        window.removeEventListener("resize", showFromSelection);
-        document.removeEventListener("selectionchange", showFromSelection);
-        document.removeEventListener("mousedown", hideOnOutsidePointer);
+        view.dom.removeEventListener("contextmenu", handleContextMenu);
+        view.dom.removeEventListener("touchstart", handleTouchStart);
+        view.dom.removeEventListener("touchmove", handleTouchMove);
+        view.dom.removeEventListener("touchend", handleTouchEnd);
+        view.dom.removeEventListener("touchcancel", handleTouchCancel);
+        view.dom.removeEventListener("keydown", handleKeyDown);
+
+        document.removeEventListener("pointerdown", handleOutsidePointer, true);
+        document.removeEventListener("selectionchange", handleSelectionChange);
+        window.removeEventListener("resize", handleScrollOrResize);
+        view.scrollDOM.removeEventListener("scroll", handleScrollOrResize);
+
+        if (longTouchTimerRef.current) clearTimeout(longTouchTimerRef.current);
+        if (finishLongTouchTimerRef.current) clearTimeout(finishLongTouchTimerRef.current);
       };
     };
 
@@ -301,14 +448,14 @@ export function FloatingMarkdownFormatToolbar({ editorRef }: Props) {
       disposed = true;
       cleanup?.();
     };
-  }, [clampPosition, closeToolbar, editorRef, showFromSelection]);
+  }, [closeToolbar, editorRef, openToolbarAt]);
 
   if (!position.open) return null;
 
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-50"
+      className="fixed z-50 max-w-[calc(100vw-24px)]"
       style={{ left: position.x, top: position.y }}
     >
       <MarkdownFormatToolbar

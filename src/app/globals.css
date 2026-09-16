@@ -556,6 +556,93 @@ html.dark[data-palette="midnight"],
   margin: 2em 0;
 }
 
+/* Compact prose variation for chat sidebars, drawers, and dense cards */
+.inkest-prose.inkest-prose-compact {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 0.8125rem;
+  line-height: 1.62;
+  letter-spacing: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.inkest-prose.inkest-prose-compact > * + * {
+  margin-top: 0.55em;
+}
+.inkest-prose.inkest-prose-compact h1,
+.inkest-prose.inkest-prose-compact h2,
+.inkest-prose.inkest-prose-compact h3,
+.inkest-prose.inkest-prose-compact h4 {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-top: 0.85em;
+  margin-bottom: 0.3em;
+}
+.inkest-prose.inkest-prose-compact h1 {
+  font-size: 0.9375rem;
+  margin-top: 0.4em;
+}
+.inkest-prose.inkest-prose-compact h2 {
+  font-size: 0.875rem;
+}
+.inkest-prose.inkest-prose-compact h3 {
+  font-size: 0.8125rem;
+}
+.inkest-prose.inkest-prose-compact h4 {
+  font-size: 0.78125rem;
+}
+.inkest-prose.inkest-prose-compact p {
+  overflow-wrap: break-word;
+}
+.inkest-prose.inkest-prose-compact ul,
+.inkest-prose.inkest-prose-compact ol {
+  padding-inline-start: 1.25em;
+}
+.inkest-prose.inkest-prose-compact li {
+  margin-top: 0.15em;
+}
+.inkest-prose.inkest-prose-compact pre {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding: 0.65em 0.8em;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.inkest-prose.inkest-prose-compact code {
+  font-size: 0.75rem;
+  padding: 0.12em 0.3em;
+  border-radius: 0.25rem;
+}
+.inkest-prose.inkest-prose-compact blockquote {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-inline-start: 0.75em;
+}
+.inkest-prose.inkest-prose-compact table {
+  font-size: 0.75rem;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.inkest-prose.inkest-prose-compact th,
+.inkest-prose.inkest-prose-compact td {
+  padding: 0.3em 0.6em;
+}
+.inkest-prose.inkest-prose-compact[dir="rtl"],
+.inkest-prose.inkest-prose-compact.rtl-vazir {
+  font-family: var(--font-rtl), system-ui, sans-serif;
+  direction: rtl;
+  text-align: right;
+}
+.inkest-prose.inkest-prose-compact[dir="auto"] {
+  unicode-bidi: plaintext;
+}
+
 /* RTL-aware tweak for prose */
 .inkest-prose[dir="rtl"],
 .inkest-prose.rtl-vazir {

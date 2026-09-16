@@ -139,7 +139,7 @@ export async function getAiProvider(userId?: string): Promise<AiProvider | null>
   const model = rawModel;
   const temperature = settings.ai?.temperature ?? 0.4;
   const minOutputTokens = settings.ai?.minOutputTokens ?? 0;
-  const maxOutputTokens = settings.ai?.maxOutputTokens ?? 1_200;
+  const maxOutputTokens = settings.ai?.maxOutputTokens ?? 8_192;
   const instructions = settings.ai?.instructions?.trim();
   const guardrails = settings.ai?.guardrails?.trim();
   const applyUserControls = (systemPrompt: string) => [

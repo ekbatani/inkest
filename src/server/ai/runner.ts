@@ -135,7 +135,7 @@ export async function runTextAction(args: {
 
   try {
     const rawOutput = await provider.complete(
-      limitPromptToInputBudget(finalPrompt, settings.ai?.maxInputTokens ?? 8_000),
+      limitPromptToInputBudget(finalPrompt, settings.ai?.maxInputTokens ?? 32_000),
       args.systemPrompt,
     );
     const output = stripReasoningTags(rawOutput);
@@ -248,7 +248,7 @@ export async function streamTextAction(args: {
 
   try {
     const stream = provider.stream(
-      limitPromptToInputBudget(finalPrompt, settings.ai?.maxInputTokens ?? 8_000),
+      limitPromptToInputBudget(finalPrompt, settings.ai?.maxInputTokens ?? 32_000),
       args.systemPrompt,
     );
 
@@ -355,7 +355,7 @@ export async function runJsonAction<T>(args: {
   try {
     const promptWithBudget = limitPromptToInputBudget(
       finalPrompt,
-      settings.ai?.maxInputTokens ?? 8_000,
+      settings.ai?.maxInputTokens ?? 32_000,
     );
 
     const raw = await provider.completeJson(promptWithBudget, args.systemPrompt);

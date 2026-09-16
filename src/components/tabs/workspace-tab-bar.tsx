@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { Plus, ChevronDown, Check, FileText, CalendarDays, Folder, File, Layers } from "lucide-react";
+import { Plus, ChevronDown, Check, FileText, CalendarDays, Folder, File, Layers, NotebookPen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,7 +17,8 @@ import { WorkspaceTabItem } from "./workspace-tab";
 import { cn } from "@/lib/utils";
 import { usesRtlTitleFont } from "@/lib/text/rtl";
 
-function TabTypeIcon({ type, className }: { type?: string; className?: string }) {
+function TabTypeIcon({ type, tabId, className }: { type?: string; tabId?: string; className?: string }) {
+  if (tabId === "notes-overview") return <NotebookPen className={className} />;
   if (type === "daily") return <CalendarDays className={className} />;
   if (type === "project") return <Folder className={className} />;
   if (type === "document") return <File className={className} />;
@@ -26,14 +26,12 @@ function TabTypeIcon({ type, className }: { type?: string; className?: string })
 }
 
 export function WorkspaceTabBar() {
-  const router = useRouter();
   const {
     tabs,
     activeTabId,
+    openTab,
     switchTab,
     closeTab,
-    closeOtherTabs,
-    closeTabsToTheRight,
     closeAllTabs,
     togglePinTab,
     reorderTabs,
@@ -66,7 +64,12 @@ export function WorkspaceTabBar() {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
     }
-    router.push("/notes/new");
+    openTab({
+      id: "notes-overview",
+      title: "All Notes",
+      url: "/notes",
+      type: "note",
+    });
   };
 
   return (
@@ -91,9 +94,6 @@ export function WorkspaceTabBar() {
               isActive={tab.id === activeTabId}
               onSelect={switchTab}
               onClose={closeTab}
-              onCloseOthers={closeOtherTabs}
-              onCloseToRight={closeTabsToTheRight}
-              onCloseAll={closeAllTabs}
               onTogglePin={togglePinTab}
               onReorder={reorderTabs}
             />
@@ -170,7 +170,7 @@ export function WorkspaceTabBar() {
                   )}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <TabTypeIcon type={tab.type} className="size-3.5 shrink-0 text-muted-foreground" />
+                    <TabTypeIcon type={tab.type} tabId={tab.id} className="size-3.5 shrink-0 text-muted-foreground" />
                     <span className={cn("truncate", isRtl && "rtl-vazir")}>
                       {tab.title || "Untitled"}
                     </span>

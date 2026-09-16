@@ -22,6 +22,7 @@ type Props = {
   content: string;
   direction?: "ltr" | "rtl" | "auto";
   className?: string;
+  compact?: boolean;
   components?: Components;
   /** Notes available for `[[wiki]]` link resolution. */
   linkableNotes?: WikiLinkTarget[];
@@ -36,6 +37,14 @@ const sanitizeSchema = {
     div: [...(defaultSchema.attributes?.div ?? []), "dir"],
     p: [...(defaultSchema.attributes?.p ?? []), "dir"],
     span: [...(defaultSchema.attributes?.span ?? []), "dir"],
+    h1: [...(defaultSchema.attributes?.h1 ?? []), "dir"],
+    h2: [...(defaultSchema.attributes?.h2 ?? []), "dir"],
+    h3: [...(defaultSchema.attributes?.h3 ?? []), "dir"],
+    h4: [...(defaultSchema.attributes?.h4 ?? []), "dir"],
+    ul: [...(defaultSchema.attributes?.ul ?? []), "dir"],
+    ol: [...(defaultSchema.attributes?.ol ?? []), "dir"],
+    li: [...(defaultSchema.attributes?.li ?? []), "dir"],
+    blockquote: [...(defaultSchema.attributes?.blockquote ?? []), "dir"],
     // Allow class for our prose styling and task list classes
     "*": [
       ...(defaultSchema.attributes?.["*"] ?? []),
@@ -98,12 +107,13 @@ export function MarkdownPreview({
   content = "",
   direction = "auto",
   className,
+  compact = false,
   components: extraComponents,
   linkableNotes,
   virtualizeThreshold,
 }: Props) {
   const safeContent = content ?? "";
-  const dir = direction === "auto" ? undefined : direction;
+  const dir = direction === "auto" ? "auto" : direction;
   const usesRtlFont =
     direction === "rtl" || (direction === "auto" && containsArabicScript(safeContent));
   const mermaidComponents = useMermaidCodeComponent();
@@ -296,7 +306,12 @@ export function MarkdownPreview({
 
   return (
     <div
-      className={cn("inkest-prose", usesRtlFont && "rtl-vazir", className)}
+      className={cn(
+        "inkest-prose",
+        compact && "inkest-prose-compact",
+        usesRtlFont && "rtl-vazir",
+        className,
+      )}
       dir={dir}
     >
       <ReactMarkdown

@@ -1585,9 +1585,9 @@ export function AiPrivacySection({ onboardingDismissed = false }: { onboardingDi
 export function AiOrchestrationSection({
   temperature = 0.4,
   minInputTokens = 0,
-  maxInputTokens = 8_000,
+  maxInputTokens = 32_000,
   minOutputTokens = 0,
-  maxOutputTokens = 1_200,
+  maxOutputTokens = 8_192,
   instructions = "",
   guardrails = "",
   taskTimingPrompt = "",
@@ -1836,7 +1836,7 @@ export function AiOrchestrationSection({
                 id="ai-min-output"
                 type="number"
                 min="0"
-                max="8192"
+                max="16384"
                 step="100"
                 value={nextMinOutputTokens}
                 onChange={(e) => setNextMinOutputTokens(e.target.value)}
@@ -1852,8 +1852,8 @@ export function AiOrchestrationSection({
                 id="ai-max-output"
                 type="number"
                 min="16"
-                max="32768"
-                step="100"
+                max="128000"
+                step="500"
                 value={nextMaxOutputTokens}
                 onChange={(e) => setNextMaxOutputTokens(e.target.value)}
                 className="h-9 font-mono text-xs"
