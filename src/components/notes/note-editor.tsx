@@ -401,6 +401,14 @@ export function NoteEditor({
   const { setPageContext, clearPageContext } = usePageContext();
 
   React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("inkest:tab-title-update", {
+          detail: { id: note.id, title: title || "Untitled Note" },
+        })
+      );
+    }
+
     const timer = setTimeout(() => {
       setPageContext({
         noteId: note.id,
@@ -412,6 +420,16 @@ export function NoteEditor({
     }, 400);
     return () => clearTimeout(timer);
   }, [note.id, title, content, editorRef, setPageContext]);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("inkest:tab-dirty-update", {
+          detail: { id: note.id, isDirty: saveState === "saving" },
+        })
+      );
+    }
+  }, [note.id, saveState]);
 
   React.useEffect(() => {
     return () => {

@@ -1298,7 +1298,7 @@ export function AiProviderSection({
   model?: string;
   configurationSource: "user" | "instance" | "unavailable";
 }) {
-  const initialProvider = provider ?? "openai";
+  const initialProvider = provider ?? "openrouter";
   const [selectedProvider, setSelectedProvider] =
     React.useState<AiProviderId>(initialProvider);
   const [key, setKey] = React.useState("");
@@ -1428,6 +1428,19 @@ export function AiProviderSection({
         <Badge variant={configurationSource === "unavailable" ? "outline" : "secondary"} className="shrink-0 text-[10px]">
           {configurationSource === "user" ? "User Override" : configurationSource === "instance" ? "Instance Default" : "Disabled"}
         </Badge>
+      </div>
+
+      {/* Free model default & BYOK notification banner */}
+      <div className="flex items-start gap-3 rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-3 text-xs">
+        <Sparkles className="size-4 text-violet-500 shrink-0 mt-0.5" />
+        <div className="flex-1 space-y-1">
+          <p className="font-semibold text-foreground">
+            Default AI Model: OpenRouter Free ({providerDef.id === "openrouter" ? mdl || "openrouter/free" : "openrouter/free"})
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            Inkest is pre-configured with OpenRouter&apos;s free model by default. If you want to use more powerful frontier models (such as Claude 3.7 Sonnet, GPT-4o, DeepSeek R1, or Gemini 2.0 Flash), you can bring your own API key (BYOK) below. Your keys are encrypted at rest with AES-256-GCM.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -3334,18 +3347,18 @@ export function HelpGuidesSection() {
           </div>
 
           <div className="rounded-xl border border-border/70 bg-card/40 p-4 flex flex-col gap-2">
-            <h4 className="text-xs font-semibold text-foreground">OpenRouter</h4>
+            <h4 className="text-xs font-semibold text-foreground">OpenRouter (Default Provider)</h4>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Generate a key at{" "}
+              Inkest defaults to OpenRouter&apos;s free model (<code>openrouter/free</code>). You can generate a free key or bring your own paid key at{" "}
               <a
                 href="https://openrouter.ai/keys"
                 target="_blank"
                 rel="noreferrer"
                 className="text-primary underline underline-offset-4"
               >
-                openrouter.ai
+                openrouter.ai/keys
               </a>{" "}
-              to access Claude 3.7, DeepSeek R1, Llama 3.3, and Gemini behind one key.
+              to unlock more powerful models like Claude 3.7, DeepSeek R1, Llama 3.3, and Gemini behind a single key.
             </p>
           </div>
 

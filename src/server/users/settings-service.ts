@@ -177,6 +177,8 @@ export const DEFAULTS: UserSettings = {
     autocorrect: true,
   },
   ai: {
+    provider: "openrouter",
+    model: "openrouter/free",
     temperature: 0.4,
     minInputTokens: 0,
     maxInputTokens: 8_000,

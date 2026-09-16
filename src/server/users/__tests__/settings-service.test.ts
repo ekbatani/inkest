@@ -65,4 +65,9 @@ describe("User Settings Schema & Defaults", () => {
       assert.equal(enabled.data.editor?.autocorrect, true);
     }
   });
+
+  test("DEFAULTS includes openrouter provider and openrouter/free model", () => {
+    assert.equal(DEFAULTS.ai?.provider, "openrouter");
+    assert.equal(DEFAULTS.ai?.model, "openrouter/free");
+  });
 });

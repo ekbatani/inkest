@@ -3,12 +3,12 @@ import { ArrowUpRight } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo-mark";
 
 const LINKS = [
-  { label: "Product", href: "/#product" },
-  { label: "AI", href: "/#ai" },
-  { label: "Philosophy", href: "/#philosophy" },
-  { label: "Open source", href: "/#open-source" },
+  { label: "Product", href: "/landing#product" },
+  { label: "AI", href: "/landing#ai" },
+  { label: "Philosophy", href: "/landing#philosophy" },
+  { label: "Open source", href: "/landing#open-source" },
   { label: "Docs", href: "/docs" },
-  { label: "Pricing", href: "/#pricing" },
+  { label: "Pricing", href: "/landing#pricing" },
 ] as const;
 
 export function MarketingNav({
@@ -19,14 +19,14 @@ export function MarketingNav({
   return (
     <header className="marketing-nav">
       <div className="mx-auto flex h-[4.5rem] max-w-[90rem] items-center justify-between px-5 sm:px-8 lg:px-12 xl:px-16">
-        <Link href="/" className="marketing-logo" aria-label="Inkest home">
+        <Link href="/landing" className="marketing-logo" aria-label="Inkest home">
           <LogoMark className="size-8" />
           <span>Inkest</span>
         </Link>
 
         <nav className="hidden items-center gap-8 lg:flex" aria-label="Main navigation">
           {LINKS.map(({ label, href }) =>
-            href.startsWith("/#") || href.startsWith("#") ? (
+            href.startsWith("/#") || href.startsWith("#") || href.startsWith("/landing#") ? (
               <a key={href} href={href} className="marketing-nav-link">
                 {label}
               </a>

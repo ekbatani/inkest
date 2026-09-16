@@ -5,6 +5,20 @@ import { normalizeAiBaseUrl } from "@/server/ai/provider";
 import { formatAiErrorMessage } from "@/server/ai/runner";
 
 describe("AI provider configuration", () => {
+  test("returns openrouter as the primary default provider with free model", () => {
+    const def = getAiProviderDefinition(undefined);
+    assert.equal(def.id, "openrouter");
+    assert.equal(def.defaultModel, "openrouter/free");
+  });
+
+  test("returns correct default configuration for openrouter provider", () => {
+    const def = getAiProviderDefinition("openrouter");
+    assert.equal(def.id, "openrouter");
+    assert.equal(def.label, "OpenRouter");
+    assert.equal(def.defaultBaseURL, "https://openrouter.ai/api/v1");
+    assert.equal(def.defaultModel, "openrouter/free");
+  });
+
   test("includes nvidia as a supported provider ID", () => {
     assert.equal(AI_PROVIDER_IDS.includes("nvidia"), true);
   });

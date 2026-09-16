@@ -612,6 +612,7 @@ export function AiPanel({
                     <li><span className="font-medium text-foreground">Summarize, improve, tasks, plan:</span> title and full note; tasks and plans stay reviewable before saving.</li>
                     <li><span className="font-medium text-foreground">Explain, translate:</span> title and selected text only.</li>
                     <li><span className="font-medium text-foreground">Provider costs:</span> depend on your provider and model; your Settings input/output limits bound each request.</li>
+                    <li><span className="font-medium text-foreground">Default model:</span> OpenRouter Free is active by default. You can <Link href="/settings?tab=ai" className="underline underline-offset-4 hover:text-foreground">bring your own API key in Settings</Link> to access more powerful models.</li>
                   </ul>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Link href="/docs/ai-assistant#privacy" className="underline underline-offset-4 hover:text-foreground">Full AI and privacy details</Link>

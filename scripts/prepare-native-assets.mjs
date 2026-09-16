@@ -247,6 +247,20 @@ const indexHtml = `<!DOCTYPE html>
       return trimmed;
     }
 
+    function getWorkspaceUrl(baseUrl) {
+      const normalized = normalizeUrl(baseUrl);
+      if (!normalized) return "";
+      try {
+        const parsed = new URL(normalized);
+        if (!parsed.pathname || parsed.pathname === "/") {
+          parsed.pathname = "/dashboard";
+        }
+        return parsed.toString();
+      } catch {
+        return normalized + "/dashboard";
+      }
+    }
+
     async function checkServerHealth(baseUrl) {
       const normalized = normalizeUrl(baseUrl);
       if (!normalized) return false;
@@ -300,7 +314,7 @@ const indexHtml = `<!DOCTYPE html>
       const isHealthy = await checkServerHealth(url);
       if (isHealthy) {
         localStorage.setItem(STORAGE_KEY, url);
-        window.location.replace(url);
+        window.location.replace(getWorkspaceUrl(url));
       } else {
         submitBtn.disabled = false;
         submitBtn.innerText = "Connect to Workspace";
@@ -313,7 +327,7 @@ const indexHtml = `<!DOCTYPE html>
       if (savedUrl) {
         const isHealthy = await checkServerHealth(savedUrl);
         if (isHealthy) {
-          window.location.replace(savedUrl);
+          window.location.replace(getWorkspaceUrl(savedUrl));
           return;
         }
       }
@@ -321,7 +335,7 @@ const indexHtml = `<!DOCTYPE html>
       const isLocalhostHealthy = await checkServerHealth(DEFAULT_URL);
       if (isLocalhostHealthy) {
         localStorage.setItem(STORAGE_KEY, DEFAULT_URL);
-        window.location.replace(DEFAULT_URL);
+        window.location.replace(getWorkspaceUrl(DEFAULT_URL));
         return;
       }
 

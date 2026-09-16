@@ -23,7 +23,7 @@ const PROJECT_LINKS = [
   { label: "Download apps", href: "/download" },
   { label: "GitHub repository", href: "https://github.com/ekbatani/inkest", external: true },
   { label: "Changelog & releases", href: "https://github.com/ekbatani/inkest/releases", external: true },
-  { label: "Self-host vs cloud", href: "/#pricing" },
+  { label: "Self-host vs cloud", href: "/landing#pricing" },
   { label: "All documentation", href: "/docs" },
 ] as const;
 
@@ -47,7 +47,7 @@ export function MarketingFooter() {
       <div className="mx-auto max-w-[90rem] px-5 sm:px-8 lg:px-12 xl:px-16">
         <div className="marketing-footer-top">
           <div className="marketing-footer-brand">
-            <Link href="/" className="marketing-logo" aria-label="Inkest home">
+            <Link href="/landing" className="marketing-logo" aria-label="Inkest home">
               <LogoMark className="size-8" />
               <span>Inkest</span>
             </Link>

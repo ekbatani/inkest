@@ -74,13 +74,13 @@ export default function AiAssistantPage() {
             </p>
           </GuideCard>
 
-          <GuideCard title="OpenRouter">
+          <GuideCard title="OpenRouter (Default Provider)">
             <p>
-              Create a key at{" "}
+              Inkest comes with OpenRouter as its default AI provider configured with the <code>openrouter/free</code> model. You can obtain a free API key or add credits at{" "}
               <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">
                 openrouter.ai/keys
               </a>
-              . OpenRouter provides a single unified OpenAI-compatible endpoint to access hundreds of models (Claude 3.7 Sonnet, DeepSeek R1, Llama 3.3, Gemini 2.0 Flash).
+              . Bring your own key (BYOK) in Settings to unlock premium frontier models (Claude 3.7 Sonnet, DeepSeek R1, GPT-4o, and Gemini 2.0 Flash) with higher rate limits.
             </p>
           </GuideCard>
 

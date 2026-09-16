@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
   Sparkles,
@@ -35,7 +36,6 @@ import {
   MessageSquarePlus,
   MessagesSquare,
   SpellCheck,
-  Lightbulb,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -1383,6 +1383,23 @@ export function AiChatSidebar({
                   ? "Generate roadmaps, break down tasks, find missing requirements, or ask workspace questions."
                   : "Gently polish writing, generate diagrams, extract tasks, or ask clarifying questions."}
               </p>
+              {/* OpenRouter Free default & BYOK info callout */}
+              <div className="mt-3 w-full rounded-xl border border-violet-500/20 bg-violet-500/5 p-2.5 text-left text-[11px] leading-relaxed text-muted-foreground">
+                <div className="flex items-center gap-1.5 font-medium text-foreground">
+                  <Sparkles className="size-3 text-violet-500 shrink-0" />
+                  <span>Powered by OpenRouter Free</span>
+                </div>
+                <p className="mt-1">
+                  Defaulting to free models. For higher limits and frontier models (Claude 3.7, GPT-4o, DeepSeek R1), you can{" "}
+                  <Link
+                    href="/settings?tab=ai"
+                    className="font-medium text-primary underline underline-offset-4 hover:text-foreground"
+                  >
+                    bring your own key in Settings
+                  </Link>
+                  .
+                </p>
+              </div>
 
               {/* Quick Action Cards in Empty State */}
               <div className="mt-4 w-full space-y-1.5">

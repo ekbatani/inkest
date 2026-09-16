@@ -22,18 +22,18 @@ export type AiProviderDefinition = {
 
 export const AI_PROVIDERS: readonly AiProviderDefinition[] = [
   {
+    id: "openrouter",
+    label: "OpenRouter",
+    defaultBaseURL: "https://openrouter.ai/api/v1",
+    defaultModel: "openrouter/free",
+    apiKeyPlaceholder: "sk-or-... (free at openrouter.ai/keys)",
+  },
+  {
     id: "openai",
     label: "OpenAI",
     defaultBaseURL: "https://api.openai.com/v1",
     defaultModel: "gpt-4o-mini",
     apiKeyPlaceholder: "sk-...",
-  },
-  {
-    id: "openrouter",
-    label: "OpenRouter",
-    defaultBaseURL: "https://openrouter.ai/api/v1",
-    defaultModel: "openai/gpt-4o-mini",
-    apiKeyPlaceholder: "sk-or-...",
   },
   {
     id: "opencode",

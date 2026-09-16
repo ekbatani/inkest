@@ -30,12 +30,12 @@ export const metadata: Metadata = {
     "project management notes",
     "second brain app",
   ],
-  alternates: { canonical: "/" },
+  alternates: { canonical: "/landing" },
   openGraph: {
     title: "Inkest — Your private space to think in Markdown",
     description:
       "Notes, daily journaling, a citing AI, and project planning in one calm, open-source workspace.",
-    url: "/",
+    url: "/landing",
     type: "website",
   },
 };
@@ -189,4 +189,3 @@ export default async function LandingPage() {
     </div>
   );
 }
-

@@ -55,7 +55,7 @@ function resolveEnvProviderId(): AiProviderId {
   if ((AI_PROVIDER_IDS as readonly string[]).includes(value ?? "")) {
     return value as AiProviderId;
   }
-  return "openai";
+  return "openrouter";
 }
 
 function getEnvValue(
