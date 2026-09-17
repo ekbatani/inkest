@@ -23,7 +23,7 @@ function findInTree(nodes: NoteTreeNode[], targetId: string): NoteTreeNode | nul
   return null;
 }
 
-function parseRoute(pathname: string): { id: string; type: WorkspaceTabType; url: string } | null {
+export function parseRoute(pathname: string): { id: string; type: WorkspaceTabType; url: string } | null {
   if (pathname === "/notes" || pathname === "/notes/") {
     return { id: "notes-overview", type: "note", url: "/notes" };
   }
@@ -74,6 +74,15 @@ export function TabsProvider({
       if (prev.has(tabId)) return prev;
       const next = new Set(prev);
       next.add(tabId);
+      return next;
+    });
+  }, []);
+
+  const unmarkTabLoaded = React.useCallback((tabId: string) => {
+    setLoadedTabIds((prev) => {
+      if (!prev.has(tabId)) return prev;
+      const next = new Set(prev);
+      next.delete(tabId);
       return next;
     });
   }, []);
@@ -581,6 +590,7 @@ export function TabsProvider({
       activeTab,
       loadedTabIds,
       markTabLoaded,
+      unmarkTabLoaded,
       openTab,
       closeTab,
       closeOtherTabs,
@@ -598,6 +608,7 @@ export function TabsProvider({
       activeTab,
       loadedTabIds,
       markTabLoaded,
+      unmarkTabLoaded,
       openTab,
       closeTab,
       closeOtherTabs,

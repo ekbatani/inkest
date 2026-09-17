@@ -20,7 +20,7 @@ mock.module("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import { TabsProvider, useWorkspaceTabs } from "../tabs-context";
+import { TabsProvider, useWorkspaceTabs, parseRoute } from "../tabs-context";
 import type { TabsContextValue } from "../tabs-types";
 
 const mockTree: NoteTreeNode[] = [
@@ -146,5 +146,45 @@ describe("TabsProvider & useWorkspaceTabs", () => {
     expect(ctx.tabs[0].id).toBe("notes-overview");
     expect(ctx.tabs[0].title).toBe("All Notes");
     expect(ctx.tabs[0].url).toBe("/notes");
+  });
+
+  it("supports markTabLoaded and unmarkTabLoaded", () => {
+    currentPathname = "/notes/note-1";
+
+    function TabLoadTester() {
+      const ctx = useWorkspaceTabs();
+      const [step, setStep] = React.useState(0);
+
+      if (step === 0) {
+        ctx.markTabLoaded("tab-alpha");
+        setStep(1);
+      } else if (step === 1) {
+        ctx.unmarkTabLoaded("tab-alpha");
+        setStep(2);
+      }
+
+      return <div data-testid="loaded-count">{ctx.loadedTabIds.size}</div>;
+    }
+
+    const html = renderToString(
+      <TabsProvider notesTree={mockTree}>
+        <TabLoadTester />
+      </TabsProvider>,
+    );
+
+    expect(html).toContain("data-testid=\"loaded-count\">0</div>");
+  });
+
+  it("parseRoute parses all supported workspace route formats", () => {
+    expect(parseRoute("/notes")).toEqual({ id: "notes-overview", type: "note", url: "/notes" });
+    expect(parseRoute("/notes/")).toEqual({ id: "notes-overview", type: "note", url: "/notes" });
+    expect(parseRoute("/notes/new")).toEqual({ id: "new-note", type: "new", url: "/notes/new" });
+    expect(parseRoute("/notes/abc-123")).toEqual({ id: "abc-123", type: "note", url: "/notes/abc-123" });
+    expect(parseRoute("/projects/proj-456")).toEqual({ id: "proj-456", type: "project", url: "/projects/proj-456" });
+    expect(parseRoute("/reader/doc-789")).toEqual({ id: "doc-789", type: "document", url: "/reader/doc-789" });
+    expect(parseRoute("/daily")).toEqual({ id: "daily", type: "daily", url: "/daily" });
+    expect(parseRoute("/dashboard")).toBeNull();
+    expect(parseRoute("/settings")).toBeNull();
+    expect(parseRoute("/calendar")).toBeNull();
   });
 });

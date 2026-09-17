@@ -16,6 +16,7 @@ export interface TabsContextValue {
   activeTab: WorkspaceTab | null;
   loadedTabIds: Set<string>;
   markTabLoaded: (tabId: string) => void;
+  unmarkTabLoaded: (tabId: string) => void;
   openTab: (tab: Omit<WorkspaceTab, "updatedAt">, activate?: boolean) => void;
   closeTab: (tabId: string) => void;
   closeOtherTabs: (tabId: string) => void;

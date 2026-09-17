@@ -75,4 +75,65 @@ describe("TabContentKeeper", () => {
     expect(html).toContain("data-testid=\"dashboard-view\"");
     expect(html).toContain("Dashboard Content");
   });
+
+  it("does not prematurely cache previous tab content under a newly activated tab while route is in flight", () => {
+    // Simulate: user is on /notes/note-1 with note-1 content
+    currentPathname = "/notes/note-1";
+
+    function SwitchInFlightSimulation() {
+      // Step 1: user was on note-1
+      // Step 2: user clicks tab 2, setting activeTabId to note-2 while pathname is still note-1 and children is note-1
+      const [step, setStep] = React.useState(1);
+
+      if (step === 1) {
+        setStep(2);
+      }
+
+      return (
+        <TabsProvider notesTree={mockTree}>
+          <TabContentKeeper>
+            <div data-testid="active-content">
+              {step === 1 ? "Note 1 Initial Content" : "Note 1 Previous Content"}
+            </div>
+          </TabContentKeeper>
+        </TabsProvider>
+      );
+    }
+
+    const html = renderToString(<SwitchInFlightSimulation />);
+
+    // Since note-1 is active initially and pathname is /notes/note-1, note-1 is cached.
+    // It should NEVER cache Note 1's content under data-tab-content-id="note-2"
+    expect(html).not.toContain('data-tab-content-id="note-2"');
+    expect(html).toContain('data-tab-content-id="note-1"');
+  });
+
+  it("evicts oldest inactive tab when cache exceeds maxCachedTabs", () => {
+    currentPathname = "/notes/note-1";
+
+    function EvictionSimulation() {
+      // Start on note-1, then switch route and active tab to note-2 with maxCachedTabs=1
+      const [step, setStep] = React.useState(1);
+
+      if (step === 1) {
+        setStep(2);
+      }
+
+      const activeId = step === 1 ? "note-1" : "note-2";
+      currentPathname = step === 1 ? "/notes/note-1" : "/notes/note-2";
+
+      return (
+        <TabsProvider notesTree={mockTree}>
+          <TabContentKeeper maxCachedTabs={1}>
+            <div data-testid={`content-${activeId}`}>Content for {activeId}</div>
+          </TabContentKeeper>
+        </TabsProvider>
+      );
+    }
+
+    const html = renderToString(<EvictionSimulation />);
+    // With maxCachedTabs = 1, when note-2 is cached, note-1 should be evicted
+    expect(html).toContain('data-tab-content-id="note-2"');
+    expect(html).not.toContain('data-tab-content-id="note-1"');
+  });
 });
