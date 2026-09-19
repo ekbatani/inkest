@@ -476,8 +476,8 @@ export function VaultView({ initialItems }: Props) {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground/80 pl-6">
-                    <span>••••••••••••••••••••••••••••••••</span>
-                    <span className="text-[10px] text-muted-foreground font-sans">(Encrypted text area)</span>
+                    <span className="truncate">••••••••••••••••••••••••••••••••</span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground font-sans">(Encrypted text area)</span>
                   </div>
                 )}
               </div>

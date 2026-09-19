@@ -179,7 +179,10 @@ export function WorkspaceTabItem({
                 onClick={(e) => {
                   e.stopPropagation();
                 }}
-                className="rounded p-0.5 text-muted-foreground/60 opacity-0 group-hover:opacity-100 hover:bg-muted hover:text-foreground transition-opacity"
+                className={cn(
+                  "rounded p-0.5 text-muted-foreground/60 hover:bg-muted hover:text-foreground transition-opacity",
+                  isActive ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-100",
+                )}
                 aria-label="Tab options"
               >
                 <MoreHorizontal className="size-3" />

@@ -148,7 +148,7 @@ export default async function ProjectDetailPage({
             candidates={parentCandidates}
             readOnly={!canEdit}
           />
-          <NoteStatusBadge status={note.status} />
+          <NoteStatusBadge status={note.status} className="hidden sm:inline-flex" />
           {note.priority !== "none" && (
             <Badge variant="outline" className="text-xs hidden md:inline-flex">
               {note.priority}

@@ -130,6 +130,69 @@ describe("TabsProvider & useWorkspaceTabs", () => {
     expect(ctx.tabs.length).toBe(0);
   });
 
+  it("does not restore a stale activeTabId from storage on non-tab routes", () => {
+    interface FakeWindow {
+      localStorage: {
+        getItem: (key: string) => string | null;
+        setItem: (key: string, value: string) => void;
+        removeItem: (key: string) => void;
+      };
+      addEventListener: () => void;
+      removeEventListener: () => void;
+      dispatchEvent: () => boolean;
+      history: { pushState: () => void };
+    }
+
+    const globalWithWindow = globalThis as unknown as { window?: FakeWindow };
+    const hadWindow = "window" in globalWithWindow;
+    const originalWindow = globalWithWindow.window;
+    const store = new Map<string, string>([
+      [
+        "inkest:workspace-tabs",
+        JSON.stringify({
+          tabs: [{ id: "note-1", title: "First Note", url: "/notes/note-1", type: "note" }],
+          activeTabId: "note-1",
+        }),
+      ],
+    ]);
+    globalWithWindow.window = {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => void store.set(key, value),
+        removeItem: (key: string) => void store.delete(key),
+      },
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+      history: { pushState: () => {} },
+    };
+
+    let contextValue: TabsContextValue | null = null;
+    currentPathname = "/vault";
+
+    try {
+      renderToString(
+        <TabsProvider notesTree={mockTree}>
+          <TestConsumer onContext={(ctx) => (contextValue = ctx)} />
+        </TabsProvider>,
+      );
+
+      const ctx = contextValue!;
+      // No tab is active off the tabbed area, even though storage holds one...
+      expect(ctx.activeTabId).toBeNull();
+      // ...but the tab session itself is restored for returning to /notes.
+      expect(ctx.tabs.length).toBe(1);
+      expect(ctx.tabs[0].id).toBe("note-1");
+      expect(ctx.tabs[0].title).toBe("First Note");
+    } finally {
+      if (hadWindow) {
+        globalWithWindow.window = originalWindow;
+      } else {
+        delete globalWithWindow.window;
+      }
+    }
+  });
+
   it("handles /notes route as All Notes tab", () => {
     let contextValue: TabsContextValue | null = null;
     currentPathname = "/notes";

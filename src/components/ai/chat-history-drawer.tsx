@@ -195,7 +195,7 @@ export function ChatHistoryDrawer({
                       size="icon-xs"
                       onClick={(e) => void handleDelete(e, thread.id)}
                       disabled={deletingId === thread.id}
-                      className="absolute right-2 top-2.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+                      className="absolute right-2 top-2.5 opacity-60 transition-opacity hover:bg-destructive/10 hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
                       title="Delete thread"
                     >
                       {deletingId === thread.id ? (

@@ -114,7 +114,10 @@ export function NoteDetailsPopover({
       ) : (
         triggerButton
       )}
-      <PopoverContent align="end" className="w-88 p-0 rounded-2xl shadow-xl">
+      <PopoverContent
+        align="end"
+        className="w-88 max-w-[calc(100vw-1rem)] p-0 rounded-2xl shadow-xl"
+      >
         <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/20">
           <div className="flex items-center gap-2">
             <Info className="size-4 text-primary" />

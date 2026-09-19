@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { Plus, ChevronDown, Check, FileText, CalendarDays, Folder, File, Layers, NotebookPen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +13,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useWorkspaceTabs } from "./tabs-context";
+import { useWorkspaceTabs, parseRoute } from "./tabs-context";
 import { WorkspaceTabItem } from "./workspace-tab";
 import { cn } from "@/lib/utils";
 import { usesRtlTitleFont } from "@/lib/text/rtl";
@@ -37,6 +38,8 @@ export function WorkspaceTabBar() {
     reorderTabs,
   } = useWorkspaceTabs();
 
+  const pathname = usePathname();
+
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Convert vertical mouse wheel into horizontal scroll on tabs bar
@@ -56,7 +59,9 @@ export function WorkspaceTabBar() {
     }
   }, [activeTabId]);
 
-  if (tabs.length === 0) {
+  // The tab bar only exists inside the tabbed workspace (notes, projects, reader, daily).
+  // On any other section (planner, vault, settings, ...) it must disappear entirely.
+  if (tabs.length === 0 || parseRoute(pathname) === null) {
     return null;
   }
 

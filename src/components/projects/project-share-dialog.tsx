@@ -146,7 +146,8 @@ export function ProjectShareMenu({
           setOpen(true);
         }}
       >
-        <UserPlus className="size-4" /> Share
+        <UserPlus className="size-4" />
+        <span className="hidden sm:inline">Share</span>
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

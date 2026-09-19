@@ -96,13 +96,13 @@ export default async function NotesPage({
       </header>
 
       {/* Sub-view navigation tabs */}
-      <div className="flex items-center gap-2 border-b border-border/70 pb-3">
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-border/70 pb-3">
         <Button
           size="sm"
           variant={!isReaderView ? "default" : "ghost"}
           nativeButton={false}
           render={<Link href={buildHref({ view: null })} />}
-          className="gap-2 rounded-xl"
+          className="shrink-0 gap-2 rounded-xl"
         >
           <NotebookPen className="size-4" />
           All Notes
@@ -115,10 +115,10 @@ export default async function NotesPage({
           variant={isReaderView ? "default" : "ghost"}
           nativeButton={false}
           render={<Link href={buildHref({ view: "reader" })} />}
-          className="gap-2 rounded-xl"
+          className="shrink-0 gap-2 rounded-xl"
         >
           <BookOpen className="size-4" />
-          Research Reader & Files
+          Research Reader &amp; Files
           <Badge variant="secondary" className="ml-1 text-[10px]">
             {documents.length}
           </Badge>
@@ -203,7 +203,7 @@ export default async function NotesPage({
       )}
 
       {!search && !activeTagObjects.length && (
-        <div className="flex items-center gap-2 border-b pb-2 text-xs font-medium text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 border-b pb-2 text-xs font-medium text-muted-foreground">
           <span className="text-foreground font-semibold flex items-center gap-1">
             <NotebookPen className="size-3.5" /> Fast Re-finding:
           </span>
@@ -217,7 +217,7 @@ export default async function NotesPage({
             href="/views"
             className="rounded px-2 py-1 hover:bg-muted text-muted-foreground transition-colors"
           >
-            Saved Views & Filters
+            Saved Views &amp; Filters
           </Link>
           <Link
             href="/notes?q="
@@ -230,8 +230,8 @@ export default async function NotesPage({
 
       {isReaderView ? (
         <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
                 <BookOpen className="size-5 text-primary" />
                 Research Reader Documents ({filteredDocuments.length})

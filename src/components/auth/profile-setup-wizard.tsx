@@ -544,7 +544,7 @@ export function ProfileSetupWizard({
         )}
 
         {/* Wizard Footer Controls */}
-        <div className="flex items-center justify-between border-t border-border/60 pt-5 mt-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-5 mt-2">
           {step > 1 ? (
             <Button
               type="button"

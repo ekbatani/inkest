@@ -4,6 +4,11 @@ import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 const SIDEBAR_DEFAULT_WIDTH = 240;
 const SIDEBAR_MIN_WIDTH = 200;
@@ -15,6 +20,10 @@ const AI_SIDEBAR_MIN_WIDTH = 280;
 const AI_SIDEBAR_MAX_WIDTH = 560;
 const AI_SIDEBAR_STORAGE_KEY = "inkest:ai-sidebar-open";
 const AI_SIDEBAR_WIDTH_STORAGE_KEY = "inkest:ai-sidebar-width";
+
+// Width at which the desktop AI aside becomes available; below it the AI
+// sidebar renders as a slide-over sheet instead.
+const AI_SIDEBAR_DESKTOP_QUERY = "(min-width: 1024px)";
 
 function isNoteRoute(path: string): boolean {
   return (
@@ -72,8 +81,32 @@ export function SidebarToggleWrapper({
 
   const prevCategoryRef = React.useRef<"note" | "other" | null>(null);
 
-  // Route-based default: Open automatically in note pages, closed in other pages
+  // Start aligned with the SSR markup (desktop aside), then track the real
+  // viewport so mobile devices get the sheet variant after hydration.
+  const [isDesktop, setIsDesktop] = React.useState(true);
+
   React.useEffect(() => {
+    const mediaQuery = window.matchMedia(AI_SIDEBAR_DESKTOP_QUERY);
+    const update = () => setIsDesktop(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
+
+  // Crossing the desktop/mobile boundary swaps the AI sidebar container,
+  // so close it to avoid a panel popping open after rotation/resize.
+  const prevIsDesktopRef = React.useRef(true);
+  React.useEffect(() => {
+    if (prevIsDesktopRef.current !== isDesktop) {
+      prevIsDesktopRef.current = isDesktop;
+      setAiSidebarOpen(false);
+    }
+  }, [isDesktop]);
+
+  // Route-based default: Open automatically in note pages, closed in other pages.
+  // Desktop only — on mobile the sheet is opened explicitly.
+  React.useEffect(() => {
+    if (!isDesktop) return;
     const currentCategory = isNoteRoute(pathname) ? "note" : "other";
     if (prevCategoryRef.current === null) {
       prevCategoryRef.current = currentCategory;
@@ -82,7 +115,7 @@ export function SidebarToggleWrapper({
       prevCategoryRef.current = currentCategory;
       setAiSidebarOpen(currentCategory === "note");
     }
-  }, [pathname]);
+  }, [pathname, isDesktop]);
 
   React.useEffect(() => {
     const handler = () => setCollapsed((v) => !v);
@@ -372,6 +405,25 @@ export function SidebarToggleWrapper({
             </div>
           ) : null}
         </aside>
+      ) : null}
+
+      {/* Right AI Assistant slide-over for small screens */}
+      {aiSidebar && !isDesktop ? (
+        <Sheet open={aiSidebarOpen} onOpenChange={setAiSidebarOpen}>
+          <SheetContent
+            side="right"
+            showCloseButton={false}
+            className="w-[94%] max-w-[420px] gap-0 p-0"
+          >
+            <SheetTitle className="sr-only">AI Assistant</SheetTitle>
+            {React.isValidElement(aiSidebar)
+              ? React.cloneElement(
+                  aiSidebar as React.ReactElement<{ onClose?: () => void }>,
+                  { onClose: () => setAiSidebarOpen(false) },
+                )
+              : aiSidebar}
+          </SheetContent>
+        </Sheet>
       ) : null}
     </div>
   );

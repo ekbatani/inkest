@@ -8,7 +8,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="marketing-site auth-canvas flex min-h-dvh flex-col">
+    <div className="marketing-site auth-canvas relative flex min-h-dvh flex-col overflow-clip">
       <div className="spotlight-hero__aurora spotlight-hero__aurora--a" aria-hidden="true" />
       <div className="spotlight-hero__aurora spotlight-hero__aurora--b" aria-hidden="true" />
 

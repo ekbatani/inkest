@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { LogoMark } from "@/components/brand/logo-mark";
+import { MarketingMobileMenu } from "@/components/marketing/marketing-mobile-menu";
 
 const LINKS = [
   { label: "Product", href: "/landing#product" },
@@ -39,6 +40,7 @@ export function MarketingNav({
         </nav>
 
         <div className="flex items-center gap-1 sm:gap-2">
+          <MarketingMobileMenu user={user} />
           {user ? (
             <Link href="/dashboard" className="marketing-nav-cta btn-sheen">
               Dashboard

@@ -530,7 +530,10 @@ html.dark[data-palette="midnight"],
   font-size: inherit;
 }
 .inkest-prose table {
+  display: block;
   width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   font-size: 0.95em;
 }

@@ -141,25 +141,12 @@ export function TabsProvider({
     return initialTabs;
   });
 
-  const [activeTabId, setActiveTabId] = React.useState<string | null>(() => {
-    const routeInfo = parseRoute(pathname);
-    if (routeInfo) return routeInfo.id;
-
-    if (typeof window !== "undefined") {
-      try {
-        const saved = window.localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (typeof parsed?.activeTabId === "string") {
-            return parsed.activeTabId;
-          }
-        }
-      } catch {
-        // Ignore
-      }
-    }
-    return null;
-  });
+  // The active tab always mirrors the current route. Saved tabs are restored above,
+  // but a stale activeTabId must never be reactivated on a non-tab route (the tab bar
+  // is hidden there and the saved tab would not match the rendered page).
+  const [activeTabId, setActiveTabId] = React.useState<string | null>(
+    () => parseRoute(pathname)?.id ?? null,
+  );
 
   // Adjust state during render when pathname changes (official React pattern)
   const routeInfo = parseRoute(pathname);

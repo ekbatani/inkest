@@ -11,6 +11,7 @@ import {
   Trash2,
   Bookmark,
   Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -108,9 +109,17 @@ export function DocumentReaderView({
       setSelectedText(text);
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
+      // The popup is centered via -translate-x-1/2, so clamp its center to
+      // keep the popup (up to ~300px wide) fully inside narrow viewports.
+      const popupHalfWidth = 150;
+      const margin = 10;
+      const centerX = rect.left + rect.width / 2;
       setPopupPos({
         top: Math.max(10, rect.top - 50),
-        left: rect.left + rect.width / 2,
+        left: Math.min(
+          Math.max(centerX, popupHalfWidth + margin),
+          window.innerWidth - popupHalfWidth - margin,
+        ),
       });
     }
   };
@@ -168,8 +177,8 @@ export function DocumentReaderView({
   return (
     <div className="flex h-full w-full flex-col bg-background relative">
       {/* Reader Topbar */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b px-4 sm:px-6">
-        <div className="flex items-center gap-3">
+      <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -184,8 +193,11 @@ export function DocumentReaderView({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="font-mono text-[11px] gap-1">
+        <div
+          className="flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-none sm:gap-3"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          <Badge variant="outline" className="hidden shrink-0 font-mono text-[11px] gap-1 lg:inline-flex">
             <span>{progressPercent}% read</span>
           </Badge>
 
@@ -196,11 +208,11 @@ export function DocumentReaderView({
             className="gap-1.5"
           >
             <Bookmark className="size-3.5" />
-            Annotations ({annotations.length})
+            <span className="hidden sm:inline">Annotations </span>({annotations.length})
           </Button>
 
           {/* Typography Controls */}
-          <div className="flex items-center rounded-lg border p-1 bg-muted/40 gap-1 text-xs">
+          <div className="hidden shrink-0 items-center rounded-lg border p-1 bg-muted/40 gap-1 text-xs sm:flex">
             <Button
               variant={fontFamily === "sans" ? "secondary" : "ghost"}
               size="icon-xs"
@@ -227,7 +239,7 @@ export function DocumentReaderView({
             </Button>
           </div>
 
-          <div className="flex items-center border rounded-lg p-1 bg-muted/40 gap-1">
+          <div className="hidden shrink-0 items-center border rounded-lg p-1 bg-muted/40 gap-1">
             <Button
               variant="ghost"
               size="xs"
@@ -249,7 +261,7 @@ export function DocumentReaderView({
             variant={isPaged ? "default" : "outline"}
             size="xs"
             onClick={() => setIsPaged(!isPaged)}
-            className="gap-1.5"
+            className="hidden shrink-0 gap-1.5 sm:inline-flex"
           >
             {isPaged ? <Columns className="size-3.5" /> : <Rows className="size-3.5" />}
             {isPaged ? "Paged" : "Continuous"}
@@ -272,10 +284,10 @@ export function DocumentReaderView({
           ref={containerRef}
           onScroll={handleScroll}
           onMouseUp={handleTextSelection}
-          className="flex-1 overflow-y-auto p-6 sm:p-12"
+          className="flex-1 overflow-y-auto p-4 sm:p-12"
         >
           <div
-            className={`mx-auto max-w-3xl rounded-xl border bg-card p-8 sm:p-12 shadow-sm ${
+            className={`mx-auto max-w-3xl rounded-xl border bg-card p-5 sm:p-12 shadow-sm ${
               fontFamily === "serif"
                 ? "font-serif"
                 : fontFamily === "mono"
@@ -301,12 +313,23 @@ export function DocumentReaderView({
           </div>
         </main>
 
-        {/* Annotations Margin Drawer */}
+        {/* Annotations Margin Drawer — full-screen overlay on phones */}
         {showAnnotationsDrawer && (
-          <aside className="w-80 border-l bg-card p-4 overflow-y-auto space-y-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Document Annotations ({annotations.length})
-            </h3>
+          <aside className="fixed inset-0 z-40 w-full space-y-4 overflow-y-auto bg-card p-4 sm:static sm:w-80 sm:border-l">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Document Annotations ({annotations.length})
+              </h3>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => setShowAnnotationsDrawer(false)}
+                aria-label="Close annotations"
+                className="sm:hidden"
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
 
             {annotations.length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground border border-dashed rounded-lg p-4">

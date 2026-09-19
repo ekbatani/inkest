@@ -205,15 +205,39 @@ export function FloatingMarkdownFormatToolbar({ editorRef }: Props) {
   }>({ open: false, x: 0, y: 0 });
 
   const clampPosition = React.useCallback((x: number, y: number) => {
+    const margin = 12;
     const width = toolbarRef.current?.offsetWidth ?? 380;
     const height = toolbarRef.current?.offsetHeight ?? 38;
-    const margin = 12;
 
+    // The Math.max guards keep the toolbar on-screen when the estimated
+    // width exceeds a narrow viewport (toolbarRef is still null pre-open).
     return {
-      x: Math.min(Math.max(margin, x), window.innerWidth - width - margin),
-      y: Math.min(Math.max(margin, y), window.innerHeight - height - margin),
+      x: Math.min(
+        Math.max(margin, x),
+        Math.max(margin, window.innerWidth - width - margin),
+      ),
+      y: Math.min(
+        Math.max(margin, y),
+        Math.max(margin, window.innerHeight - height - margin),
+      ),
     };
   }, []);
+
+  // Correct the estimated pre-open position once the real toolbar is
+  // rendered and measurable — the fallback width skews small screens.
+  React.useLayoutEffect(() => {
+    if (!position.open) return;
+    const el = toolbarRef.current;
+    if (!el) return;
+    const margin = 12;
+    const maxX = Math.max(margin, window.innerWidth - el.offsetWidth - margin);
+    const maxY = Math.max(margin, window.innerHeight - el.offsetHeight - margin);
+    const x = Math.min(Math.max(margin, position.x), maxX);
+    const y = Math.min(Math.max(margin, position.y), maxY);
+    if (x !== position.x || y !== position.y) {
+      setPosition((current) => ({ ...current, x, y }));
+    }
+  }, [position.open, position.x, position.y]);
 
   const closeToolbar = React.useCallback(() => {
     isOpenRef.current = false;

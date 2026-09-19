@@ -45,7 +45,7 @@ export function TtsControls({
         className={cn("gap-1.5", dark && "text-white/70 hover:bg-white/10 hover:text-white")}
       >
         {isPlaying ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
-        <span className={dark ? undefined : "hidden sm:inline"}>
+        <span className="hidden sm:inline">
           {isPlaying ? "Pause" : "Listen"}
         </span>
       </Button>

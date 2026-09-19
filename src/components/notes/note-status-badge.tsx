@@ -43,11 +43,17 @@ const statusConfig: Record<
   },
 };
 
-export function NoteStatusBadge({ status }: { status: Note["status"] }) {
+export function NoteStatusBadge({
+  status,
+  className,
+}: {
+  status: Note["status"];
+  className?: string;
+}) {
   const config = statusConfig[status];
   if (!config.label) return null;
   return (
-    <Badge variant={config.variant} className={cn(config.className)}>
+    <Badge variant={config.variant} className={cn(config.className, className)}>
       {config.label}
     </Badge>
   );

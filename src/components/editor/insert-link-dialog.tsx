@@ -426,7 +426,7 @@ export function InsertLinkDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden border-border/80 shadow-2xl rounded-2xl bg-background/95 backdrop-blur-xl">
+      <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden border-border/80 shadow-2xl rounded-2xl bg-background/95 backdrop-blur-xl">
         {/* Header and Search Area */}
         <DialogHeader className="p-4 pb-3 border-b border-border/60 bg-muted/20">
           <div className="flex items-center justify-between">

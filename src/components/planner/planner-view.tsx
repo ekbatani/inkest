@@ -80,21 +80,21 @@ export function PlannerView({
   return (
     <div className="app-page gap-6 sm:gap-8">
       {/* Top Workspace Tab Switcher */}
-      <div className="flex items-center gap-2 border-b border-border/70 pb-3">
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-border/70 pb-3">
         <Button
           variant={activeTab === "planner" ? "default" : "ghost"}
           size="sm"
           onClick={() => setActiveTab("planner")}
-          className="gap-2 rounded-xl shadow-xs"
+          className="shrink-0 gap-2 rounded-xl shadow-xs"
         >
           <Target className="size-4" />
-          Task Planner & Goals
+          Task Planner &amp; Goals
         </Button>
         <Button
           variant={activeTab === "journal" ? "default" : "ghost"}
           size="sm"
           onClick={() => setActiveTab("journal")}
-          className="gap-2 rounded-xl shadow-xs"
+          className="shrink-0 gap-2 rounded-xl shadow-xs"
         >
           <BookOpen className="size-4" />
           Journal & Reflections

@@ -222,8 +222,8 @@ export function VersionHistoryButton({
               )}
             </div>
           </DialogHeader>
-          <div className="flex min-h-0 gap-3">
-            <ScrollArea className="w-52 shrink-0 rounded-lg border sm:w-60">
+          <div className="flex min-h-0 flex-col gap-3 sm:flex-row">
+            <ScrollArea className="max-h-40 w-full shrink-0 rounded-lg border sm:max-h-none sm:w-60">
               <ul className="flex flex-col">
                 {draft && (
                   <li>

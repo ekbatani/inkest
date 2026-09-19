@@ -42,6 +42,47 @@ const mockTree: NoteTreeNode[] = [
   },
 ];
 
+// Install a minimal window stub so TabsProvider's localStorage restore path runs
+// during server rendering. Returns a cleanup function.
+interface FakeWindow {
+  localStorage: {
+    getItem: (key: string) => string | null;
+    setItem: (key: string, value: string) => void;
+    removeItem: (key: string) => void;
+  };
+  addEventListener: () => void;
+  removeEventListener: () => void;
+  dispatchEvent: () => boolean;
+  history: { pushState: () => void };
+}
+
+function installFakeWindow(seed: Record<string, string> = {}): () => void {
+  const store = new Map(Object.entries(seed));
+  const globalWithWindow = globalThis as unknown as { window?: FakeWindow };
+  const hadWindow = "window" in globalWithWindow;
+  const originalWindow = globalWithWindow.window;
+
+  globalWithWindow.window = {
+    localStorage: {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+      removeItem: (key: string) => void store.delete(key),
+    },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => true,
+    history: { pushState: () => {} },
+  };
+
+  return () => {
+    if (hadWindow) {
+      globalWithWindow.window = originalWindow;
+    } else {
+      delete globalWithWindow.window;
+    }
+  };
+}
+
 describe("WorkspaceTabBar component", () => {
   beforeEach(() => {
     currentPathname = "/notes/note-1";
@@ -75,6 +116,52 @@ describe("WorkspaceTabBar component", () => {
     );
 
     expect(html).toBe("");
+  });
+
+  it("hides the tab bar on non-tab sections even when tabs are open", () => {
+    const cleanup = installFakeWindow({
+      "inkest:workspace-tabs": JSON.stringify({
+        tabs: [{ id: "note-1", title: "Meeting Notes", url: "/notes/note-1", type: "note" }],
+        activeTabId: "note-1",
+      }),
+    });
+    currentPathname = "/planner";
+
+    try {
+      const html = renderToString(
+        <TabsProvider notesTree={mockTree}>
+          <WorkspaceTabBar />
+        </TabsProvider>,
+      );
+
+      expect(html).toBe("");
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("restores open tabs from storage when on a tab route", () => {
+    const cleanup = installFakeWindow({
+      "inkest:workspace-tabs": JSON.stringify({
+        tabs: [{ id: "note-1", title: "Meeting Notes", url: "/notes/note-1", type: "note" }],
+        activeTabId: "note-1",
+      }),
+    });
+    currentPathname = "/notes/note-1";
+
+    try {
+      const html = renderToString(
+        <TabsProvider notesTree={mockTree}>
+          <WorkspaceTabBar />
+        </TabsProvider>,
+      );
+
+      expect(html).toContain('aria-label="Workspace tabs"');
+      expect(html).toContain("Meeting Notes");
+      expect(html).toContain('aria-selected="true"');
+    } finally {
+      cleanup();
+    }
   });
 
   it("renders WorkspaceTabItem with dirty indicator when isDirty is true", () => {

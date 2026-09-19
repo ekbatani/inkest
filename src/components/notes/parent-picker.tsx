@@ -121,7 +121,7 @@ export function ParentPicker({
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg p-0">
+        <DialogContent className="sm:max-w-lg p-0">
           <DialogHeader className="px-5 pt-5 pb-1">
             <DialogTitle>Choose parent note</DialogTitle>
             <DialogDescription>

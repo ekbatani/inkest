@@ -187,7 +187,7 @@ export function TagSelector({
           {saving ? "Saving..." : "Add tag"}
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="start" className="w-full min-w-0 p-2">
+        <DropdownMenuContent align="start" className="min-w-0 p-2">
           <div
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}

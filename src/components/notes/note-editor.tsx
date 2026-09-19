@@ -26,6 +26,7 @@ import {
   PenLine,
   Code,
   Eye,
+  MoreHorizontal,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -33,12 +34,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { usePageContext } from "@/components/providers/page-context-provider";
 import { NoteDetailsPopover } from "@/components/notes/note-details-popover";
+import { useTopbarSlot } from "@/components/app-shell/topbar-actions";
+import { useWorkspaceTabs } from "@/components/tabs/tabs-context";
 import { ProjectModeToggle } from "@/components/projects/project-mode-toggle";
 import type { Note, Tag } from "@/server/db/schema";
 import {
@@ -1260,21 +1270,20 @@ export function NoteEditor({
     return () => window.removeEventListener("keydown", onKey);
   }, [forceSave, metadata.type, note.id, openReader, redo, router, undo]);
 
-  const onMetadataChange = async (
-    field: string,
-    value: string | boolean | null | Date,
-  ) => {
-    const newMetadata = { ...metadata, [field]: value };
-    setMetadata(newMetadata);
-    setSaveState("saving");
-    try {
-      await updateNoteAction(note.id, { [field]: value } as Record<string, unknown>);
-      setSaveState("saved");
-      setTimeout(() => setSaveState("idle"), 2000);
-    } catch {
-      toast.error("Failed to update note.");
-    }
-  };
+  const onMetadataChange = React.useCallback(
+    async (field: string, value: string | boolean | null | Date) => {
+      setMetadata((m) => ({ ...m, [field]: value }));
+      setSaveState("saving");
+      try {
+        await updateNoteAction(note.id, { [field]: value } as Record<string, unknown>);
+        setSaveState("saved");
+        setTimeout(() => setSaveState("idle"), 2000);
+      } catch {
+        toast.error("Failed to update note.");
+      }
+    },
+    [note.id],
+  );
 
   const onDelete = async () => {
     if (!confirm("Delete this note? It will be moved to trash.")) return;
@@ -1291,6 +1300,38 @@ export function NoteEditor({
   const titleUsesRtlFont =
     metadata.direction === "rtl" ||
     (metadata.direction === "auto" && containsArabicScript(title));
+
+  // Note details lives in the app Topbar. Only the active tab's editor may
+  // claim the slot because hidden workspace tabs keep their editors mounted.
+  const { activeTabId } = useWorkspaceTabs();
+  const noteDetailsNode = React.useMemo(
+    () => (
+      <NoteDetailsPopover
+        note={note}
+        metadata={metadata}
+        onChange={onMetadataChange}
+        allTags={allTags}
+        noteTagIds={noteTagIds}
+        parentCandidates={parentCandidates}
+        backlinks={backlinks}
+        dailyAgenda={dailyAgenda}
+        projectTaskCount={projectTaskCount}
+        iconOnly
+      />
+    ),
+    [
+      note,
+      metadata,
+      onMetadataChange,
+      allTags,
+      noteTagIds,
+      parentCandidates,
+      backlinks,
+      dailyAgenda,
+      projectTaskCount,
+    ],
+  );
+  useTopbarSlot(`note-details:${note.id}`, noteDetailsNode, activeTabId === note.id);
 
   const goBack = React.useCallback(() => {
     if (typeof window === "undefined") {
@@ -1422,9 +1463,12 @@ export function NoteEditor({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-border/70 bg-background/80 px-3 backdrop-blur-md sm:px-4">
+      <div className="flex h-12 shrink-0 items-center justify-between gap-1 border-b border-border/70 bg-background/80 px-3 backdrop-blur-md sm:px-4">
         {/* Left Section: Navigation, Reading Modes, Insert Tools, History */}
-        <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
+        <div
+          className="flex min-w-0 items-center gap-1 overflow-x-auto scrollbar-none sm:gap-1.5"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
           <Tooltip>
             <TooltipTrigger
               render={
@@ -1442,10 +1486,10 @@ export function NoteEditor({
             <TooltipContent>Back to notes</TooltipContent>
           </Tooltip>
 
-          <div className="h-4 w-px bg-border/60" />
+          <div className="h-4 w-px shrink-0 bg-border/60" />
 
           {/* Mode Switcher: Live Preview / Source / Reading */}
-          <div className="flex items-center rounded-lg bg-muted/40 p-0.5 text-muted-foreground border border-border/40">
+          <div className="flex shrink-0 items-center rounded-lg bg-muted/40 p-0.5 text-muted-foreground border border-border/40">
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -1510,10 +1554,10 @@ export function NoteEditor({
             </Tooltip>
           </div>
 
-          <div className="h-4 w-px bg-border/60" />
+          <div className="h-4 w-px shrink-0 bg-border/60" />
 
-          {/* Focus & Listen Segment */}
-          <div className="flex items-center gap-0.5 rounded-lg bg-muted/40 p-0.5">
+          {/* Focus & Listen Segment (desktop; mobile keeps it in the ⋯ menu) */}
+          <div className="hidden shrink-0 items-center gap-0.5 rounded-lg bg-muted/40 p-0.5 sm:flex">
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -1550,7 +1594,7 @@ export function NoteEditor({
             </Tooltip>
           </div>
 
-          <div className="h-4 w-px bg-border/60" />
+          <div className="h-4 w-px shrink-0 bg-border/60" />
 
           {/* Focus timer */}
           <div className="hidden lg:flex items-center">
@@ -1560,7 +1604,7 @@ export function NoteEditor({
           <div className="hidden h-4 w-px bg-border/60 lg:block" />
 
           {/* Insert Tools */}
-          <div className="flex items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-0.5">
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -1585,7 +1629,7 @@ export function NoteEditor({
           <div className="hidden h-4 w-px bg-border/60 sm:block" />
 
           {/* History Controls */}
-          <div className="hidden items-center gap-0.5 sm:flex">
+          <div className="hidden shrink-0 items-center gap-0.5 sm:flex">
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -1641,7 +1685,7 @@ export function NoteEditor({
           </div>
         </div>
 
-        {/* Right Section: Save Status, Note Details, Pin, More Actions */}
+        {/* Right Section: Save Status, Pin, More Actions (Note Details lives in the Topbar) */}
         <div className="flex items-center gap-0.5 sm:gap-1">
           {saveState !== "idle" && (
             <span
@@ -1694,22 +1738,9 @@ export function NoteEditor({
                   await performSaveRef.current?.({ forceRevalidate: true });
                 }}
               />
-              <div className="h-4 w-px bg-border/60" />
+              <div className="h-4 w-px shrink-0 bg-border/60" />
             </>
           )}
-
-          <NoteDetailsPopover
-            note={note}
-            metadata={metadata}
-            onChange={onMetadataChange}
-            allTags={allTags}
-            noteTagIds={noteTagIds}
-            parentCandidates={parentCandidates}
-            backlinks={backlinks}
-            dailyAgenda={dailyAgenda}
-            projectTaskCount={projectTaskCount}
-            iconOnly
-          />
 
           <Tooltip>
             <TooltipTrigger
@@ -1719,7 +1750,7 @@ export function NoteEditor({
                   size="icon-sm"
                   onClick={() => setVersionHistoryOpen(true)}
                   aria-label="Version history"
-                  className="text-muted-foreground hover:text-foreground"
+                  className="hidden text-muted-foreground hover:text-foreground sm:inline-flex"
                 />
               }
             >
@@ -1728,7 +1759,7 @@ export function NoteEditor({
             <TooltipContent>Version history (⌘⇧H)</TooltipContent>
           </Tooltip>
 
-          <div className="h-4 w-px bg-border/60" />
+          <div className="hidden h-4 w-px shrink-0 bg-border/60 sm:block" />
 
           <Tooltip>
             <TooltipTrigger
@@ -1739,7 +1770,7 @@ export function NoteEditor({
                   onClick={(e) => void (e.shiftKey ? onCopyPreview() : onCopyMarkdown())}
                   onMouseEnter={() => setCopyMenuTouched(true)}
                   aria-label="Copy Markdown (Shift+click for preview)"
-                  className="text-muted-foreground hover:text-foreground"
+                  className="hidden text-muted-foreground hover:text-foreground sm:inline-flex"
                 />
               }
             >
@@ -1762,7 +1793,7 @@ export function NoteEditor({
                       rel="noopener"
                     />
                   }
-                  className="text-muted-foreground hover:text-foreground"
+                  className="hidden text-muted-foreground hover:text-foreground sm:inline-flex"
                 />
               }
             >
@@ -1771,7 +1802,7 @@ export function NoteEditor({
             <TooltipContent>Export Markdown</TooltipContent>
           </Tooltip>
 
-          <div className="h-4 w-px bg-border/60" />
+          <div className="hidden h-4 w-px shrink-0 bg-border/60 sm:block" />
 
           <Tooltip>
             <TooltipTrigger
@@ -1782,7 +1813,7 @@ export function NoteEditor({
                   onClick={onTogglePin}
                   aria-label={metadata.pinned ? "Unpin note" : "Pin note"}
                   className={cn(
-                    "text-muted-foreground hover:text-foreground",
+                    "hidden text-muted-foreground hover:text-foreground sm:inline-flex",
                     metadata.pinned &&
                       "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400",
                   )}
@@ -1810,7 +1841,7 @@ export function NoteEditor({
                   disabled={isArchiving}
                   aria-label={metadata.archived ? "Unarchive note" : "Archive note"}
                   className={cn(
-                    "text-muted-foreground hover:text-foreground",
+                    "hidden text-muted-foreground hover:text-foreground sm:inline-flex",
                     metadata.archived &&
                       "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400",
                   )}
@@ -1836,7 +1867,7 @@ export function NoteEditor({
                   size="icon-sm"
                   onClick={onDelete}
                   aria-label="Delete note"
-                  className="text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400"
+                  className="hidden text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 sm:inline-flex"
                 />
               }
             >
@@ -1844,6 +1875,92 @@ export function NoteEditor({
             </TooltipTrigger>
             <TooltipContent>Delete note</TooltipContent>
           </Tooltip>
+
+          {/* Mobile overflow menu: actions hidden from the toolbar below sm */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="More note actions"
+                  className="text-muted-foreground hover:text-foreground sm:hidden"
+                />
+              }
+            >
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="bottom" className="w-56 text-xs">
+              <DropdownMenuItem className="gap-2 sm:hidden" onClick={() => openReader()}>
+                <BookOpen className="size-3.5" />
+                <span>Focus reader</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2 sm:hidden" onClick={() => openReader(true)}>
+                <Headphones className="size-3.5" />
+                <span>Listen</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onClick={undo} disabled={!canUndo}>
+                <Undo2 className="size-3.5" />
+                <span>Undo</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onClick={redo} disabled={!canRedo}>
+                <Redo2 className="size-3.5" />
+                <span>Redo</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onClick={() => openFindAndReplace(editorRef)}>
+                <Search className="size-3.5" />
+                <span>Find &amp; replace</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onClick={() => setVersionHistoryOpen(true)}>
+                <History className="size-3.5" />
+                <span>Version history</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onClick={() => void onCopyMarkdown()}>
+                <Copy className="size-3.5" />
+                <span>Copy Markdown</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" render={<a href={`/api/export/note/${note.id}`} rel="noopener" />}>
+                <Download className="size-3.5" />
+                <span>Export Markdown</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="gap-2" onClick={onTogglePin}>
+                {metadata.pinned ? (
+                  <>
+                    <PinOff className="size-3.5" />
+                    <span>Unpin note</span>
+                  </>
+                ) : (
+                  <>
+                    <Pin className="size-3.5" />
+                    <span>Pin note</span>
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onClick={() => void onToggleArchive()} disabled={isArchiving}>
+                {metadata.archived ? (
+                  <>
+                    <ArchiveRestore className="size-3.5" />
+                    <span>Unarchive note</span>
+                  </>
+                ) : (
+                  <>
+                    <Archive className="size-3.5" />
+                    <span>Archive note</span>
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                className="gap-2"
+                onClick={onDelete}
+              >
+                <Trash2 className="size-3.5" />
+                <span>Delete note</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <VersionHistoryButton
             noteId={note.id}
@@ -1862,7 +1979,7 @@ export function NoteEditor({
 
       <div className="relative flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="px-6 pt-6 sm:px-10 sm:pt-8">
+          <div className="px-4 pt-5 sm:px-10 sm:pt-8">
             <div className="w-full">
               <Label
                 htmlFor="note-title"
@@ -1894,7 +2011,7 @@ export function NoteEditor({
           </div>
 
           <div
-            className="flex min-h-0 flex-1 gap-0 px-6 sm:px-10"
+            className="flex min-h-0 flex-1 gap-0 px-4 sm:px-10"
             dir={metadata.direction}
           >
             <div className="flex min-h-0 flex-1 flex-col py-6">

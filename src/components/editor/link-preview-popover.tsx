@@ -119,9 +119,9 @@ export function LinkPreviewPopover({
       return;
     }
 
-    const popoverWidth = 320;
-    const popoverHeight = 160;
     const margin = 12;
+    const popoverWidth = Math.min(320, window.innerWidth - margin * 2);
+    const popoverHeight = 160;
 
     const { coords } = activeLink;
     let left = coords.x + coords.width / 2 - popoverWidth / 2;
@@ -131,6 +131,7 @@ export function LinkPreviewPopover({
     if (top < margin) {
       top = coords.y + coords.height + 8;
     }
+    top = Math.max(margin, Math.min(top, window.innerHeight - popoverHeight - margin));
 
     setStyle({
       position: "fixed",
@@ -140,6 +141,24 @@ export function LinkPreviewPopover({
       zIndex: 60,
     });
   }, [activeLink]);
+
+  // Re-clamp with the real rendered height — the pre-render estimate can be
+  // well below the actual popover (images, long excerpts) on short viewports.
+  React.useEffect(() => {
+    if (!activeLink) return;
+    const el = popoverRef.current;
+    if (!el || el.style.display === "none" || !style.top) return;
+    const margin = 12;
+    const realHeight = el.offsetHeight;
+    const top = Number.parseFloat(String(style.top));
+    const clampedTop = Math.max(
+      margin,
+      Math.min(top, window.innerHeight - realHeight - margin),
+    );
+    if (clampedTop !== top) {
+      setStyle((current) => ({ ...current, top: `${clampedTop}px` }));
+    }
+  }, [activeLink, style]);
 
   // Close on outside click
   React.useEffect(() => {

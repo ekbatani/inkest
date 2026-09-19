@@ -203,14 +203,15 @@ export default async function CalendarPage({
             </CardAction>
           </CardHeader>
           <CardContent className="flex-1 pt-5">
-            <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:gap-2">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label) => (
                 <div key={label} className="py-2">
-                  {label}
+                  <span className="hidden sm:inline">{label}</span>
+                  <span className="sm:hidden">{label[0]}</span>
                 </div>
               ))}
             </div>
-            <div className="mt-2 grid grid-cols-7 gap-2">
+            <div className="mt-2 grid grid-cols-7 gap-1 sm:gap-2">
               {monthDays.map((day) => {
                 const key = formatDateKey(day);
                 const dayEvents = eventsByDay.get(key) ?? [];
@@ -222,7 +223,7 @@ export default async function CalendarPage({
                     key={key}
                     href={`/calendar?month=${formatMonthKey(monthStart)}&date=${key}`}
                     className={cn(
-                      "group rounded-2xl border p-3 transition",
+                      "group rounded-lg border p-1.5 transition sm:rounded-2xl sm:p-3",
                       isSelected
                         ? "border-foreground/25 bg-foreground/[0.04] shadow-sm"
                         : "border-border/70 bg-background hover:border-foreground/15 hover:bg-muted/25",
@@ -230,22 +231,24 @@ export default async function CalendarPage({
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{format(day, "d")}</span>
+                      <span className="text-xs font-medium sm:text-sm">{format(day, "d")}</span>
                       {dayEvents.length > 0 && (
-                        <Badge variant="outline">{dayEvents.length}</Badge>
+                        <Badge variant="outline" className="px-1 sm:px-1.5">
+                          {dayEvents.length}
+                        </Badge>
                       )}
                     </div>
-                    <div className="mt-3 space-y-1.5">
+                    <div className="mt-1 space-y-1.5 sm:mt-3">
                       {dayEvents.slice(0, 2).map((event) => (
                         <div
                           key={event.id}
-                          className="truncate rounded-lg bg-muted/50 px-2 py-1 text-[11px] text-muted-foreground"
+                          className="hidden truncate rounded-lg bg-muted/50 px-2 py-1 text-[11px] text-muted-foreground sm:block"
                         >
                           {event.title}
                         </div>
                       ))}
                       {dayEvents.length > 2 && (
-                        <div className="text-[11px] text-muted-foreground">
+                        <div className="hidden text-[11px] text-muted-foreground sm:block">
                           +{dayEvents.length - 2} more
                         </div>
                       )}

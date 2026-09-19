@@ -131,16 +131,16 @@ export function SavedViewsManager({
 
   return (
     <div className="mx-auto max-w-6xl p-6">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Saved Views & Filter Collections</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Saved Views &amp; Filter Collections</h1>
           <p className="text-sm text-muted-foreground">
             Create dynamic saved searches across tags, backlinks, dates, and note types.
           </p>
         </div>
         <Button
           onClick={() => setIsCreating(!isCreating)}
-          className="gap-2"
+          className="shrink-0 gap-2 self-start sm:self-auto"
         >
           <Plus className="size-4" />
           {isCreating ? "Cancel" : "New Saved View"}
@@ -324,7 +324,7 @@ export function SavedViewsManager({
                     e.stopPropagation();
                     void handleDeleteView(view.id);
                   }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="opacity-60 transition-opacity hover:bg-destructive/10 sm:opacity-0 sm:group-hover:opacity-100"
                 >
                   <Trash2 className="size-3.5 text-destructive" />
                 </Button>

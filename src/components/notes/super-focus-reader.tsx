@@ -223,7 +223,7 @@ export function SuperFocusReader({
         <div
           role="toolbar"
           aria-label="Focus reader controls"
-          className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/10 bg-black/60 p-1 shadow-lg backdrop-blur"
+          className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-black/60 p-1 shadow-lg backdrop-blur"
         >
           <div className="flex items-center rounded-full bg-white/5 p-0.5">
             <button
@@ -254,7 +254,7 @@ export function SuperFocusReader({
             </button>
           </div>
 
-          <div className="flex items-center gap-2 px-2">
+          <div className="hidden items-center gap-2 px-2 sm:flex">
             <input
               type="range"
               min={0}
@@ -290,8 +290,8 @@ export function SuperFocusReader({
             className="gap-1.5 rounded-full text-white/70 hover:bg-white/10 hover:text-white"
           >
             <X className="size-3.5" />
-            <span>Exit</span>
-            <kbd className="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-white/50">
+            <span className="hidden sm:inline">Exit</span>
+            <kbd className="hidden rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-white/50 sm:inline">
               Esc
             </kbd>
           </Button>

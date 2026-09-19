@@ -76,7 +76,7 @@ export function ThemeToggle() {
             size="icon"
             aria-label="Theme & appearance"
             title="Theme & appearance"
-            className="rounded-xl text-muted-foreground hover:text-foreground relative"
+            className="relative size-8 rounded-xl text-muted-foreground hover:text-foreground sm:size-9"
           />
         }
       >

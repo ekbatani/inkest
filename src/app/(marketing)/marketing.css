@@ -1589,6 +1589,19 @@
   border-bottom: 1px solid var(--mk-line);
   background: color-mix(in oklab, var(--mk-panel) 65%, transparent);
 }
+@media (max-width: 640px) {
+  .ai-demo-tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .ai-demo-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  /* Status chip is secondary — drop it before clipping the tabs */
+  .ai-demo-tabs > [class*="ml-auto"] {
+    display: none;
+  }
+}
 .ai-demo-tab {
   display: inline-flex;
   align-items: center;
@@ -2203,7 +2216,7 @@
 }
 .platform-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(21rem, 100%), 1fr));
   gap: 1rem;
   margin-top: 2.25rem;
 }

@@ -1553,6 +1553,7 @@ export function MarkdownEditor({
           ".cm-find-replace-row": {
             display: "flex",
             alignItems: "center",
+            flexWrap: "wrap",
             gap: "0.35rem",
             minWidth: "0",
           },
@@ -1611,7 +1612,9 @@ export function MarkdownEditor({
             display: "flex",
             alignItems: "center",
             flex: "1",
-            minWidth: "0",
+            // Wraps to its own row instead of being squeezed to a sliver
+            // by the fixed-width button groups on narrow screens.
+            minWidth: "10rem",
             height: "1.875rem",
             backgroundColor: "color-mix(in oklab, var(--muted) 45%, var(--background))",
             border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)",
@@ -1637,7 +1640,7 @@ export function MarkdownEditor({
             border: "none",
             outline: "none",
             color: "var(--foreground)",
-            fontSize: "0.8125rem",
+            fontSize: "1rem",
             padding: "0",
             fontFamily: "inherit",
           },

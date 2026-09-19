@@ -114,12 +114,15 @@ export function ReviewWizard({ data }: Props) {
           ) : (
             <div className="surface-card overflow-hidden divide-y divide-border/70">
               {overdueList.map((t) => (
-                <div key={t.id} className="flex items-center justify-between p-4 text-xs">
-                  <div>
+                <div
+                  key={t.id}
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 p-4 text-xs"
+                >
+                  <div className="min-w-0 flex-1 basis-52">
                     <p className="font-medium text-foreground">{t.title}</p>
                     <p className="text-muted-foreground">From: {t.noteTitle}</p>
                   </div>
-                  <div className="flex gap-1.5">
+                  <div className="flex shrink-0 gap-1.5">
                     <Button variant="outline" size="sm" onClick={() => void handleResolveOverdue(t.id, "done")}>
                       Done
                     </Button>
@@ -162,8 +165,11 @@ export function ReviewWizard({ data }: Props) {
           ) : (
             <div className="surface-card overflow-hidden divide-y divide-border/70">
               {unplannedList.map((t) => (
-                <div key={t.id} className="flex items-center justify-between gap-3 p-4 text-xs">
-                  <div className="min-w-0">
+                <div
+                  key={t.id}
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 p-4 text-xs"
+                >
+                  <div className="min-w-0 flex-1 basis-52">
                     <p className="font-medium text-foreground">{t.title}</p>
                     <p className="text-muted-foreground">From: {t.noteTitle}</p>
                   </div>

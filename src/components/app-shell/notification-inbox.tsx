@@ -22,7 +22,7 @@ export function NotificationInbox({ notifications }: { notifications: InboxNotif
   };
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="relative" aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`} />}>
+      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="relative size-8 sm:size-9" aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`} />}>
         <Bell className="size-4" />
         {unread ? <span className="absolute end-1.5 top-1.5 size-2 rounded-full bg-primary ring-2 ring-background" /> : null}
       </DropdownMenuTrigger>

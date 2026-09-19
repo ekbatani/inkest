@@ -16,8 +16,8 @@ export default async function AppLayout({
   }
 
   return (
-    <AppShell>
-      <TooltipProvider delay={300}>{children}</TooltipProvider>
-    </AppShell>
+    <TooltipProvider delay={300}>
+      <AppShell>{children}</AppShell>
+    </TooltipProvider>
   );
 }

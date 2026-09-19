@@ -111,16 +111,16 @@ export function ProjectParentPicker({
       >
         <FolderTree className="size-3 text-muted-foreground" />
         {selectedParent ? (
-          <span className="truncate max-w-[140px]">
+          <span className="hidden truncate max-w-[140px] sm:inline">
             Parent: {selectedParent.title || "Untitled"}
           </span>
         ) : (
-          <span className="text-muted-foreground">Set parent</span>
+          <span className="hidden text-muted-foreground sm:inline">Set parent</span>
         )}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg p-0">
+        <DialogContent className="sm:max-w-lg p-0">
           <DialogHeader className="px-5 pt-5 pb-1">
             <DialogTitle>Choose parent project</DialogTitle>
             <DialogDescription>

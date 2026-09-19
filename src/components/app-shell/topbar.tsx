@@ -15,6 +15,7 @@ import {
 import { Sidebar } from "@/components/app-shell/sidebar";
 import { CommandMenu } from "@/components/app-shell/command-menu";
 import { UserMenu } from "@/components/app-shell/user-menu";
+import { useTopbarActions } from "@/components/app-shell/topbar-actions";
 import { mainNav, settingsNav } from "@/components/app-shell/nav-items";
 import type { NoteTreeNode } from "@/server/notes/service";
 import type { InboxNotification } from "@/server/notifications/service";
@@ -59,6 +60,7 @@ export function Topbar({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const topbarActions = useTopbarActions();
   const [commandOpen, setCommandOpen] = React.useState(false);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
 
@@ -94,7 +96,7 @@ export function Topbar({
   return (
     <>
       <header
-        className="relative z-30 flex shrink-0 items-center gap-2 border-b border-border/70 bg-background/80 px-3 pb-2 backdrop-blur-xl sm:h-16 sm:min-h-16 sm:px-5 sm:pb-0 sm:pt-0"
+        className="relative z-30 flex shrink-0 items-center gap-1 border-b border-border/70 bg-background/80 px-3 pb-2 backdrop-blur-xl sm:h-16 sm:min-h-16 sm:gap-2 sm:px-5 sm:pb-0 sm:pt-0"
         style={{
           paddingTop: "max(0.5rem, calc(0.5rem + env(safe-area-inset-top, 0px)))",
           paddingLeft: "max(0.75rem, calc(0.75rem + env(safe-area-inset-left, 0px)))",
@@ -108,7 +110,7 @@ export function Topbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden"
+                className="size-8 sm:size-9 md:hidden"
                 aria-label="Open navigation"
               />
             }
@@ -138,19 +140,20 @@ export function Topbar({
           role="combobox"
           aria-label="Open command menu"
           onClick={() => setCommandOpen(true)}
-          className="h-9 w-full max-w-sm justify-start gap-2 rounded-xl border-border/70 bg-muted/25 px-3 text-muted-foreground shadow-none hover:bg-muted/50 sm:w-72 lg:w-80"
+          className="h-9 size-9 shrink-0 justify-center rounded-xl border-border/70 bg-muted/25 px-0 text-muted-foreground shadow-none hover:bg-muted/50 sm:size-auto sm:w-72 sm:justify-start sm:px-3 lg:w-80"
         >
           <Search className="size-4" />
-          <span className="text-sm">Search notes &amp; projects…</span>
+          <span className="hidden text-sm sm:inline">Search notes &amp; projects…</span>
           <kbd className="ml-auto hidden rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline-block">
             Ctrl K
           </kbd>
         </Button>
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-0.5 sm:gap-1.5">
+          {topbarActions?.slot?.node}
           <Button
             size="sm"
-            className="gap-1.5 rounded-xl px-3.5 shadow-sm"
+            className="size-8 gap-1.5 rounded-xl p-0 shadow-sm sm:size-auto sm:px-3.5"
             onClick={() => router.push("/notes/new")}
           >
             <Plus className="size-4" />
@@ -164,11 +167,11 @@ export function Topbar({
             aria-label="Toggle AI Assistant sidebar"
             title="Toggle AI Assistant sidebar"
             onClick={() => document.dispatchEvent(new CustomEvent("inkest:toggle-ai-sidebar"))}
-            className="rounded-xl text-muted-foreground hover:text-foreground"
+            className="size-8 rounded-xl text-muted-foreground hover:text-foreground sm:size-9"
           >
             <Sparkles className="size-4" />
           </Button>
-          <div className="mx-1 h-5 w-px bg-border/60" />
+          <div className="mx-1 hidden h-5 w-px bg-border/60 sm:block" />
           <UserMenu user={user} align="end" />
         </div>
       </header>
