@@ -111,6 +111,9 @@ export function WorkspaceTabItem({
       <div
         role="tab"
         aria-selected={isActive}
+        // Active-tab state is restored from storage after hydration; suppress
+        // the attribute mismatch so React doesn't discard the whole tree.
+        suppressHydrationWarning
         tabIndex={0}
         draggable={!tab.pinned}
         onDragStart={handleDragStart}
