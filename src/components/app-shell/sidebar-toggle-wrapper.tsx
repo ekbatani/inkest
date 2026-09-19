@@ -44,11 +44,9 @@ export function SidebarToggleWrapper({
 }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = React.useState(false);
-  const [aiSidebarOpen, setAiSidebarOpen] = React.useState(() => {
-    if (typeof window === "undefined") return true;
-    const isNote = isNoteRoute(window.location?.pathname || "");
-    return isNote;
-  });
+  // Start open to match the SSR markup; the route effect below corrects it
+  // right after hydration (reading window.location here would mismatch SSR).
+  const [aiSidebarOpen, setAiSidebarOpen] = React.useState(true);
 
   const [sidebarWidth, setSidebarWidth] = React.useState(() => {
     if (typeof window === "undefined") return SIDEBAR_DEFAULT_WIDTH;
