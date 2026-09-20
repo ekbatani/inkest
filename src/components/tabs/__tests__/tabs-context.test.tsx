@@ -20,8 +20,8 @@ mock.module("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import { TabsProvider, useWorkspaceTabs, parseRoute } from "../tabs-context";
-import type { TabsContextValue } from "../tabs-types";
+import { TabsProvider, useWorkspaceTabs, parseRoute, integrateRouteTab } from "../tabs-context";
+import type { TabsContextValue, WorkspaceTab } from "../tabs-types";
 
 const mockTree: NoteTreeNode[] = [
   {
@@ -257,6 +257,40 @@ describe("TabsProvider & useWorkspaceTabs", () => {
     expect(html).toContain("data-testid=\"loaded-count\">0</div>");
   });
 
+  it("replaces the active transient tab in place when the route moves to another note", () => {
+    currentPathname = "/notes/note-1";
+
+    function TreeNavigationSimulation() {
+      // Simulates clicking another note in the sidebar tree: the route moves
+      // from note-1 to note-2 while the (transient) note-1 tab is active.
+      const [step, setStep] = React.useState(1);
+
+      if (step === 1) {
+        setStep(2);
+      }
+
+      // Test-only pathname flip: usePathname is module-mocked to read this
+      // variable, so reassigning it between renders simulates navigation.
+      // eslint-disable-next-line react-hooks/globals
+      currentPathname = step === 1 ? "/notes/note-1" : "/notes/note-2";
+
+      return (
+        <TabsProvider notesTree={mockTree}>
+          <TestConsumer onContext={(ctx) => (contextSnapshot = ctx)} />
+        </TabsProvider>
+      );
+    }
+
+    let contextSnapshot: TabsContextValue | null = null;
+    renderToString(<TreeNavigationSimulation />);
+
+    const ctx = contextSnapshot!;
+    expect(ctx.tabs.length).toBe(1);
+    expect(ctx.tabs[0].id).toBe("note-2");
+    expect(ctx.tabs[0].title).toBe("Second Note");
+    expect(ctx.tabs[0].stable).not.toBe(true);
+  });
+
   it("parseRoute parses all supported workspace route formats", () => {
     expect(parseRoute("/notes")).toEqual({ id: "notes-overview", type: "note", url: "/notes" });
     expect(parseRoute("/notes/")).toEqual({ id: "notes-overview", type: "note", url: "/notes" });
@@ -270,3 +304,44 @@ describe("TabsProvider & useWorkspaceTabs", () => {
     expect(parseRoute("/calendar")).toBeNull();
   });
 });
+
+describe("integrateRouteTab", () => {
+  const makeTab = (id: string, extra: Partial<WorkspaceTab> = {}): WorkspaceTab => ({
+    id,
+    title: id,
+    url: `/notes/${id}`,
+    type: "note",
+    ...extra,
+  });
+
+  it("reuses the active transient tab's slot for the new route", () => {
+    const prev = [makeTab("stable-1", { stable: true }), makeTab("note-1")];
+    const next = integrateRouteTab(prev, "note-1", makeTab("note-2"));
+
+    expect(next.map((t) => t.id)).toEqual(["stable-1", "note-2"]);
+    expect(next[1].stable).not.toBe(true);
+    expect(next[1].pinned).not.toBe(true);
+  });
+
+  it("appends a new tab when the active tab is stable", () => {
+    const prev = [makeTab("note-1", { stable: true })];
+    const next = integrateRouteTab(prev, "note-1", makeTab("note-2"));
+
+    expect(next.map((t) => t.id)).toEqual(["note-1", "note-2"]);
+  });
+
+  it("appends a new tab when the active tab is pinned", () => {
+    const prev = [makeTab("note-1", { pinned: true })];
+    const next = integrateRouteTab(prev, "note-1", makeTab("note-2"));
+
+    expect(next.map((t) => t.id)).toEqual(["note-1", "note-2"]);
+  });
+
+  it("appends a new tab when no tab is active (non-tab route)", () => {
+    const prev = [makeTab("note-1")];
+    const next = integrateRouteTab(prev, null, makeTab("note-2"));
+
+    expect(next.map((t) => t.id)).toEqual(["note-1", "note-2"]);
+  });
+});
+

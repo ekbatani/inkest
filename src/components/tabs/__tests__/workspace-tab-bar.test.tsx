@@ -178,6 +178,7 @@ describe("WorkspaceTabBar component", () => {
         onSelect={() => {}}
         onClose={() => {}}
         onTogglePin={() => {}}
+        onToggleStable={() => {}}
         onReorder={() => {}}
       />,
     );
@@ -201,6 +202,7 @@ describe("WorkspaceTabBar component", () => {
         onSelect={() => {}}
         onClose={() => {}}
         onTogglePin={() => {}}
+        onToggleStable={() => {}}
         onReorder={() => {}}
       />,
     );
@@ -223,6 +225,7 @@ describe("WorkspaceTabBar component", () => {
         onSelect={() => {}}
         onClose={() => {}}
         onTogglePin={() => {}}
+        onToggleStable={() => {}}
         onReorder={() => {}}
       />,
     );

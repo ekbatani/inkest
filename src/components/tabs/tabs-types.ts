@@ -6,6 +6,12 @@ export interface WorkspaceTab {
   url: string;
   type?: WorkspaceTabType;
   pinned?: boolean;
+  /**
+   * A stable tab keeps its note: navigating to another note/project from the
+   * tree opens a new tab instead of replacing this one. Tabs are transient
+   * (preview) until double-clicked. Pinned tabs are implicitly stable.
+   */
+  stable?: boolean;
   isDirty?: boolean;
   updatedAt?: number;
 }
@@ -30,6 +36,7 @@ export interface TabsContextValue {
   closeTabsToTheRight: (tabId: string) => void;
   closeAllTabs: () => void;
   togglePinTab: (tabId: string) => void;
+  toggleTabStable: (tabId: string) => void;
   reorderTabs: (sourceIndex: number, destinationIndex: number) => void;
   updateTabTitle: (tabId: string, title: string) => void;
   setTabDirty: (tabId: string, isDirty: boolean) => void;

@@ -66,6 +66,33 @@ export function isTransientRouteId(routeId: string): boolean {
   return routeId === "new-note";
 }
 
+/**
+ * Preview-tab integration for a newly visited note/project route: when the
+ * active tab is transient (not stable, not pinned), the new route takes over
+ * its slot in the strip instead of accumulating another tab. The caller
+ * handles the case where the route already has a tab (activate/update).
+ */
+export function integrateRouteTab(
+  prevTabs: WorkspaceTab[],
+  activeTabId: string | null,
+  newTab: WorkspaceTab,
+): WorkspaceTab[] {
+  const activeIndex = prevTabs.findIndex((t) => t.id === activeTabId);
+  if (
+    activeIndex >= 0 &&
+    !prevTabs[activeIndex].stable &&
+    !prevTabs[activeIndex].pinned
+  ) {
+    const updated = [...prevTabs];
+    // Fresh transient tab in the same strip position; never inherit the
+    // replaced tab's stable/pinned flags.
+    updated[activeIndex] = newTab;
+    return updated;
+  }
+
+  return [...prevTabs, newTab].slice(-MAX_TABS);
+}
+
 export function TabsProvider({
   children,
   notesTree = [],
@@ -180,7 +207,8 @@ export function TabsProvider({
           type: nodeType,
           updatedAt: Date.now(),
         };
-        return [...prevTabs, newTab].slice(-MAX_TABS);
+
+        return integrateRouteTab(prevTabs, activeTabId, newTab);
       });
     }
 
@@ -309,6 +337,10 @@ export function TabsProvider({
 
   const switchTab = React.useCallback(
     (tabId: string) => {
+      // Re-clicking the active tab (e.g. ahead of a double-click to stabilize
+      // it) must not push duplicate history entries.
+      if (tabId === activeTabId) return;
+
       const targetTab = tabs.find((t) => t.id === tabId);
       if (!targetTab) return;
 
@@ -330,7 +362,7 @@ export function TabsProvider({
         router.push(targetTab.url);
       }
     },
-    [tabs, loadedTabIds, router],
+    [tabs, activeTabId, loadedTabIds, router],
   );
 
   const openTab = React.useCallback(
@@ -531,6 +563,22 @@ export function TabsProvider({
     });
   }, []);
 
+  // Double-clicking a tab toggles its stability: stable tabs are never
+  // replaced by tree navigation. Pinned tabs are already protected, so the
+  // toggle is redundant for them but harmless.
+  const toggleTabStable = React.useCallback((tabId: string) => {
+    setTabs((prevTabs) => {
+      const index = prevTabs.findIndex((t) => t.id === tabId);
+      if (index < 0) return prevTabs;
+
+      const tab = prevTabs[index];
+      const updatedTab = { ...tab, stable: !tab.stable };
+      const otherTabs = prevTabs.filter((t) => t.id !== tabId);
+      otherTabs.splice(index, 0, updatedTab);
+      return otherTabs;
+    });
+  }, []);
+
   const reorderTabs = React.useCallback(
     (sourceIndex: number, destinationIndex: number) => {
       setTabs((prevTabs) => {
@@ -641,6 +689,7 @@ export function TabsProvider({
       closeTabsToTheRight,
       closeAllTabs,
       togglePinTab,
+      toggleTabStable,
       reorderTabs,
       updateTabTitle,
       setTabDirty,
@@ -660,6 +709,7 @@ export function TabsProvider({
       closeTabsToTheRight,
       closeAllTabs,
       togglePinTab,
+      toggleTabStable,
       reorderTabs,
       updateTabTitle,
       setTabDirty,

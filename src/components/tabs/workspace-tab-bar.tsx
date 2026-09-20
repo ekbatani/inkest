@@ -35,6 +35,7 @@ export function WorkspaceTabBar() {
     closeTab,
     closeAllTabs,
     togglePinTab,
+    toggleTabStable,
     reorderTabs,
   } = useWorkspaceTabs();
 
@@ -100,6 +101,7 @@ export function WorkspaceTabBar() {
               onSelect={switchTab}
               onClose={closeTab}
               onTogglePin={togglePinTab}
+              onToggleStable={toggleTabStable}
               onReorder={reorderTabs}
             />
           ))}

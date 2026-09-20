@@ -42,6 +42,7 @@ export function WorkspaceTabItem({
   onSelect,
   onClose,
   onTogglePin,
+  onToggleStable,
   onReorder,
 }: {
   tab: WorkspaceTab;
@@ -50,11 +51,22 @@ export function WorkspaceTabItem({
   onSelect: (tabId: string) => void;
   onClose: (tabId: string) => void;
   onTogglePin: (tabId: string) => void;
+  onToggleStable: (tabId: string) => void;
   onReorder: (srcIndex: number, destIndex: number) => void;
 }) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [isDragOver, setIsDragOver] = React.useState(false);
   const isRtl = usesRtlTitleFont(tab.title);
+  // Transient (preview) tabs are replaced when another note/project is opened
+  // from the tree; stable and pinned tabs are kept.
+  const isTransient = !tab.stable && !tab.pinned;
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    // Pinned tabs are already protected from replacement.
+    if (tab.pinned) return;
+    e.stopPropagation();
+    onToggleStable(tab.id);
+  };
 
   const handleCopyLink = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -118,6 +130,7 @@ export function WorkspaceTabItem({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => onSelect(tab.id)}
+        onDoubleClick={handleDoubleClick}
         onAuxClick={handleAuxClick}
         onContextMenu={handleContextMenu}
         onKeyDown={(e) => {
@@ -147,6 +160,7 @@ export function WorkspaceTabItem({
             <span
               className={cn(
                 "truncate tracking-tight",
+                isTransient && "italic",
                 isRtl && "rtl-vazir font-normal"
               )}
             >
@@ -164,6 +178,13 @@ export function WorkspaceTabItem({
           </TooltipTrigger>
           <TooltipContent side="bottom" sideOffset={6}>
             <p className={cn("text-xs", isRtl && "rtl-vazir")}>{tab.title || "Untitled"}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {tab.pinned
+                ? "Pinned — always kept"
+                : tab.stable
+                  ? "Stable — notes open in new tabs · Double-click to release"
+                  : "Transient — notes replace this tab · Double-click to keep"}
+            </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">
               Middle click or Alt+W to close
             </p>
