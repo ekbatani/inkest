@@ -19,6 +19,7 @@ mock.module("next/navigation", () => ({
 
 import { TabsProvider } from "../tabs-context";
 import { TabContentKeeper } from "../tab-content-keeper";
+import { tagRouteLoadingFallback } from "../route-loading";
 
 const mockTree: NoteTreeNode[] = [
   {
@@ -135,5 +136,44 @@ describe("TabContentKeeper", () => {
     // With maxCachedTabs = 1, when note-2 is cached, note-1 should be evicted
     expect(html).toContain('data-tab-content-id="note-2"');
     expect(html).not.toContain('data-tab-content-id="note-1"');
+  });
+
+  it("never caches a tagged route loading fallback as tab content", () => {
+    currentPathname = "/notes/note-1";
+
+    function FakeRouteLoading() {
+      return <div data-testid="route-loading-fallback">Loading…</div>;
+    }
+    const TaggedFakeRouteLoading = tagRouteLoadingFallback(FakeRouteLoading);
+
+    const html = renderToString(
+      <TabsProvider notesTree={mockTree}>
+        <TabContentKeeper>
+          <TaggedFakeRouteLoading />
+        </TabContentKeeper>
+      </TabsProvider>,
+    );
+
+    // The skeleton must be rendered directly, never stored in the tab cache —
+    // a cached skeleton replays forever once the tab is marked loaded.
+    expect(html).not.toContain("data-tab-content-id");
+    expect(html).toContain('data-testid="route-loading-fallback"');
+  });
+
+  it("renders /notes/new children directly without caching (transient redirect route)", () => {
+    currentPathname = "/notes/new";
+
+    const html = renderToString(
+      <TabsProvider notesTree={mockTree}>
+        <TabContentKeeper>
+          <div data-testid="new-note-spinner">Creating note…</div>
+        </TabContentKeeper>
+      </TabsProvider>,
+    );
+
+    // /notes/new creates a note and redirects away; its one-shot spinner must
+    // never become cached tab content (the create effect cannot re-run).
+    expect(html).not.toContain("data-tab-content-id");
+    expect(html).toContain('data-testid="new-note-spinner"');
   });
 });

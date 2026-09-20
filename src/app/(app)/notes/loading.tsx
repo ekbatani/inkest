@@ -1,4 +1,6 @@
-export default function NotesLoading() {
+import { tagRouteLoadingFallback } from "@/components/tabs/route-loading";
+
+function NotesLoading() {
   return (
     <div className="flex flex-col gap-3 p-4">
       {Array.from({ length: 8 }).map((_, i) => (
@@ -11,3 +13,5 @@ export default function NotesLoading() {
     </div>
   );
 }
+
+export default tagRouteLoadingFallback(NotesLoading);

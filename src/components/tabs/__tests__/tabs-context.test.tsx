@@ -130,7 +130,7 @@ describe("TabsProvider & useWorkspaceTabs", () => {
     expect(ctx.tabs.length).toBe(0);
   });
 
-  it("does not restore a stale activeTabId from storage on non-tab routes", () => {
+  it("renders storage-independent output on non-tab routes (restore is deferred to an effect)", () => {
     interface FakeWindow {
       localStorage: {
         getItem: (key: string) => string | null;
@@ -146,6 +146,7 @@ describe("TabsProvider & useWorkspaceTabs", () => {
     const globalWithWindow = globalThis as unknown as { window?: FakeWindow };
     const hadWindow = "window" in globalWithWindow;
     const originalWindow = globalWithWindow.window;
+    let getItemCalls = 0;
     const store = new Map<string, string>([
       [
         "inkest:workspace-tabs",
@@ -157,7 +158,10 @@ describe("TabsProvider & useWorkspaceTabs", () => {
     ]);
     globalWithWindow.window = {
       localStorage: {
-        getItem: (key: string) => store.get(key) ?? null,
+        getItem: (key: string) => {
+          getItemCalls += 1;
+          return store.get(key) ?? null;
+        },
         setItem: (key: string, value: string) => void store.set(key, value),
         removeItem: (key: string) => void store.delete(key),
       },
@@ -180,10 +184,10 @@ describe("TabsProvider & useWorkspaceTabs", () => {
       const ctx = contextValue!;
       // No tab is active off the tabbed area, even though storage holds one...
       expect(ctx.activeTabId).toBeNull();
-      // ...but the tab session itself is restored for returning to /notes.
-      expect(ctx.tabs.length).toBe(1);
-      expect(ctx.tabs[0].id).toBe("note-1");
-      expect(ctx.tabs[0].title).toBe("First Note");
+      // ...and the initial render must not read storage at all: saved tabs are
+      // restored in a post-hydration effect so server and client markup match.
+      expect(getItemCalls).toBe(0);
+      expect(ctx.tabs.length).toBe(0);
     } finally {
       if (hadWindow) {
         globalWithWindow.window = originalWindow;
@@ -191,6 +195,21 @@ describe("TabsProvider & useWorkspaceTabs", () => {
         delete globalWithWindow.window;
       }
     }
+  });
+
+  it("never creates a tab for the transient /notes/new route", () => {
+    let contextValue: TabsContextValue | null = null;
+    currentPathname = "/notes/new";
+
+    renderToString(
+      <TabsProvider notesTree={mockTree}>
+        <TestConsumer onContext={(ctx) => (contextValue = ctx)} />
+      </TabsProvider>,
+    );
+
+    const ctx = contextValue!;
+    expect(ctx.tabs.length).toBe(0);
+    expect(ctx.tabs.some((t) => t.id === "new-note")).toBe(false);
   });
 
   it("handles /notes route as All Notes tab", () => {

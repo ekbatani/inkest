@@ -3,8 +3,9 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { useWorkspaceTabs, parseRoute } from "./tabs-context";
+import { isRouteLoadingFallback } from "./route-loading";
 
-const MAX_CACHED_TABS = 8;
+const MAX_CACHED_TABS = 4;
 
 interface CacheEntry {
   node: React.ReactNode;
@@ -19,15 +20,30 @@ export function TabContentKeeper({
   maxCachedTabs?: number;
 }) {
   const pathname = usePathname();
-  const { activeTabId, tabs, loadedTabIds, markTabLoaded, unmarkTabLoaded } = useWorkspaceTabs();
+  const {
+    activeTabId,
+    tabs,
+    loadedTabIds,
+    fastPathSeq,
+    markTabLoaded,
+    unmarkTabLoaded,
+  } = useWorkspaceTabs();
 
   const currentRoute = parseRoute(pathname);
   const currentRouteId = currentRoute?.id ?? null;
 
-  // In-memory cache of rendered tab contents
+  // In-memory cache of rendered tab contents. Only settled page content is
+  // ever stored here: loading fallbacks and payloads delivered after a
+  // fast-path tab switch are skipped (see the sync below).
   const [cachedTabs, setCachedTabs] = React.useState<Map<string, CacheEntry>>(() => {
     const map = new Map<string, CacheEntry>();
-    if (currentRouteId && (!activeTabId || currentRouteId === activeTabId)) {
+    const openAtInit = new Set(tabs.map((t) => t.id));
+    if (
+      currentRouteId &&
+      openAtInit.has(currentRouteId) &&
+      (!activeTabId || currentRouteId === activeTabId) &&
+      !isRouteLoadingFallback(children)
+    ) {
       map.set(currentRouteId, { node: children, lastActive: Date.now() });
     }
     return map;
@@ -36,16 +52,33 @@ export function TabContentKeeper({
   const [prevActiveId, setPrevActiveId] = React.useState<string | null>(activeTabId);
   const [prevChildren, setPrevChildren] = React.useState<React.ReactNode>(children);
   const [prevRouteId, setPrevRouteId] = React.useState<string | null>(currentRouteId);
+  const [prevFastPathSeq, setPrevFastPathSeq] = React.useState<number>(fastPathSeq);
+
+  // The fastPathSeq observed when the children payload last changed. A new
+  // children payload is attributable to the current route only when no
+  // fast-path switch happened since the previous payload — otherwise it
+  // belongs to the route we navigated away from, not the one the URL shows.
+  // Tracked as state (not a ref) because the render-phase sync below reads
+  // and adjusts it.
+  const [lastChildrenSeq, setLastChildrenSeq] = React.useState<number>(fastPathSeq);
 
   // Synchronize cache during render phase
   if (
     activeTabId !== prevActiveId ||
     children !== prevChildren ||
-    currentRouteId !== prevRouteId
+    currentRouteId !== prevRouteId ||
+    fastPathSeq !== prevFastPathSeq
   ) {
     setPrevActiveId(activeTabId);
     setPrevChildren(children);
     setPrevRouteId(currentRouteId);
+    setPrevFastPathSeq(fastPathSeq);
+
+    const childrenChanged = children !== prevChildren;
+    const attributionValid = childrenChanged && fastPathSeq === lastChildrenSeq;
+    if (childrenChanged) {
+      setLastChildrenSeq(fastPathSeq);
+    }
 
     setCachedTabs((prev) => {
       const next = new Map(prev);
@@ -58,20 +91,30 @@ export function TabContentKeeper({
         }
       }
 
-      // 2. If current route matches an open tab and children belongs to that route, cache or update it
-      if (currentRouteId && openIds.has(currentRouteId)) {
-        const existing = next.get(currentRouteId);
-        if (!existing) {
-          // New tab content rendered by Next.js
-          next.set(currentRouteId, { node: children, lastActive: Date.now() });
-        } else if (children !== prevChildren && currentRouteId === activeTabId) {
-          // Fresh children delivered by Next.js for the active route (e.g. server revalidation or refresh)
-          next.set(currentRouteId, { ...existing, node: children, lastActive: Date.now() });
+      if (!attributionValid) {
+        // This payload was delivered after a fast-path switch: it belongs to
+        // the route we just left. Drop the entry cached from that interrupted
+        // navigation (its node is exactly the stale previous payload) so the
+        // tab is never fast-path-switched into an eternal skeleton — it will
+        // refetch the next time it is opened.
+        for (const [id, entry] of next) {
+          if (entry.node === prevChildren) {
+            next.delete(id);
+          }
         }
+      } else if (
+        currentRouteId &&
+        openIds.has(currentRouteId) &&
+        !isRouteLoadingFallback(children)
+      ) {
+        // 2. Settled content for an open tab that matches the current route:
+        // cache or update it. Transient loading fallbacks are never cached.
+        next.set(currentRouteId, { node: children, lastActive: Date.now() });
       }
 
-      // 3. If active tab changed to an already cached tab, update its lastActive timestamp.
-      // IMPORTANT: Never overwrite an existing cached tab's node with children when switching activeTabId!
+      // 3. If active tab changed to an already cached tab, update its
+      // lastActive timestamp. Never swap a cached tab's node on activation —
+      // children at that moment belongs to the route being left.
       if (activeTabId && next.has(activeTabId)) {
         const entry = next.get(activeTabId)!;
         next.set(activeTabId, { ...entry, lastActive: Date.now() });

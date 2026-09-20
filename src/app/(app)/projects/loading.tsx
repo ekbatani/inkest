@@ -1,4 +1,6 @@
-export default function ProjectsLoading() {
+import { tagRouteLoadingFallback } from "@/components/tabs/route-loading";
+
+function ProjectsLoading() {
   return (
     <div className="flex flex-col gap-3 p-4">
       {Array.from({ length: 6 }).map((_, i) => (
@@ -13,3 +15,5 @@ export default function ProjectsLoading() {
     </div>
   );
 }
+
+export default tagRouteLoadingFallback(ProjectsLoading);

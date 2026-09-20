@@ -410,6 +410,9 @@ export function NoteEditor({
 
   const { setPageContext, clearPageContext } = usePageContext();
 
+  // Notify the tab bar of title changes only — dispatching on every content
+  // change re-rendered the whole tab context (and every mounted editor) on
+  // each keystroke.
   React.useEffect(() => {
     if (typeof window !== "undefined") {
       window.dispatchEvent(
@@ -418,7 +421,9 @@ export function NoteEditor({
         })
       );
     }
+  }, [note.id, title]);
 
+  React.useEffect(() => {
     const timer = setTimeout(() => {
       setPageContext({
         noteId: note.id,

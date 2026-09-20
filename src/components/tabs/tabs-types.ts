@@ -15,6 +15,13 @@ export interface TabsContextValue {
   activeTabId: string | null;
   activeTab: WorkspaceTab | null;
   loadedTabIds: Set<string>;
+  /**
+   * Incremented on every cached-tab fast-path switch (raw history.pushState).
+   * TabContentKeeper compares it against the value seen when the last children
+   * payload was attributed: a change in between means the in-flight payload no
+   * longer belongs to the route the URL now shows, so it must not be cached.
+   */
+  fastPathSeq: number;
   markTabLoaded: (tabId: string) => void;
   unmarkTabLoaded: (tabId: string) => void;
   openTab: (tab: Omit<WorkspaceTab, "updatedAt">, activate?: boolean) => void;

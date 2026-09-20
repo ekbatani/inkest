@@ -56,6 +56,16 @@ export function parseRoute(pathname: string): { id: string; type: WorkspaceTabTy
   return null;
 }
 
+/**
+ * /notes/new is a redirect-through page: it mounts, creates a note in a
+ * one-shot effect, and router.replace()s away. Its spinner output must never
+ * become a workspace tab or be cached — the create effect cannot re-run on a
+ * revived cached instance, which stranded users on an eternal spinner.
+ */
+export function isTransientRouteId(routeId: string): boolean {
+  return routeId === "new-note";
+}
+
 export function TabsProvider({
   children,
   notesTree = [],
@@ -65,6 +75,10 @@ export function TabsProvider({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+
+  // Bumped on every cached-tab fast-path switch (raw history.pushState). See
+  // TabsContextValue.fastPathSeq for why TabContentKeeper needs this.
+  const [fastPathSeq, setFastPathSeq] = React.useState(0);
 
   // Track which tab contents are currently mounted and cached in client memory
   const [loadedTabIds, setLoadedTabIds] = React.useState<Set<string>>(() => new Set());
@@ -87,58 +101,33 @@ export function TabsProvider({
     });
   }, []);
 
-  // Initialize tabs from route and localStorage
+  // Initialize tabs from the current route only. Saved tabs are restored in an
+  // effect after hydration: reading localStorage here would render a different
+  // tree on the client than on the server and force React to discard the
+  // server-rendered HTML on every page load.
   const [tabs, setTabs] = React.useState<WorkspaceTab[]>(() => {
     const routeInfo = parseRoute(pathname);
-    let initialTabs: WorkspaceTab[] = [];
-
-    if (typeof window !== "undefined") {
-      try {
-        const saved = window.localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed?.tabs)) {
-            initialTabs = parsed.tabs
-              .filter(
-                (t: unknown): t is WorkspaceTab =>
-                  typeof t === "object" &&
-                  t !== null &&
-                  typeof (t as WorkspaceTab).id === "string" &&
-                  typeof (t as WorkspaceTab).url === "string",
-              )
-              .slice(0, MAX_TABS);
-          }
-        }
-      } catch {
-        // Ignore parse errors
-      }
+    if (!routeInfo || isTransientRouteId(routeInfo.id)) {
+      return [];
     }
 
-    if (routeInfo) {
-      const existing = initialTabs.find((t) => t.id === routeInfo.id);
-      if (!existing) {
-        const treeNode = findInTree(notesTree, routeInfo.id);
-        const title =
-          routeInfo.id === "notes-overview"
-            ? "All Notes"
-            : treeNode?.title ||
-              (routeInfo.id === "new-note"
-                ? "New Note"
-                : routeInfo.id === "daily"
-                  ? "Daily Note"
-                  : "Untitled Note");
-        const nodeType = (treeNode?.type as WorkspaceTabType) || routeInfo.type;
-        initialTabs.push({
-          id: routeInfo.id,
-          title,
-          url: routeInfo.url,
-          type: nodeType,
-          updatedAt: Date.now(),
-        });
-      }
-    }
+    const treeNode = findInTree(notesTree, routeInfo.id);
+    const title =
+      routeInfo.id === "notes-overview"
+        ? "All Notes"
+        : treeNode?.title ||
+          (routeInfo.id === "daily" ? "Daily Note" : "Untitled Note");
+    const nodeType = (treeNode?.type as WorkspaceTabType) || routeInfo.type;
 
-    return initialTabs;
+    return [
+      {
+        id: routeInfo.id,
+        title,
+        url: routeInfo.url,
+        type: nodeType,
+        updatedAt: Date.now(),
+      },
+    ];
   });
 
   // The active tab always mirrors the current route. Saved tabs are restored above,
@@ -157,18 +146,13 @@ export function TabsProvider({
     setPrevRouteId(currentRouteId);
     setActiveTabId(currentRouteId);
 
-    if (routeInfo) {
+    if (routeInfo && !isTransientRouteId(routeInfo.id)) {
       const { id, type, url } = routeInfo;
       const treeNode = findInTree(notesTree, id);
       const title =
         id === "notes-overview"
           ? "All Notes"
-          : treeNode?.title ||
-            (id === "new-note"
-              ? "New Note"
-              : id === "daily"
-                ? "Daily Note"
-                : "Untitled Note");
+          : treeNode?.title || (id === "daily" ? "Daily Note" : "Untitled Note");
       const nodeType = (treeNode?.type as WorkspaceTabType) || type;
 
       setTabs((prevTabs) => {
@@ -199,10 +183,72 @@ export function TabsProvider({
         return [...prevTabs, newTab].slice(-MAX_TABS);
       });
     }
+
+    // Leaving /notes/new (or arriving with a stale saved one): drop its
+    // transient tab — it only ever showed a one-shot redirect spinner.
+    setTabs((prevTabs) =>
+      prevTabs.some((t) => isTransientRouteId(t.id))
+        ? prevTabs.filter((t) => !isTransientRouteId(t.id))
+        : prevTabs,
+    );
   }
 
-  // Save tabs to localStorage whenever they change
+  // Restore saved tabs after hydration. Restoring during the initial render
+  // would mismatch the server markup (which renders only the current route's
+  // tab) and force a full client re-render.
+  const [restored, setRestored] = React.useState(false);
+
   React.useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        const savedTabs: WorkspaceTab[] =
+          Array.isArray((parsed as { tabs?: unknown })?.tabs)
+            ? ((parsed as { tabs: unknown[] }).tabs
+                .filter(
+                  (t: unknown): t is WorkspaceTab =>
+                    typeof t === "object" &&
+                    t !== null &&
+                    typeof (t as WorkspaceTab).id === "string" &&
+                    typeof (t as WorkspaceTab).url === "string" &&
+                    !isTransientRouteId((t as WorkspaceTab).id),
+                )
+                .slice(0, MAX_TABS) as WorkspaceTab[])
+            : [];
+
+        if (savedTabs.length > 0) {
+          // Syncing persisted external state (localStorage) into React state
+          // on mount is the documented exception to deriving state during
+          // render — reading storage in the initializer would mismatch SSR.
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setTabs((prev) => {
+            if (prev.length > 1) return prev;
+            if (prev.length === 0) return savedTabs;
+            const current = prev[0];
+            const savedIds = new Set(savedTabs.map((t) => t.id));
+            if (savedIds.has(current.id)) {
+              // Keep the saved session's tab order; refresh the current tab's
+              // url/type in case the route carries fresher data.
+              return savedTabs.map((t) =>
+                t.id === current.id ? { ...t, url: current.url, type: t.type ?? current.type } : t,
+              );
+            }
+            return [...savedTabs, current];
+          });
+        }
+      }
+    } catch {
+      // Ignore parse errors
+    }
+    setRestored(true);
+  }, []);
+
+  // Save tabs to localStorage whenever they change — but never before the
+  // saved state has been restored, or the initial single-tab state would
+  // clobber the previous session's tabs.
+  React.useEffect(() => {
+    if (!restored) return;
     try {
       window.localStorage.setItem(
         STORAGE_KEY,
@@ -214,7 +260,7 @@ export function TabsProvider({
     } catch {
       // Ignore storage quota errors
     }
-  }, [tabs, activeTabId]);
+  }, [tabs, activeTabId, restored]);
 
   // Listen to popstate (browser back/forward navigation)
   React.useEffect(() => {
@@ -236,17 +282,20 @@ export function TabsProvider({
     const handleTitleUpdate = (event: Event) => {
       const detail = (event as CustomEvent<{ id: string; title: string }>).detail;
       if (!detail?.id) return;
-      setTabs((prev) =>
-        prev.map((t) => (t.id === detail.id ? { ...t, title: detail.title || "Untitled Note" } : t)),
-      );
+      const nextTitle = detail.title || "Untitled Note";
+      setTabs((prev) => {
+        if (!prev.some((t) => t.id === detail.id && t.title !== nextTitle)) return prev;
+        return prev.map((t) => (t.id === detail.id ? { ...t, title: nextTitle } : t));
+      });
     };
 
     const handleDirtyUpdate = (event: Event) => {
       const detail = (event as CustomEvent<{ id: string; isDirty: boolean }>).detail;
       if (!detail?.id) return;
-      setTabs((prev) =>
-        prev.map((t) => (t.id === detail.id ? { ...t, isDirty: detail.isDirty } : t)),
-      );
+      setTabs((prev) => {
+        if (!prev.some((t) => t.id === detail.id && t.isDirty !== detail.isDirty)) return prev;
+        return prev.map((t) => (t.id === detail.id ? { ...t, isDirty: detail.isDirty } : t));
+      });
     };
 
     window.addEventListener("inkest:tab-title-update", handleTitleUpdate);
@@ -271,6 +320,10 @@ export function TabsProvider({
 
       // If target tab is already mounted and cached in memory, switch via history without triggering Next.js loading screen!
       if (typeof window !== "undefined" && loadedTabIds.has(tabId)) {
+        // Mark that a fast-path switch happened: any children payload still in
+        // flight now belongs to the route we just left, not the one the URL
+        // will show, so TabContentKeeper must not cache it under this route.
+        setFastPathSeq((seq) => seq + 1);
         window.history.pushState(null, "", targetTab.url);
         window.dispatchEvent(new CustomEvent("inkest:tab-switched", { detail: { tabId } }));
       } else {
@@ -327,6 +380,7 @@ export function TabsProvider({
             setActiveTabId(nextActiveTab.id);
 
             if (typeof window !== "undefined" && loadedTabIds.has(nextActiveTab.id)) {
+              setFastPathSeq((seq) => seq + 1);
               window.history.pushState(null, "", nextActiveTab.url);
               window.dispatchEvent(
                 new CustomEvent("inkest:tab-switched", { detail: { tabId: nextActiveTab.id } }),
@@ -370,6 +424,7 @@ export function TabsProvider({
           setActiveTabId(targetTab.id);
 
           if (typeof window !== "undefined" && loadedTabIds.has(targetTab.id)) {
+            setFastPathSeq((seq) => seq + 1);
             window.history.pushState(null, "", targetTab.url);
           } else {
             router.push(targetTab.url);
@@ -409,6 +464,7 @@ export function TabsProvider({
           setActiveTabId(targetTab.id);
 
           if (typeof window !== "undefined" && loadedTabIds.has(targetTab.id)) {
+            setFastPathSeq((seq) => seq + 1);
             window.history.pushState(null, "", targetTab.url);
           } else {
             router.push(targetTab.url);
@@ -576,6 +632,7 @@ export function TabsProvider({
       activeTabId,
       activeTab,
       loadedTabIds,
+      fastPathSeq,
       markTabLoaded,
       unmarkTabLoaded,
       openTab,
@@ -594,6 +651,7 @@ export function TabsProvider({
       activeTabId,
       activeTab,
       loadedTabIds,
+      fastPathSeq,
       markTabLoaded,
       unmarkTabLoaded,
       openTab,
