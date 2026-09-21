@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import type { NoteTreeNode } from "@/server/notes/service";
 import { usesRtlTitleFont } from "@/lib/text/rtl";
 import { DocumentUploadModal } from "@/components/reader/document-upload-modal";
+import { useOptionalWorkspaceTabs, type WorkspaceTabType } from "@/components/tabs";
 
 function getNodeIcon(node: NoteTreeNode) {
   if (node.type === "project") return Folder;
@@ -53,6 +54,13 @@ function getNodeHref(node: NoteTreeNode) {
     return `/reader/${node.documentId || node.id}`;
   }
   return `/notes/${node.id}`;
+}
+
+function getTabId(node: NoteTreeNode): string {
+  if (node.type === "document") {
+    return node.documentId || node.id;
+  }
+  return node.id;
 }
 
 type TreeItem = NoteTreeNode;
@@ -328,7 +336,9 @@ export function NotesTree({
     [onNavigate],
   );
 
-  const activeId = getActiveItemId(pathname);
+  const tabsContext = useOptionalWorkspaceTabs();
+  const routeActiveId = getActiveItemId(pathname);
+  const activeId = tabsContext?.activeTabId ?? routeActiveId;
   const [prevActiveId, setPrevActiveId] = React.useState(activeId);
 
   if (activeId !== prevActiveId) {
@@ -465,10 +475,12 @@ export function NotesTree({
             </li>
           ) : (
             treeNodes.map((node) => {
+              const tabId = getTabId(node);
               const isAncestorOfActive = Boolean(activeId && hasDescendant(node, activeId));
               const isOpen = open[node.id] ?? isAncestorOfActive;
               const hasChildren = node.children.length > 0;
               const isProject = node.type === "project";
+              const isNodeActive = activeId === tabId || pathname === getNodeHref(node);
               return (
                 <li key={node.id} className="notes-tree-row">
                   <DropZone
@@ -481,9 +493,11 @@ export function NotesTree({
                   />
                   <TreeRow
                     noteId={node.id}
+                    tabId={tabId}
+                    tabType={node.type as WorkspaceTabType}
                     title={node.title}
                     href={getNodeHref(node)}
-                    isActive={pathname === getNodeHref(node)}
+                    isActive={isNodeActive}
                     icon={getNodeIcon(node)}
                     canAcceptChildren={isProject}
                     projectDropId={isProject ? makeProjectDropId(node.id) : null}
@@ -501,6 +515,7 @@ export function NotesTree({
                       <button
                         type="button"
                         onClick={() => handleToggle(node.id, isAncestorOfActive)}
+                        onPointerDown={(e) => e.stopPropagation()}
                         className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted"
                         aria-label={isOpen ? "Collapse" : "Expand"}
                       >
@@ -572,17 +587,21 @@ function TreeChildren({
   return (
     <ul className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l pl-1.5">
       {nodes.map((node) => {
+        const tabId = getTabId(node);
         const isAncestorOfActive = Boolean(activeId && hasDescendant(node, activeId));
         const isOpen = open[node.id] ?? isAncestorOfActive;
         const hasChildren = node.children.length > 0;
         const isProject = node.type === "project";
+        const isNodeActive = activeId === tabId || pathname === getNodeHref(node);
         return (
           <li key={node.id} className="notes-tree-row">
             <TreeRow
               noteId={node.id}
+              tabId={tabId}
+              tabType={node.type as WorkspaceTabType}
               title={node.title}
               href={getNodeHref(node)}
-              isActive={pathname === getNodeHref(node)}
+              isActive={isNodeActive}
               icon={getNodeIcon(node)}
               canAcceptChildren={isProject}
               projectDropId={isProject ? makeProjectDropId(node.id) : null}
@@ -600,6 +619,7 @@ function TreeChildren({
                 <button
                   type="button"
                   onClick={() => onToggle(node.id, isAncestorOfActive)}
+                  onPointerDown={(e) => e.stopPropagation()}
                   className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted"
                   aria-label={isOpen ? "Collapse" : "Expand"}
                 >
@@ -629,6 +649,8 @@ function TreeChildren({
 
 function TreeRow({
   noteId,
+  tabId,
+  tabType,
   title,
   href,
   isActive,
@@ -643,6 +665,8 @@ function TreeRow({
   children,
 }: {
   noteId: string;
+  tabId?: string;
+  tabType?: WorkspaceTabType;
   title: string;
   href: string;
   isActive: boolean;
@@ -656,6 +680,78 @@ function TreeRow({
   onNavigate?: () => void;
   children: React.ReactNode;
 }) {
+  const tabsContext = useOptionalWorkspaceTabs();
+  const targetTabId = tabId || noteId;
+  const targetTabType = tabType || (isProject ? "project" : "note");
+
+  const openInTabs = React.useCallback(
+    (forceNewTab = false, stable = false) => {
+      onNavigate?.();
+      if (!tabsContext) return false;
+
+      const defaultTitle =
+        title ||
+        (isProject
+          ? "Untitled Project"
+          : targetTabType === "document"
+            ? "Untitled Document"
+            : "Untitled Note");
+
+      const existingTab = tabsContext.tabs.find((t) => t.id === targetTabId);
+      if (existingTab && !forceNewTab) {
+        tabsContext.switchTab(targetTabId);
+        if (stable && !existingTab.stable) {
+          tabsContext.toggleTabStable(targetTabId);
+        }
+      } else {
+        tabsContext.openTab(
+          {
+            id: targetTabId,
+            title: defaultTitle,
+            url: href,
+            type: targetTabType,
+            stable: stable || forceNewTab,
+          },
+          true,
+          { forceNewTab },
+        );
+      }
+      return true;
+    },
+    [tabsContext, targetTabId, targetTabType, title, isProject, href, onNavigate],
+  );
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      openInTabs(true, true);
+      return;
+    }
+
+    if (e.button === 0) {
+      if (tabsContext) {
+        e.preventDefault();
+        openInTabs(false, false);
+      } else {
+        onNavigate?.();
+      }
+    }
+  };
+
+  const handleAuxClick = (e: React.MouseEvent) => {
+    if (e.button === 1) {
+      e.preventDefault();
+      openInTabs(true, true);
+    }
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (e.button === 0) {
+      e.preventDefault();
+      openInTabs(false, true);
+    }
+  };
+
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: makeDragId(noteId) });
   const drop = useDroppable({
@@ -675,22 +771,35 @@ function TreeRow({
           "flex items-center gap-0.5 rounded-md",
           projectDropActive && "bg-emerald-500/10 ring-1 ring-emerald-500/30",
         )}
-        {...attributes}
-        {...listeners}
       >
         {children}
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          onClick={handleClick}
+          onAuxClick={handleAuxClick}
+          onDoubleClick={handleDoubleClick}
+          className="flex size-5 shrink-0 items-center justify-center rounded cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
+          title="Drag to reorder / Click to open"
+          aria-label={title || "Item icon"}
+        >
+          <Icon className="size-3.5" />
+        </button>
         <Link
           href={href}
-          onClick={onNavigate}
+          onClick={handleClick}
+          onAuxClick={handleAuxClick}
+          onDoubleClick={handleDoubleClick}
+          onPointerDown={(e) => e.stopPropagation()}
           className={cn(
-            "group flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-1 text-sm transition-colors touch-none",
+            "group flex min-w-0 flex-1 items-center rounded-md px-1.5 py-1 text-sm transition-colors",
             isActive
-              ? "bg-muted text-foreground"
+              ? "bg-muted text-foreground font-medium"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
             projectDropActive && "bg-transparent",
           )}
         >
-          <Icon className="size-3 shrink-0" />
           <span
             className={cn(
               "truncate",
@@ -704,6 +813,7 @@ function TreeRow({
           <div className="flex items-center opacity-0 group-hover/tree-item:opacity-100 focus-within:opacity-100 transition-opacity gap-0.5 pr-1">
             <button
               type="button"
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -717,6 +827,7 @@ function TreeRow({
             </button>
             <button
               type="button"
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

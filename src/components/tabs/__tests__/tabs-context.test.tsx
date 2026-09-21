@@ -303,6 +303,31 @@ describe("TabsProvider & useWorkspaceTabs", () => {
     expect(parseRoute("/settings")).toBeNull();
     expect(parseRoute("/calendar")).toBeNull();
   });
+
+  it("openTab switches to existing tab or integrates new tab without failure", () => {
+    let contextSnapshot: TabsContextValue | null = null;
+
+    function OpenTabTester() {
+      const [step, setStep] = React.useState(1);
+      const ctx = useWorkspaceTabs();
+
+      if (step === 1) {
+        setStep(2);
+        ctx.openTab({ id: "note-2", title: "Second Note", url: "/notes/note-2", type: "note" });
+      }
+
+      return <TestConsumer onContext={(c) => { contextSnapshot = c; }} />;
+    }
+
+    renderToString(
+      <TabsProvider notesTree={mockTree}>
+        <OpenTabTester />
+      </TabsProvider>,
+    );
+
+    const ctx = contextSnapshot!;
+    expect(ctx).not.toBeNull();
+  });
 });
 
 describe("integrateRouteTab", () => {

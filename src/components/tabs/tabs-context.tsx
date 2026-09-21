@@ -366,22 +366,44 @@ export function TabsProvider({
   );
 
   const openTab = React.useCallback(
-    (tab: Omit<WorkspaceTab, "updatedAt">, activate = true) => {
+    (
+      tab: Omit<WorkspaceTab, "updatedAt">,
+      activate = true,
+      options?: { forceNewTab?: boolean },
+    ) => {
+      const fullTab: WorkspaceTab = { ...tab, updatedAt: Date.now() };
+
       setTabs((prev) => {
         const index = prev.findIndex((t) => t.id === tab.id);
         if (index >= 0) {
           const updated = [...prev];
-          updated[index] = { ...updated[index], ...tab, updatedAt: Date.now() };
+          updated[index] = { ...updated[index], ...fullTab };
           return updated;
         }
-        return [...prev, { ...tab, updatedAt: Date.now() }].slice(-MAX_TABS);
+        if (options?.forceNewTab || fullTab.stable) {
+          return [...prev, fullTab].slice(-MAX_TABS);
+        }
+        return integrateRouteTab(prev, activeTabId, fullTab);
       });
 
       if (activate) {
-        switchTab(tab.id);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
+        }
+        setActiveTabId(tab.id);
+
+        if (typeof window !== "undefined" && loadedTabIds.has(tab.id)) {
+          setFastPathSeq((seq) => seq + 1);
+          window.history.pushState(null, "", tab.url);
+          window.dispatchEvent(
+            new CustomEvent("inkest:tab-switched", { detail: { tabId: tab.id } }),
+          );
+        } else {
+          router.push(tab.url);
+        }
       }
     },
-    [switchTab],
+    [activeTabId, loadedTabIds, router],
   );
 
   const closeTab = React.useCallback(
@@ -726,4 +748,8 @@ export function useWorkspaceTabs() {
     throw new Error("useWorkspaceTabs must be used within a TabsProvider");
   }
   return context;
+}
+
+export function useOptionalWorkspaceTabs(): TabsContextValue | null {
+  return React.useContext(TabsContext);
 }

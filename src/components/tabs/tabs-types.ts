@@ -30,7 +30,11 @@ export interface TabsContextValue {
   fastPathSeq: number;
   markTabLoaded: (tabId: string) => void;
   unmarkTabLoaded: (tabId: string) => void;
-  openTab: (tab: Omit<WorkspaceTab, "updatedAt">, activate?: boolean) => void;
+  openTab: (
+    tab: Omit<WorkspaceTab, "updatedAt">,
+    activate?: boolean,
+    options?: { forceNewTab?: boolean },
+  ) => void;
   closeTab: (tabId: string) => void;
   closeOtherTabs: (tabId: string) => void;
   closeTabsToTheRight: (tabId: string) => void;

@@ -140,4 +140,17 @@ describe("NotesTree rendering and collapse logic", () => {
     const fixedOpenByDefault = openState["proj-2"] ?? isAncestorOfActive;
     expect(fixedOpenByDefault).toBe(true); // Auto-expanded by default
   });
+
+  it("renders accessible navigation links and dedicated drag handle buttons", () => {
+    currentPathname = "/notes/note-1";
+
+    const html = renderToString(<NotesTree nodes={mockTree} />);
+    // Contains links with correct destinations
+    expect(html).toContain('href="/projects/proj-1"');
+    expect(html).toContain('href="/notes/note-1"');
+    // Contains dedicated drag handle buttons
+    expect(html).toContain('title="Drag to reorder / Click to open"');
+    // Links should NOT have touch-none which was interfering with clicks
+    expect(html).not.toContain("touch-none");
+  });
 });
