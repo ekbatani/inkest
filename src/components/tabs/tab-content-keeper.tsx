@@ -49,6 +49,7 @@ export function TabContentKeeper({
     return map;
   });
 
+  const [prevPathname, setPrevPathname] = React.useState(pathname);
   const [prevActiveId, setPrevActiveId] = React.useState<string | null>(activeTabId);
   const [prevChildren, setPrevChildren] = React.useState<React.ReactNode>(children);
   const [prevRouteId, setPrevRouteId] = React.useState<string | null>(currentRouteId);
@@ -64,11 +65,13 @@ export function TabContentKeeper({
 
   // Synchronize cache during render phase
   if (
+    pathname !== prevPathname ||
     activeTabId !== prevActiveId ||
     children !== prevChildren ||
     currentRouteId !== prevRouteId ||
     fastPathSeq !== prevFastPathSeq
   ) {
+    setPrevPathname(pathname);
     setPrevActiveId(activeTabId);
     setPrevChildren(children);
     setPrevRouteId(currentRouteId);
@@ -160,14 +163,15 @@ export function TabContentKeeper({
     }
   }, [cachedTabs, loadedTabIds, markTabLoaded, unmarkTabLoaded]);
 
-  // If on a non-tab route (e.g. /dashboard, /calendar, /settings) or tab not cached yet
-  const isTabInCache = activeTabId ? cachedTabs.has(activeTabId) : false;
+  // If on a non-tab route (e.g. /dashboard, /calendar, /settings), cached tabs must never be active or hide children
+  const isTabRoute = currentRoute !== null;
+  const isTabInCache = isTabRoute && activeTabId ? cachedTabs.has(activeTabId) : false;
 
   return (
     <div className="relative h-full w-full min-h-0 flex-1">
       {/* Mounted tabs kept in memory */}
       {Array.from(cachedTabs.entries()).map(([tabId, entry]) => {
-        const isCurrent = tabId === activeTabId;
+        const isCurrent = isTabRoute && tabId === activeTabId;
         return (
           <div
             key={tabId}

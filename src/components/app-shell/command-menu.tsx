@@ -47,6 +47,7 @@ import {
 import { cn } from "@/lib/utils";
 import { usesRtlTitleFont } from "@/lib/text/rtl";
 import type { MarkdownFormat } from "@/components/editor/markdown-editor-utils";
+import { useOptionalWorkspaceTabs, parseRoute } from "@/components/tabs";
 
 type Props = {
   open: boolean;
@@ -106,6 +107,7 @@ function HitBadges({ hit }: { hit: NoteSearchHit }) {
 export function CommandMenu({ open, onOpenChange, isAdmin = false }: Props) {
   const router = useRouter();
   const pathname = usePathname();
+  const tabsContext = useOptionalWorkspaceTabs();
   const noteMatch = pathname?.match(/^\/notes\/([^/]+)$/);
   const currentNoteId =
     noteMatch && noteMatch[1] !== "new" ? noteMatch[1] : undefined;
@@ -173,6 +175,13 @@ export function CommandMenu({ open, onOpenChange, isAdmin = false }: Props) {
 
   const go = (href: string) => {
     handleOpenChange(false);
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
+    }
+    const route = parseRoute(href);
+    if (!route && tabsContext) {
+      tabsContext.clearActiveTab();
+    }
     router.push(href);
   };
 

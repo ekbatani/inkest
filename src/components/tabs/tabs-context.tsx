@@ -93,6 +93,18 @@ export function integrateRouteTab(
   return [...prevTabs, newTab].slice(-MAX_TABS);
 }
 
+function dispatchSafeCustomEvent(type: string, detail?: unknown) {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.dispatchEvent === "function" &&
+    typeof CustomEvent === "function"
+  ) {
+    window.dispatchEvent(
+      detail !== undefined ? new CustomEvent(type, { detail }) : new CustomEvent(type),
+    );
+  }
+}
+
 export function TabsProvider({
   children,
   notesTree = [],
@@ -165,12 +177,12 @@ export function TabsProvider({
   );
 
   // Adjust state during render when pathname changes (official React pattern)
+  const [prevPathname, setPrevPathname] = React.useState(pathname);
   const routeInfo = parseRoute(pathname);
   const currentRouteId = routeInfo?.id ?? null;
-  const [prevRouteId, setPrevRouteId] = React.useState(currentRouteId);
 
-  if (currentRouteId !== prevRouteId) {
-    setPrevRouteId(currentRouteId);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
     setActiveTabId(currentRouteId);
 
     if (routeInfo && !isTransientRouteId(routeInfo.id)) {
@@ -344,25 +356,14 @@ export function TabsProvider({
       const targetTab = tabs.find((t) => t.id === tabId);
       if (!targetTab) return;
 
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
-      }
+      dispatchSafeCustomEvent("inkest:flush-active-save");
 
       setActiveTabId(tabId);
-
-      // If target tab is already mounted and cached in memory, switch via history without triggering Next.js loading screen!
-      if (typeof window !== "undefined" && loadedTabIds.has(tabId)) {
-        // Mark that a fast-path switch happened: any children payload still in
-        // flight now belongs to the route we just left, not the one the URL
-        // will show, so TabContentKeeper must not cache it under this route.
-        setFastPathSeq((seq) => seq + 1);
-        window.history.pushState(null, "", targetTab.url);
-        window.dispatchEvent(new CustomEvent("inkest:tab-switched", { detail: { tabId } }));
-      } else {
-        router.push(targetTab.url);
-      }
+      setFastPathSeq((s) => s + 1);
+      router.push(targetTab.url);
+      dispatchSafeCustomEvent("inkest:tab-switched", { tabId });
     },
-    [tabs, activeTabId, loadedTabIds, router],
+    [tabs, activeTabId, router],
   );
 
   const openTab = React.useCallback(
@@ -387,23 +388,14 @@ export function TabsProvider({
       });
 
       if (activate) {
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
-        }
+        dispatchSafeCustomEvent("inkest:flush-active-save");
         setActiveTabId(tab.id);
-
-        if (typeof window !== "undefined" && loadedTabIds.has(tab.id)) {
-          setFastPathSeq((seq) => seq + 1);
-          window.history.pushState(null, "", tab.url);
-          window.dispatchEvent(
-            new CustomEvent("inkest:tab-switched", { detail: { tabId: tab.id } }),
-          );
-        } else {
-          router.push(tab.url);
-        }
+        setFastPathSeq((s) => s + 1);
+        router.push(tab.url);
+        dispatchSafeCustomEvent("inkest:tab-switched", { tabId: tab.id });
       }
     },
-    [activeTabId, loadedTabIds, router],
+    [activeTabId, router],
   );
 
   const closeTab = React.useCallback(
@@ -424,24 +416,15 @@ export function TabsProvider({
 
         // If closing the currently active tab, pick an adjacent active tab
         if (activeTabId === tabId) {
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
-          }
+          dispatchSafeCustomEvent("inkest:flush-active-save");
 
           if (nextTabs.length > 0) {
             const nextActiveIndex = Math.min(index, nextTabs.length - 1);
             const nextActiveTab = nextTabs[nextActiveIndex];
             setActiveTabId(nextActiveTab.id);
-
-            if (typeof window !== "undefined" && loadedTabIds.has(nextActiveTab.id)) {
-              setFastPathSeq((seq) => seq + 1);
-              window.history.pushState(null, "", nextActiveTab.url);
-              window.dispatchEvent(
-                new CustomEvent("inkest:tab-switched", { detail: { tabId: nextActiveTab.id } }),
-              );
-            } else {
-              router.push(nextActiveTab.url);
-            }
+            setFastPathSeq((s) => s + 1);
+            router.push(nextActiveTab.url);
+            dispatchSafeCustomEvent("inkest:tab-switched", { tabId: nextActiveTab.id });
           } else {
             setActiveTabId(null);
             router.push("/notes");
@@ -451,7 +434,7 @@ export function TabsProvider({
         return nextTabs;
       });
     },
-    [activeTabId, loadedTabIds, router],
+    [activeTabId, router],
   );
 
   const closeOtherTabs = React.useCallback(
@@ -472,23 +455,16 @@ export function TabsProvider({
         });
 
         if (activeTabId !== tabId && !nextTabs.some((t) => t.id === activeTabId)) {
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
-          }
+          dispatchSafeCustomEvent("inkest:flush-active-save");
           setActiveTabId(targetTab.id);
-
-          if (typeof window !== "undefined" && loadedTabIds.has(targetTab.id)) {
-            setFastPathSeq((seq) => seq + 1);
-            window.history.pushState(null, "", targetTab.url);
-          } else {
-            router.push(targetTab.url);
-          }
+          setFastPathSeq((s) => s + 1);
+          router.push(targetTab.url);
         }
 
         return nextTabs;
       });
     },
-    [activeTabId, loadedTabIds, router],
+    [activeTabId, router],
   );
 
   const closeTabsToTheRight = React.useCallback(
@@ -512,23 +488,16 @@ export function TabsProvider({
 
         if (activeTabId && !nextTabs.some((t) => t.id === activeTabId)) {
           const targetTab = prevTabs[index];
-          if (typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
-          }
+          dispatchSafeCustomEvent("inkest:flush-active-save");
           setActiveTabId(targetTab.id);
-
-          if (typeof window !== "undefined" && loadedTabIds.has(targetTab.id)) {
-            setFastPathSeq((seq) => seq + 1);
-            window.history.pushState(null, "", targetTab.url);
-          } else {
-            router.push(targetTab.url);
-          }
+          setFastPathSeq((s) => s + 1);
+          router.push(targetTab.url);
         }
 
         return nextTabs;
       });
     },
-    [activeTabId, loadedTabIds, router],
+    [activeTabId, router],
   );
 
   const closeAllTabs = React.useCallback(() => {
@@ -546,6 +515,7 @@ export function TabsProvider({
 
         if (!pinnedTabs.some((t) => t.id === activeTabId)) {
           setActiveTabId(pinnedTabs[0].id);
+          setFastPathSeq((s) => s + 1);
           router.push(pinnedTabs[0].url);
         }
         return pinnedTabs;
@@ -553,9 +523,7 @@ export function TabsProvider({
 
       setLoadedTabIds(new Set());
 
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
-      }
+      dispatchSafeCustomEvent("inkest:flush-active-save");
       setActiveTabId(null);
       router.push("/notes");
       return [];
@@ -691,6 +659,10 @@ export function TabsProvider({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [tabs, activeTabId, closeTab, switchTab, openTab]);
 
+  const clearActiveTab = React.useCallback(() => {
+    setActiveTabId(null);
+  }, []);
+
   const activeTab = React.useMemo(
     () => tabs.find((t) => t.id === activeTabId) ?? null,
     [tabs, activeTabId],
@@ -716,6 +688,7 @@ export function TabsProvider({
       updateTabTitle,
       setTabDirty,
       switchTab,
+      clearActiveTab,
     }),
     [
       tabs,
@@ -736,6 +709,7 @@ export function TabsProvider({
       updateTabTitle,
       setTabDirty,
       switchTab,
+      clearActiveTab,
     ],
   );
 

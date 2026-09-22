@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "@/components/brand/logo-mark";
@@ -13,19 +13,54 @@ import {
 } from "@/components/app-shell/nav-items";
 import { NotesTree } from "@/components/app-shell/notes-tree";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { useOptionalWorkspaceTabs, parseRoute } from "@/components/tabs";
 import type { NoteTreeNode } from "@/server/notes/service";
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const tabsContext = useOptionalWorkspaceTabs();
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
+
+  const handleNavClick = (e: React.MouseEvent, href: string) => {
+    // Let browser handle new tab gestures
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+      return;
+    }
+
+    e.preventDefault();
+
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
+    }
+
+    onNavigate?.();
+
+    if (href === "/notes" && tabsContext) {
+      tabsContext.openTab({
+        id: "notes-overview",
+        title: "All Notes",
+        url: "/notes",
+        type: "note",
+      });
+      return;
+    }
+
+    const route = parseRoute(href);
+    if (!route && tabsContext) {
+      tabsContext.clearActiveTab();
+    }
+
+    router.push(href);
+  };
 
   const render = (item: NavItem) => (
     <Link
       key={item.href}
       href={item.href}
-      onClick={onNavigate}
+      onClick={(e) => handleNavClick(e, item.href)}
       aria-current={isActive(item.href) ? "page" : undefined}
       className={cn(
         "group flex min-h-9 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-[color,background-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
@@ -60,7 +95,30 @@ export function Sidebar({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const tabsContext = useOptionalWorkspaceTabs();
   const navItemsToRender = settingsNav;
+
+  const handleLinkClick = (e: React.MouseEvent, href: string) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+      return;
+    }
+
+    e.preventDefault();
+
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
+    }
+
+    onNavigate?.();
+
+    const route = parseRoute(href);
+    if (!route && tabsContext) {
+      tabsContext.clearActiveTab();
+    }
+
+    router.push(href);
+  };
 
   return (
     <div
@@ -73,7 +131,7 @@ export function Sidebar({
     >
       <Link
         href="/dashboard"
-        onClick={onNavigate}
+        onClick={(e) => handleLinkClick(e, "/dashboard")}
         className="flex items-center gap-3 rounded-xl px-5 py-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
       >
         <span className="flex size-9 items-center justify-center rounded-xl bg-card border border-border/80 p-1 shadow-xs shrink-0">
@@ -90,7 +148,7 @@ export function Sidebar({
       <div className="px-3 pb-3">
         <Link
           href="/notes/new"
-          onClick={onNavigate}
+          onClick={(e) => handleLinkClick(e, "/notes/new")}
           className="flex h-9 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-xs font-semibold text-background shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
           <Plus className="size-3.5" />
@@ -107,7 +165,7 @@ export function Sidebar({
           <Link
             key={item.href}
             href={item.href}
-            onClick={onNavigate}
+            onClick={(e) => handleLinkClick(e, item.href)}
             aria-current={
               pathname === item.href || pathname.startsWith(`${item.href}/`)
                 ? "page"

@@ -45,4 +45,5 @@ export interface TabsContextValue {
   updateTabTitle: (tabId: string, title: string) => void;
   setTabDirty: (tabId: string, isDirty: boolean) => void;
   switchTab: (tabId: string) => void;
+  clearActiveTab: () => void;
 }

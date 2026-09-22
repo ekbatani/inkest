@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useOptionalWorkspaceTabs } from "@/components/tabs";
 
 export interface UserMenuProps {
   user?: {
@@ -62,11 +63,20 @@ export function UserMenu({
   showDetails = false,
 }: UserMenuProps) {
   const router = useRouter();
+  const tabsContext = useOptionalWorkspaceTabs();
   const [loggingOut, setLoggingOut] = React.useState(false);
   const initials = getInitials(user?.name, user?.email);
   const displayName = user?.name?.trim() || user?.email?.split("@")[0] || "User";
   const displayEmail = user?.email || "";
   const isAdmin = user?.role === "admin";
+
+  const handleNavigate = (href: string) => {
+    if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
+    }
+    tabsContext?.clearActiveTab();
+    router.push(href);
+  };
 
   const handleLogout = async () => {
     try {
@@ -144,7 +154,7 @@ export function UserMenu({
 
         <DropdownMenuGroup>
           <DropdownMenuItem
-            onClick={() => router.push("/settings")}
+            onClick={() => handleNavigate("/settings")}
             className="cursor-pointer"
           >
             <Settings className="size-4" />
@@ -153,7 +163,7 @@ export function UserMenu({
 
           {isAdmin && (
             <DropdownMenuItem
-              onClick={() => router.push("/settings?tab=users")}
+              onClick={() => handleNavigate("/settings?tab=users")}
               className="cursor-pointer"
             >
               <Users className="size-4" />

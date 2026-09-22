@@ -154,7 +154,12 @@ export function Topbar({
           <Button
             size="sm"
             className="size-8 gap-1.5 rounded-xl p-0 shadow-sm sm:size-auto sm:px-3.5"
-            onClick={() => router.push("/notes/new")}
+            onClick={() => {
+              if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+                window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
+              }
+              router.push("/notes/new");
+            }}
           >
             <Plus className="size-4" />
             <span className="hidden sm:inline">New note</span>

@@ -176,4 +176,85 @@ describe("TabContentKeeper", () => {
     expect(html).not.toContain("data-tab-content-id");
     expect(html).toContain('data-testid="new-note-spinner"');
   });
+
+  it("renders non-tab route content when navigating from a note route to /settings", () => {
+    currentPathname = "/notes/note-1";
+
+    function NavigationSimulation() {
+      const [route, setRoute] = React.useState("/notes/note-1");
+      currentPathname = route;
+
+      const [step, setStep] = React.useState(1);
+
+      if (step === 1) {
+        setStep(2);
+        setRoute("/settings");
+        currentPathname = "/settings";
+      }
+
+      return (
+        <TabsProvider notesTree={mockTree}>
+          <TabContentKeeper>
+            {route === "/notes/note-1" ? (
+              <div data-testid="note-editor">Note 1 Editor</div>
+            ) : (
+              <div data-testid="settings-page">Settings Page</div>
+            )}
+          </TabContentKeeper>
+        </TabsProvider>
+      );
+    }
+
+    const html = renderToString(<NavigationSimulation />);
+    expect(html).toContain('data-testid="settings-page"');
+    expect(html).toContain("Settings Page");
+  });
+
+  it("strictly hides cached tab content and renders children when on /vault, /calendar, or /tags", () => {
+    currentPathname = "/vault";
+
+    const html = renderToString(
+      <TabsProvider notesTree={mockTree}>
+        <TabContentKeeper>
+          <div data-testid="vault-view">Vault Secret View</div>
+        </TabContentKeeper>
+      </TabsProvider>,
+    );
+
+    expect(html).toContain('data-testid="vault-view"');
+    expect(html).toContain("Vault Secret View");
+  });
+
+  it("handles navigation between two non-tab routes consecutively (/vault -> /settings)", () => {
+    currentPathname = "/vault";
+
+    function NonTabNavSimulation() {
+      const [route, setRoute] = React.useState("/vault");
+      currentPathname = route;
+
+      const [step, setStep] = React.useState(1);
+
+      if (step === 1) {
+        setStep(2);
+        setRoute("/settings");
+        currentPathname = "/settings";
+      }
+
+      return (
+        <TabsProvider notesTree={mockTree}>
+          <TabContentKeeper>
+            {route === "/vault" ? (
+              <div data-testid="vault-content">Vault Content</div>
+            ) : (
+              <div data-testid="settings-content">Settings Content</div>
+            )}
+          </TabContentKeeper>
+        </TabsProvider>
+      );
+    }
+
+    const html = renderToString(<NonTabNavSimulation />);
+    expect(html).toContain('data-testid="settings-content"');
+    expect(html).not.toContain('data-testid="vault-content"');
+  });
 });
