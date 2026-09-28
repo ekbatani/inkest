@@ -115,10 +115,6 @@ export function TabsProvider({
   const router = useRouter();
   const pathname = usePathname();
 
-  // Bumped on every cached-tab fast-path switch (raw history.pushState). See
-  // TabsContextValue.fastPathSeq for why TabContentKeeper needs this.
-  const [fastPathSeq, setFastPathSeq] = React.useState(0);
-
   // Track which tab contents are currently mounted and cached in client memory
   const [loadedTabIds, setLoadedTabIds] = React.useState<Set<string>>(() => new Set());
 
@@ -359,7 +355,6 @@ export function TabsProvider({
       dispatchSafeCustomEvent("inkest:flush-active-save");
 
       setActiveTabId(tabId);
-      setFastPathSeq((s) => s + 1);
       router.push(targetTab.url);
       dispatchSafeCustomEvent("inkest:tab-switched", { tabId });
     },
@@ -390,7 +385,6 @@ export function TabsProvider({
       if (activate) {
         dispatchSafeCustomEvent("inkest:flush-active-save");
         setActiveTabId(tab.id);
-        setFastPathSeq((s) => s + 1);
         router.push(tab.url);
         dispatchSafeCustomEvent("inkest:tab-switched", { tabId: tab.id });
       }
@@ -422,7 +416,6 @@ export function TabsProvider({
             const nextActiveIndex = Math.min(index, nextTabs.length - 1);
             const nextActiveTab = nextTabs[nextActiveIndex];
             setActiveTabId(nextActiveTab.id);
-            setFastPathSeq((s) => s + 1);
             router.push(nextActiveTab.url);
             dispatchSafeCustomEvent("inkest:tab-switched", { tabId: nextActiveTab.id });
           } else {
@@ -457,7 +450,6 @@ export function TabsProvider({
         if (activeTabId !== tabId && !nextTabs.some((t) => t.id === activeTabId)) {
           dispatchSafeCustomEvent("inkest:flush-active-save");
           setActiveTabId(targetTab.id);
-          setFastPathSeq((s) => s + 1);
           router.push(targetTab.url);
         }
 
@@ -490,7 +482,6 @@ export function TabsProvider({
           const targetTab = prevTabs[index];
           dispatchSafeCustomEvent("inkest:flush-active-save");
           setActiveTabId(targetTab.id);
-          setFastPathSeq((s) => s + 1);
           router.push(targetTab.url);
         }
 
@@ -515,7 +506,6 @@ export function TabsProvider({
 
         if (!pinnedTabs.some((t) => t.id === activeTabId)) {
           setActiveTabId(pinnedTabs[0].id);
-          setFastPathSeq((s) => s + 1);
           router.push(pinnedTabs[0].url);
         }
         return pinnedTabs;
@@ -674,7 +664,6 @@ export function TabsProvider({
       activeTabId,
       activeTab,
       loadedTabIds,
-      fastPathSeq,
       markTabLoaded,
       unmarkTabLoaded,
       openTab,
@@ -695,7 +684,6 @@ export function TabsProvider({
       activeTabId,
       activeTab,
       loadedTabIds,
-      fastPathSeq,
       markTabLoaded,
       unmarkTabLoaded,
       openTab,

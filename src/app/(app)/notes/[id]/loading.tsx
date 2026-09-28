@@ -1,8 +1,6 @@
-import { tagRouteLoadingFallback } from "@/components/tabs/route-loading";
-
 import { Skeleton } from "@/components/ui/skeleton";
 
-function NoteLoading() {
+export default function NoteLoading() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-12 items-center gap-2 border-b px-4">
@@ -24,5 +22,3 @@ function NoteLoading() {
     </div>
   );
 }
-
-export default tagRouteLoadingFallback(NoteLoading);
