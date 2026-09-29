@@ -20,15 +20,19 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
+        // On coarse pointers (touch) every size grows so the hit area reaches
+        // ~40-48px, and icons inside icon buttons scale up regardless of the
+        // size class set at the call site.
         default:
-          "h-9 gap-1.5 px-3 has-data-[icon=inline-end]:pe-2.5 has-data-[icon=inline-start]:ps-2.5",
-        xs: "h-6 gap-1 px-2.5 text-xs has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1 px-3 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2",
-        lg: "h-10 gap-1.5 px-4 has-data-[icon=inline-end]:pe-3 has-data-[icon=inline-start]:ps-3",
-        icon: "size-9",
-        "icon-xs": "size-6 [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
+          "h-9 gap-1.5 px-3 pointer-coarse:h-11 has-data-[icon=inline-end]:pe-2.5 has-data-[icon=inline-start]:ps-2.5",
+        xs: "h-6 gap-1 px-2.5 text-xs pointer-coarse:h-9 pointer-coarse:px-3 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2 [&_svg:not([class*='size-'])]:size-3 pointer-coarse:[&_svg:not([class*='size-'])]:size-4",
+        sm: "h-8 gap-1 px-3 pointer-coarse:h-10 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2",
+        lg: "h-10 gap-1.5 px-4 pointer-coarse:h-12 has-data-[icon=inline-end]:pe-3 has-data-[icon=inline-start]:ps-3",
+        icon: "size-9 pointer-coarse:size-11 pointer-coarse:[&_svg]:size-5",
+        "icon-xs":
+          "size-6 [&_svg:not([class*='size-'])]:size-3 pointer-coarse:size-9 pointer-coarse:[&_svg]:size-4",
+        "icon-sm": "size-8 pointer-coarse:size-10 pointer-coarse:[&_svg]:size-5",
+        "icon-lg": "size-10 pointer-coarse:size-12 pointer-coarse:[&_svg]:size-6",
       },
     },
     defaultVariants: {

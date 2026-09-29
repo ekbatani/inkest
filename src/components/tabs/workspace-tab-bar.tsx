@@ -81,7 +81,7 @@ export function WorkspaceTabBar() {
   return (
     <nav
       aria-label="Workspace tabs"
-      className="relative z-20 flex h-9 shrink-0 items-center justify-between border-b border-border/70 bg-muted/20 px-2 backdrop-blur-sm"
+      className="relative z-20 flex h-9 pointer-coarse:h-11 shrink-0 items-center justify-between border-b border-border/70 bg-muted/20 px-2 backdrop-blur-sm"
     >
       {/* Scrollable Tab Strip */}
       <div
@@ -115,7 +115,7 @@ export function WorkspaceTabBar() {
                   size="icon-xs"
                   onClick={handleNewTab}
                   aria-label="Open new note in tab"
-                  className="ml-1 size-7 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="ml-1 size-7 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground pointer-coarse:size-10"
                 />
               }
             >
@@ -140,7 +140,7 @@ export function WorkspaceTabBar() {
                       variant="ghost"
                       size="xs"
                       aria-label="List open tabs"
-                      className="h-6 gap-1 px-1.5 text-xs text-muted-foreground hover:text-foreground"
+                      className="h-6 gap-1 px-1.5 text-xs text-muted-foreground hover:text-foreground pointer-coarse:h-10 pointer-coarse:px-2.5"
                     />
                   }
                 >

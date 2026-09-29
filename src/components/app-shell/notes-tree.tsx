@@ -16,7 +16,8 @@ import {
 import { toast } from "sonner";
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCorners,
   useDraggable,
   useDroppable,
@@ -62,6 +63,16 @@ function getTabId(node: NoteTreeNode): string {
   }
   return node.id;
 }
+
+// Touch-friendly sizing: desktop sizes stay compact, coarse pointers get
+// ~40px-tall / 32px-wide hit areas and always-visible row actions.
+const TREE_TOGGLE_CLASS =
+  "flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted pointer-coarse:h-10 pointer-coarse:w-8";
+const TREE_TOGGLE_ICON_CLASS = "size-3 transition-transform pointer-coarse:size-4";
+const TREE_TOGGLE_SPACER_CLASS = "block size-4 shrink-0 pointer-coarse:w-8";
+const TREE_HEADER_BUTTON_CLASS =
+  "flex items-center justify-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground pointer-coarse:size-10 pointer-coarse:rounded-lg";
+const TREE_HEADER_ICON_CLASS = "size-3.5 pointer-coarse:size-5";
 
 type TreeItem = NoteTreeNode;
 
@@ -284,8 +295,12 @@ export function NotesTree({
   const pathname = usePathname();
   const router = useRouter();
   const dndContextId = React.useId();
+  // Touch drags need a long-press so a normal swipe still scrolls the tree.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 8 },
+    }),
   );
   const [open, setOpen] = React.useState<Record<string, boolean>>({});
   const [treeNodes, setTreeNodes] = React.useState(nodes);
@@ -420,31 +435,31 @@ export function NotesTree({
           <DocumentUploadModal>
             <button
               type="button"
-              className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className={TREE_HEADER_BUTTON_CLASS}
               aria-label="Upload document"
               title="Upload document"
             >
-              <FileUp className="size-3.5" />
+              <FileUp className={TREE_HEADER_ICON_CLASS} />
             </button>
           </DocumentUploadModal>
           <form action={createProjectAction} onSubmit={onNavigate}>
             <button
               type="submit"
-              className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className={TREE_HEADER_BUTTON_CLASS}
               aria-label="Create project"
               title="Create project"
             >
-              <FolderPlus className="size-3.5" />
+              <FolderPlus className={TREE_HEADER_ICON_CLASS} />
             </button>
           </form>
           <Link
             href="/notes/new"
             onClick={onNavigate}
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className={TREE_HEADER_BUTTON_CLASS}
             aria-label="Create note"
             title="Create note"
           >
-            <Plus className="size-3.5" />
+            <Plus className={TREE_HEADER_ICON_CLASS} />
           </Link>
         </div>
       </div>
@@ -516,18 +531,18 @@ export function NotesTree({
                         type="button"
                         onClick={() => handleToggle(node.id, isAncestorOfActive)}
                         onPointerDown={(e) => e.stopPropagation()}
-                        className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted"
+                        className={TREE_TOGGLE_CLASS}
                         aria-label={isOpen ? "Collapse" : "Expand"}
                       >
                         <ChevronRight
                           className={cn(
-                            "size-3 transition-transform",
+                            TREE_TOGGLE_ICON_CLASS,
                             isOpen && "rotate-90",
                           )}
                         />
                       </button>
                     ) : (
-                      <span className="block size-4 shrink-0" />
+                      <span className={TREE_TOGGLE_SPACER_CLASS} />
                     )}
                   </TreeRow>
 
@@ -620,12 +635,12 @@ function TreeChildren({
                   type="button"
                   onClick={() => onToggle(node.id, isAncestorOfActive)}
                   onPointerDown={(e) => e.stopPropagation()}
-                  className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted"
+                  className={TREE_TOGGLE_CLASS}
                   aria-label={isOpen ? "Collapse" : "Expand"}
                 >
-                  <ChevronRight className={cn("size-3 transition-transform", isOpen && "rotate-90")} />
+                  <ChevronRight className={cn(TREE_TOGGLE_ICON_CLASS, isOpen && "rotate-90")} />
                 </button>
-              ) : <span className="block size-4 shrink-0" />}
+              ) : <span className={TREE_TOGGLE_SPACER_CLASS} />}
             </TreeRow>
             {isOpen && (
               <TreeChildren
@@ -780,11 +795,11 @@ function TreeRow({
           onClick={handleClick}
           onAuxClick={handleAuxClick}
           onDoubleClick={handleDoubleClick}
-          className="flex size-5 shrink-0 items-center justify-center rounded cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
+          className="flex size-5 shrink-0 items-center justify-center rounded cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors pointer-coarse:h-10 pointer-coarse:w-8"
           title="Drag to reorder / Click to open"
           aria-label={title || "Item icon"}
         >
-          <Icon className="size-3.5" />
+          <Icon className="size-3.5 pointer-coarse:size-5" />
         </button>
         <Link
           href={href}
@@ -793,7 +808,7 @@ function TreeRow({
           onDoubleClick={handleDoubleClick}
           onPointerDown={(e) => e.stopPropagation()}
           className={cn(
-            "group flex min-w-0 flex-1 items-center rounded-md px-1.5 py-1 text-sm transition-colors",
+            "group flex min-w-0 flex-1 items-center rounded-md px-1.5 py-1 text-sm transition-colors pointer-coarse:min-h-10",
             isActive
               ? "bg-muted text-foreground font-medium"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -810,7 +825,7 @@ function TreeRow({
           </span>
         </Link>
         {isProject && (
-          <div className="flex items-center opacity-0 group-hover/tree-item:opacity-100 focus-within:opacity-100 transition-opacity gap-0.5 pr-1">
+          <div className="flex items-center opacity-0 group-hover/tree-item:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100 transition-opacity gap-0.5 pr-1">
             <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
@@ -819,11 +834,11 @@ function TreeRow({
                 e.stopPropagation();
                 onCreateSubproject?.();
               }}
-              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="flex items-center justify-center rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors pointer-coarse:size-9 pointer-coarse:rounded-lg"
               title="New subproject"
               aria-label={`New subproject in ${title || "project"}`}
             >
-              <FolderPlus className="size-3" />
+              <FolderPlus className="size-3 pointer-coarse:size-5" />
             </button>
             <button
               type="button"
@@ -833,11 +848,11 @@ function TreeRow({
                 e.stopPropagation();
                 onCreateNote?.();
               }}
-              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="flex items-center justify-center rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors pointer-coarse:size-9 pointer-coarse:rounded-lg"
               title="New note"
               aria-label={`New note in ${title || "project"}`}
             >
-              <Plus className="size-3" />
+              <Plus className="size-3 pointer-coarse:size-5" />
             </button>
           </div>
         )}

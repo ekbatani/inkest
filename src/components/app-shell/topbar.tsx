@@ -110,7 +110,7 @@ export function Topbar({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-8 sm:size-9 md:hidden"
+                className="size-8 sm:size-9 md:hidden pointer-coarse:size-10"
                 aria-label="Open navigation"
               />
             }
@@ -140,9 +140,9 @@ export function Topbar({
           role="combobox"
           aria-label="Open command menu"
           onClick={() => setCommandOpen(true)}
-          className="h-9 size-9 shrink-0 justify-center rounded-xl border-border/70 bg-muted/25 px-0 text-muted-foreground shadow-none hover:bg-muted/50 sm:size-auto sm:w-72 sm:justify-start sm:px-3 lg:w-80"
+          className="h-9 size-9 shrink-0 justify-center rounded-xl border-border/70 bg-muted/25 px-0 text-muted-foreground shadow-none hover:bg-muted/50 sm:size-auto sm:w-72 sm:justify-start sm:px-3 lg:w-80 pointer-coarse:h-10 pointer-coarse:max-sm:w-10"
         >
-          <Search className="size-4" />
+          <Search className="size-4 pointer-coarse:size-5" />
           <span className="hidden text-sm sm:inline">Search notes &amp; projects…</span>
           <kbd className="ml-auto hidden rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline-block">
             Ctrl K
@@ -153,7 +153,7 @@ export function Topbar({
           {topbarActions?.slot?.node}
           <Button
             size="sm"
-            className="size-8 gap-1.5 rounded-xl p-0 shadow-sm sm:size-auto sm:px-3.5"
+            className="size-8 gap-1.5 rounded-xl p-0 shadow-sm sm:size-auto sm:px-3.5 pointer-coarse:max-sm:size-10"
             onClick={() => {
               if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
                 window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));
@@ -161,7 +161,7 @@ export function Topbar({
               router.push("/notes/new");
             }}
           >
-            <Plus className="size-4" />
+            <Plus className="size-4 pointer-coarse:size-5" />
             <span className="hidden sm:inline">New note</span>
           </Button>
           <NotificationInbox notifications={notifications} />
@@ -172,7 +172,7 @@ export function Topbar({
             aria-label="Toggle AI Assistant sidebar"
             title="Toggle AI Assistant sidebar"
             onClick={() => document.dispatchEvent(new CustomEvent("inkest:toggle-ai-sidebar"))}
-            className="size-8 rounded-xl text-muted-foreground hover:text-foreground sm:size-9"
+            className="size-8 rounded-xl text-muted-foreground hover:text-foreground sm:size-9 pointer-coarse:size-10"
           >
             <Sparkles className="size-4" />
           </Button>

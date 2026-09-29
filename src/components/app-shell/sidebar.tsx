@@ -63,7 +63,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
       onClick={(e) => handleNavClick(e, item.href)}
       aria-current={isActive(item.href) ? "page" : undefined}
       className={cn(
-        "group flex min-h-9 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-[color,background-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+        "group flex min-h-9 pointer-coarse:min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-[color,background-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
         "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         isActive(item.href) &&
           "bg-background text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.05)] ring-1 ring-border/70",
@@ -71,7 +71,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
     >
       <item.icon
         className={cn(
-          "size-4 shrink-0 transition-colors",
+          "size-4 shrink-0 transition-colors pointer-coarse:size-5",
           isActive(item.href) && "text-primary",
         )}
       />
@@ -149,7 +149,7 @@ export function Sidebar({
         <Link
           href="/notes/new"
           onClick={(e) => handleLinkClick(e, "/notes/new")}
-          className="flex h-9 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-xs font-semibold text-background shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          className="flex h-9 pointer-coarse:h-11 items-center justify-center gap-2 rounded-xl bg-foreground px-3 text-xs font-semibold text-background shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
           <Plus className="size-3.5" />
           Capture note
@@ -172,20 +172,20 @@ export function Sidebar({
                 : undefined
             }
             className={cn(
-              "group flex min-h-9 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+              "group flex min-h-9 pointer-coarse:min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
               "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               (pathname === item.href || pathname.startsWith(`${item.href}/`)) &&
                 "bg-background text-foreground ring-1 ring-border/70",
             )}
           >
-            <item.icon className="size-4 shrink-0" />
+            <item.icon className="size-4 shrink-0 pointer-coarse:size-5" />
             <span>{item.label}</span>
           </Link>
         ))}
 
         <LogoutButton
           variant="ghost"
-          className="w-full justify-start gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring h-9"
+          className="w-full justify-start gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring h-9 pointer-coarse:h-11"
           onLogoutStart={onNavigate}
         />
       </div>

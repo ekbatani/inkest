@@ -140,12 +140,12 @@ export function WorkspaceTabItem({
           }
         }}
         className={cn(
-          "group relative flex h-9 shrink-0 items-center gap-2 border-r border-border/40 px-3 text-xs font-normal transition-all select-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          "group relative flex h-9 pointer-coarse:h-11 shrink-0 items-center gap-2 border-r border-border/40 px-3 text-xs font-normal transition-all select-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring",
           isActive
             ? "bg-background text-foreground font-medium shadow-2xs border-b-2 border-b-primary z-10"
             : "bg-muted/15 text-muted-foreground hover:bg-muted/50 hover:text-foreground",
           tab.pinned && "px-2.5 max-w-[120px]",
-          !tab.pinned && "max-w-[200px] min-w-[100px]",
+          !tab.pinned && "max-w-[200px] min-w-[100px] pointer-coarse:min-w-[140px]",
           isDragOver && "border-l-2 border-l-primary"
         )}
       >
@@ -201,12 +201,16 @@ export function WorkspaceTabItem({
                   e.stopPropagation();
                 }}
                 className={cn(
-                  "rounded p-0.5 text-muted-foreground/60 hover:bg-muted hover:text-foreground transition-opacity",
-                  isActive ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-100",
+                  "flex items-center justify-center rounded p-0.5 text-muted-foreground/60 hover:bg-muted hover:text-foreground transition-opacity pointer-coarse:size-9 pointer-coarse:rounded-lg",
+                  // No hover on touch: keep the options button visible on the
+                  // active tab and out of the way on the others.
+                  isActive
+                    ? "opacity-70 hover:opacity-100 pointer-coarse:opacity-100"
+                    : "opacity-0 group-hover:opacity-100 pointer-coarse:hidden",
                 )}
                 aria-label="Tab options"
               >
-                <MoreHorizontal className="size-3" />
+                <MoreHorizontal className="size-3 pointer-coarse:size-5" />
               </button>
             }
           />
@@ -219,13 +223,13 @@ export function WorkspaceTabItem({
                 onClose(tab.id);
               }}
               className={cn(
-                "rounded p-0.5 text-muted-foreground hover:bg-muted-foreground/20 hover:text-foreground transition-colors",
+                "flex items-center justify-center rounded p-0.5 text-muted-foreground hover:bg-muted-foreground/20 hover:text-foreground transition-colors pointer-coarse:size-9 pointer-coarse:rounded-lg pointer-coarse:opacity-100",
                 isActive ? "opacity-80 hover:opacity-100" : "opacity-0 group-hover:opacity-100"
               )}
               aria-label={`Close ${tab.title || "tab"}`}
               title="Close tab (Middle click)"
             >
-              <X className="size-3" />
+              <X className="size-3 pointer-coarse:size-5" />
             </button>
           )}
         </div>

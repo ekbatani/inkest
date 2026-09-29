@@ -93,7 +93,7 @@ export function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          "flex items-center gap-2 rounded-xl text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "flex items-center gap-2 rounded-xl text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-10 pointer-coarse:min-w-10 pointer-coarse:justify-center",
           triggerClassName,
         )}
         aria-label="User account menu"

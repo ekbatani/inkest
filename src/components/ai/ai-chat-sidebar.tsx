@@ -1578,7 +1578,7 @@ export function AiChatSidebar({
                           {/* Replace Dropdown */}
                           <DropdownMenu>
                             <DropdownMenuTrigger
-                              className="inline-flex items-center h-6 gap-1 px-2 text-[10px] text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
+                              className="inline-flex items-center h-6 pointer-coarse:h-9 gap-1 px-2 text-[10px] text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
                             >
                               <Replace className="size-2.5" />
                               Replace
@@ -1605,7 +1605,7 @@ export function AiChatSidebar({
                           {/* Add Dropdown */}
                           <DropdownMenu>
                             <DropdownMenuTrigger
-                              className="inline-flex items-center h-6 gap-1 px-2 text-[10px] text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
+                              className="inline-flex items-center h-6 pointer-coarse:h-9 gap-1 px-2 text-[10px] text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
                             >
                               <Plus className="size-2.5" />
                               Add
@@ -1682,7 +1682,7 @@ export function AiChatSidebar({
             <Badge
               variant="outline"
               className={cn(
-                "gap-1 pr-1 text-[10px] font-normal transition-all shadow-2xs",
+                "gap-1 pr-1 text-[10px] font-normal transition-all shadow-2xs pointer-coarse:h-8",
                 isProjectPage
                   ? "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400"
                   : "bg-violet-500/10 border-violet-500/30 text-violet-700 dark:text-violet-400",
@@ -1702,10 +1702,11 @@ export function AiChatSidebar({
                 onClick={() => {
                   setIsPageContextAttached(false);
                 }}
-                className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 cursor-pointer"
+                className="ml-0.5 flex items-center justify-center rounded-full p-0.5 hover:bg-muted-foreground/20 cursor-pointer pointer-coarse:size-7"
                 title="Detach current page context"
+                aria-label="Detach current page context"
               >
-                <X className="size-2.5" />
+                <X className="size-2.5 pointer-coarse:size-4" />
               </button>
             </Badge>
           )}
@@ -1715,7 +1716,7 @@ export function AiChatSidebar({
               key={ctx.id}
               variant="outline"
               className={cn(
-                "gap-1 pr-1 text-[10px] font-normal transition-all shadow-2xs",
+                "gap-1 pr-1 text-[10px] font-normal transition-all shadow-2xs pointer-coarse:h-8",
                 ctx.type === "vault"
                   ? "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
                   : ctx.type === "project"
@@ -1734,10 +1735,11 @@ export function AiChatSidebar({
               <button
                 type="button"
                 onClick={() => handleRemoveContextItem(ctx.id)}
-                className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 cursor-pointer"
+                className="ml-0.5 flex items-center justify-center rounded-full p-0.5 hover:bg-muted-foreground/20 cursor-pointer pointer-coarse:size-7"
                 title="Remove context"
+                aria-label={`Remove ${ctx.title} from context`}
               >
-                <X className="size-2.5" />
+                <X className="size-2.5 pointer-coarse:size-4" />
               </button>
             </Badge>
           ))}
@@ -1781,7 +1783,7 @@ export function AiChatSidebar({
               {/* Categorized Context Picker Popover */}
               <Popover open={contextPickerOpen} onOpenChange={setContextPickerOpen}>
                 <PopoverTrigger
-                  className="inline-flex items-center h-6 gap-1 px-2 text-[10px] font-medium text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
+                  className="inline-flex items-center h-6 pointer-coarse:h-9 gap-1 px-2 text-[10px] font-medium text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
                   title="Attach workspace context (@notes, @projects, @vault)"
                 >
                   <AtSign className="size-3 text-violet-500" />
@@ -1892,7 +1894,7 @@ export function AiChatSidebar({
               {/* Recommended Actions Popover */}
               <Popover open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
                 <PopoverTrigger
-                  className="inline-flex items-center h-6 gap-1 px-2 text-[10px] font-medium text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
+                  className="inline-flex items-center h-6 pointer-coarse:h-9 gap-1 px-2 text-[10px] font-medium text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
                   title="Recommended Actions"
                 >
                   <Sparkles className="size-3 text-violet-500" />
