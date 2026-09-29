@@ -13,7 +13,13 @@ type TopbarActionsValue = {
   releaseSlot: (ownerId: string) => void;
 };
 
+type TopbarSlotControls = Pick<TopbarActionsValue, "claimSlot" | "releaseSlot">;
+
 const TopbarActionsContext = React.createContext<TopbarActionsValue | null>(null);
+// The claim/release callbacks never change, so slot owners read them from a
+// separate context: they must not re-render (or re-run their claim effect)
+// every time the slot itself changes.
+const TopbarSlotControlsContext = React.createContext<TopbarSlotControls | null>(null);
 
 export function TopbarActionsProvider({
   children,
@@ -34,15 +40,22 @@ export function TopbarActionsProvider({
     setSlot((prev) => (prev?.ownerId === ownerId ? null : prev));
   }, []);
 
+  const controls = React.useMemo(
+    () => ({ claimSlot, releaseSlot }),
+    [claimSlot, releaseSlot],
+  );
+
   const value = React.useMemo(
     () => ({ slot, claimSlot, releaseSlot }),
     [slot, claimSlot, releaseSlot],
   );
 
   return (
-    <TopbarActionsContext.Provider value={value}>
-      {children}
-    </TopbarActionsContext.Provider>
+    <TopbarSlotControlsContext.Provider value={controls}>
+      <TopbarActionsContext.Provider value={value}>
+        {children}
+      </TopbarActionsContext.Provider>
+    </TopbarSlotControlsContext.Provider>
   );
 }
 
@@ -62,16 +75,16 @@ export function useTopbarSlot(
   node: React.ReactNode,
   enabled: boolean,
 ) {
-  const actions = React.useContext(TopbarActionsContext);
+  const controls = React.useContext(TopbarSlotControlsContext);
 
   React.useEffect(() => {
-    if (!actions) return;
+    if (!controls) return;
 
     if (enabled) {
-      actions.claimSlot(ownerId, node);
-      return () => actions.releaseSlot(ownerId);
+      controls.claimSlot(ownerId, node);
+      return () => controls.releaseSlot(ownerId);
     }
 
-    actions.releaseSlot(ownerId);
-  }, [actions, ownerId, node, enabled]);
+    controls.releaseSlot(ownerId);
+  }, [controls, ownerId, node, enabled]);
 }

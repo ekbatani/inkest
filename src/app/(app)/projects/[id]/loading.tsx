@@ -1,8 +1,6 @@
-import { tagRouteLoadingFallback } from "@/components/tabs/route-loading";
-
 import { Skeleton } from "@/components/ui/skeleton";
 
-function ProjectLoading() {
+export default function ProjectLoading() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-10 sm:px-8 sm:py-14">
       <div className="flex items-center gap-3">
@@ -22,5 +20,3 @@ function ProjectLoading() {
     </div>
   );
 }
-
-export default tagRouteLoadingFallback(ProjectLoading);

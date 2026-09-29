@@ -2,14 +2,42 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { useWorkspaceTabs, parseRoute } from "./tabs-context";
-import { isRouteLoadingFallback } from "./route-loading";
+// Next.js does not expose the per-segment router context publicly. Freezing it
+// is the only way to keep a previously rendered route mounted: the `children`
+// a layout receives is a single router element that always renders whatever
+// route is current, so caching `children` itself can never preserve a tab.
+import { LayoutRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import { useWorkspaceTabs, parseRoute, isTransientRouteId } from "./tabs-context";
 
 const MAX_CACHED_TABS = 4;
 
-interface CacheEntry {
-  node: React.ReactNode;
-  lastActive: number;
+type LayoutRouterContextValue = React.ContextType<typeof LayoutRouterContext>;
+
+/**
+ * Renders the layout's router `children` against either the live router
+ * context (the tab the router is currently showing) or the last live context
+ * this tab rendered with (a kept tab). A kept tab's context is frozen, so its
+ * page stays mounted exactly as the user left it — editor state, scroll, and
+ * data included — and is shown instantly when the tab is activated again.
+ *
+ * When a kept tab becomes current again, the router's navigation transition
+ * swaps in the live context. The segment keeps its identity, so React keeps
+ * the already-visible content on screen until the fresh server payload
+ * resolves, instead of falling back to the route's loading skeleton.
+ */
+function KeptTabScope({ live, children }: { live: boolean; children: React.ReactNode }) {
+  const liveContext = React.use(LayoutRouterContext);
+  const [frozenContext, setFrozenContext] = React.useState<LayoutRouterContextValue>(liveContext);
+
+  if (live && liveContext !== frozenContext) {
+    setFrozenContext(liveContext);
+  }
+
+  return (
+    <LayoutRouterContext.Provider value={live ? liveContext : frozenContext}>
+      {children}
+    </LayoutRouterContext.Provider>
+  );
 }
 
 export function TabContentKeeper({
@@ -20,175 +48,119 @@ export function TabContentKeeper({
   maxCachedTabs?: number;
 }) {
   const pathname = usePathname();
-  const {
-    activeTabId,
-    tabs,
-    loadedTabIds,
-    fastPathSeq,
-    markTabLoaded,
-    unmarkTabLoaded,
-  } = useWorkspaceTabs();
+  const { activeTabId, tabs, loadedTabIds, markTabLoaded, unmarkTabLoaded } = useWorkspaceTabs();
 
   const currentRoute = parseRoute(pathname);
-  const currentRouteId = currentRoute?.id ?? null;
+  const currentRouteId =
+    currentRoute && !isTransientRouteId(currentRoute.id) ? currentRoute.id : null;
 
-  // In-memory cache of rendered tab contents. Only settled page content is
-  // ever stored here: loading fallbacks and payloads delivered after a
-  // fast-path tab switch are skipped (see the sync below).
-  const [cachedTabs, setCachedTabs] = React.useState<Map<string, CacheEntry>>(() => {
-    const map = new Map<string, CacheEntry>();
-    const openAtInit = new Set(tabs.map((t) => t.id));
-    if (
-      currentRouteId &&
-      openAtInit.has(currentRouteId) &&
-      (!activeTabId || currentRouteId === activeTabId) &&
-      !isRouteLoadingFallback(children)
-    ) {
-      map.set(currentRouteId, { node: children, lastActive: Date.now() });
+  // Kept tabs, keyed by tab id, with the time each was last shown (for LRU).
+  const [keptTabs, setKeptTabs] = React.useState<Map<string, number>>(() => {
+    const map = new Map<string, number>();
+    if (currentRouteId && tabs.some((t) => t.id === currentRouteId)) {
+      map.set(currentRouteId, Date.now());
     }
     return map;
   });
 
   const [prevPathname, setPrevPathname] = React.useState(pathname);
   const [prevActiveId, setPrevActiveId] = React.useState<string | null>(activeTabId);
-  const [prevChildren, setPrevChildren] = React.useState<React.ReactNode>(children);
-  const [prevRouteId, setPrevRouteId] = React.useState<string | null>(currentRouteId);
-  const [prevFastPathSeq, setPrevFastPathSeq] = React.useState<number>(fastPathSeq);
+  const [prevTabs, setPrevTabs] = React.useState(tabs);
 
-  // The fastPathSeq observed when the children payload last changed. A new
-  // children payload is attributable to the current route only when no
-  // fast-path switch happened since the previous payload — otherwise it
-  // belongs to the route we navigated away from, not the one the URL shows.
-  // Tracked as state (not a ref) because the render-phase sync below reads
-  // and adjusts it.
-  const [lastChildrenSeq, setLastChildrenSeq] = React.useState<number>(fastPathSeq);
-
-  // Synchronize cache during render phase
-  if (
-    pathname !== prevPathname ||
-    activeTabId !== prevActiveId ||
-    children !== prevChildren ||
-    currentRouteId !== prevRouteId ||
-    fastPathSeq !== prevFastPathSeq
-  ) {
+  // Synchronize kept tabs during render so a newly routed tab is placed in its
+  // own slot in the same commit — moving it later would remount the page.
+  if (pathname !== prevPathname || activeTabId !== prevActiveId || tabs !== prevTabs) {
+    // Tab metadata updates (titles, dirty flags) only need the closed-tab
+    // cleanup; recency changes only when the route or active tab does.
+    const touched = pathname !== prevPathname || activeTabId !== prevActiveId;
     setPrevPathname(pathname);
     setPrevActiveId(activeTabId);
-    setPrevChildren(children);
-    setPrevRouteId(currentRouteId);
-    setPrevFastPathSeq(fastPathSeq);
+    setPrevTabs(tabs);
 
-    const childrenChanged = children !== prevChildren;
-    const attributionValid = childrenChanged && fastPathSeq === lastChildrenSeq;
-    if (childrenChanged) {
-      setLastChildrenSeq(fastPathSeq);
-    }
-
-    setCachedTabs((prev) => {
+    setKeptTabs((prev) => {
       const next = new Map(prev);
       const openIds = new Set(tabs.map((t) => t.id));
+      const now = Date.now();
 
-      // 1. Evict any cached tabs that have been closed
+      // 1. Drop tabs that have been closed.
       for (const id of next.keys()) {
-        if (!openIds.has(id)) {
-          next.delete(id);
-        }
+        if (!openIds.has(id)) next.delete(id);
       }
 
-      if (!attributionValid) {
-        // This payload was delivered after a fast-path switch: it belongs to
-        // the route we just left. Drop the entry cached from that interrupted
-        // navigation (its node is exactly the stale previous payload) so the
-        // tab is never fast-path-switched into an eternal skeleton — it will
-        // refetch the next time it is opened.
-        for (const [id, entry] of next) {
-          if (entry.node === prevChildren) {
-            next.delete(id);
-          }
-        }
-      } else if (
-        currentRouteId &&
-        openIds.has(currentRouteId) &&
-        !isRouteLoadingFallback(children)
-      ) {
-        // 2. Settled content for an open tab that matches the current route:
-        // cache or update it. Transient loading fallbacks are never cached.
-        next.set(currentRouteId, { node: children, lastActive: Date.now() });
+      // 2. The route the router is showing always gets a slot.
+      if (currentRouteId && openIds.has(currentRouteId) && (touched || !next.has(currentRouteId))) {
+        next.set(currentRouteId, now);
       }
 
-      // 3. If active tab changed to an already cached tab, update its
-      // lastActive timestamp. Never swap a cached tab's node on activation —
-      // children at that moment belongs to the route being left.
-      if (activeTabId && next.has(activeTabId)) {
-        const entry = next.get(activeTabId)!;
-        next.set(activeTabId, { ...entry, lastActive: Date.now() });
+      // 3. Activating an already kept tab refreshes its recency.
+      if (touched && activeTabId && next.has(activeTabId)) {
+        next.set(activeTabId, now);
       }
 
-      // 4. Enforce maximum tabs in memory (LRU eviction of inactive tabs)
-      if (next.size > maxCachedTabs) {
+      // 4. Enforce the memory budget (LRU), never evicting the tab being shown
+      // or the tab the router is still rendering.
+      while (next.size > maxCachedTabs) {
         let oldestId: string | null = null;
         let oldestTime = Number.POSITIVE_INFINITY;
-
-        for (const [id, entry] of next.entries()) {
-          if (id !== activeTabId && entry.lastActive < oldestTime) {
-            oldestTime = entry.lastActive;
+        for (const [id, lastActive] of next) {
+          if (id !== activeTabId && id !== currentRouteId && lastActive < oldestTime) {
+            oldestTime = lastActive;
             oldestId = id;
           }
         }
-
-        if (oldestId) {
-          next.delete(oldestId);
-        }
+        if (!oldestId) break;
+        next.delete(oldestId);
       }
 
-      return next;
+      const unchanged =
+        next.size === prev.size && [...next].every(([id, t]) => prev.get(id) === t);
+      return unchanged ? prev : next;
     });
   }
 
-  // Synchronize loadedTabIds in TabsContext with the cachedTabs keys
+  // Mirror the kept tab ids into TabsContext.
   React.useEffect(() => {
-    const cachedIds = new Set(cachedTabs.keys());
-
-    // Mark newly cached tabs as loaded in context
-    for (const id of cachedIds) {
-      if (!loadedTabIds.has(id)) {
-        markTabLoaded(id);
-      }
+    for (const id of keptTabs.keys()) {
+      if (!loadedTabIds.has(id)) markTabLoaded(id);
     }
-
-    // Unmark any tabs that were evicted from cache or closed
     for (const id of loadedTabIds) {
-      if (!cachedIds.has(id)) {
-        unmarkTabLoaded(id);
-      }
+      if (!keptTabs.has(id)) unmarkTabLoaded(id);
     }
-  }, [cachedTabs, loadedTabIds, markTabLoaded, unmarkTabLoaded]);
+  }, [keptTabs, loadedTabIds, markTabLoaded, unmarkTabLoaded]);
 
-  // If on a non-tab route (e.g. /dashboard, /calendar, /settings), cached tabs must never be active or hide children
   const isTabRoute = currentRoute !== null;
-  const isTabInCache = isTabRoute && activeTabId ? cachedTabs.has(activeTabId) : false;
+  // Show the activated tab as soon as it is kept, without waiting for the
+  // router. A tab that is not kept yet has nothing to show until the router
+  // renders it, so keep the tab the router is on visible in the meantime —
+  // rendering the live router elsewhere would remount that page.
+  const visibleTabId = !isTabRoute
+    ? null
+    : activeTabId && keptTabs.has(activeTabId)
+      ? activeTabId
+      : currentRouteId && keptTabs.has(currentRouteId)
+        ? currentRouteId
+        : null;
 
   return (
     <div className="relative h-full w-full min-h-0 flex-1">
-      {/* Mounted tabs kept in memory */}
-      {Array.from(cachedTabs.entries()).map(([tabId, entry]) => {
-        const isCurrent = isTabRoute && tabId === activeTabId;
+      {Array.from(keptTabs.keys()).map((tabId) => {
+        const isVisible = tabId === visibleTabId;
         return (
           <div
             key={tabId}
             data-tab-content-id={tabId}
-            style={{ display: isCurrent ? "contents" : "none" }}
-            aria-hidden={!isCurrent}
+            style={{ display: isVisible ? "contents" : "none" }}
+            aria-hidden={!isVisible}
+            inert={!isVisible}
           >
-            {entry.node}
+            <KeptTabScope live={tabId === currentRouteId}>{children}</KeptTabScope>
           </div>
         );
       })}
 
-      {/* Render children directly if current route is not yet in cache or is a non-tab route */}
-      {!isTabInCache && (
-        <div style={{ display: "contents" }}>
-          {children}
-        </div>
+      {/* Non-tab routes (dashboard, settings, ...) and transient routes render live. */}
+      {(!currentRouteId || !keptTabs.has(currentRouteId)) && (
+        <div style={{ display: visibleTabId ? "none" : "contents" }}>{children}</div>
       )}
     </div>
   );

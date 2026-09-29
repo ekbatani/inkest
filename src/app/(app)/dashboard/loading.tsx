@@ -1,6 +1,4 @@
-import { tagRouteLoadingFallback } from "@/components/tabs/route-loading";
-
-function DashboardLoading() {
+export default function DashboardLoading() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="h-8 w-1/4 animate-pulse rounded bg-muted" />
@@ -15,5 +13,3 @@ function DashboardLoading() {
     </div>
   );
 }
-
-export default tagRouteLoadingFallback(DashboardLoading);
