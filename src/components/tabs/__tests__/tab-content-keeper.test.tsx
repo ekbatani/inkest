@@ -1,6 +1,7 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import * as React from "react";
 import { renderToString } from "react-dom/server";
+import { LayoutRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import type { NoteTreeNode } from "@/server/notes/service";
 
 let currentPathname = "/notes/note-1";
@@ -19,7 +20,6 @@ mock.module("next/navigation", () => ({
 
 import { TabsProvider } from "../tabs-context";
 import { TabContentKeeper } from "../tab-content-keeper";
-import { tagRouteLoadingFallback } from "../route-loading";
 
 const mockTree: NoteTreeNode[] = [
   {
@@ -42,219 +42,104 @@ const mockTree: NoteTreeNode[] = [
   },
 ];
 
+type RouterContextValue = NonNullable<React.ContextType<typeof LayoutRouterContext>>;
+
+/**
+ * Stands in for the Next.js router: a layout's `children` is one router
+ * element that renders whatever route the LayoutRouterContext points at.
+ */
+function FakeRouterChildren() {
+  const ctx = React.use(LayoutRouterContext);
+  return <div data-testid="route">{`route:${ctx?.url ?? "none"}`}</div>;
+}
+
+function routerContext(url: string): RouterContextValue {
+  return { url } as unknown as RouterContextValue;
+}
+
+function renderAt(pathname: string, maxCachedTabs?: number) {
+  currentPathname = pathname;
+  return renderToString(
+    <LayoutRouterContext.Provider value={routerContext(pathname)}>
+      <TabsProvider notesTree={mockTree}>
+        <TabContentKeeper maxCachedTabs={maxCachedTabs}>
+          <FakeRouterChildren />
+        </TabContentKeeper>
+      </TabsProvider>
+    </LayoutRouterContext.Provider>,
+  );
+}
+
 describe("TabContentKeeper", () => {
   beforeEach(() => {
     currentPathname = "/notes/note-1";
   });
 
-  it("renders active children in container", () => {
+  it("renders the current tab route in its own visible kept slot", () => {
+    const html = renderAt("/notes/note-1");
+
+    expect(html).toContain('data-tab-content-id="note-1"');
+    expect(html).toContain('style="display:contents"');
+    expect(html).toContain("route:/notes/note-1");
+  });
+
+  it("renders the live router children for the current tab", () => {
     currentPathname = "/notes/note-1";
 
     const html = renderToString(
-      <TabsProvider notesTree={mockTree}>
-        <TabContentKeeper>
-          <div data-testid="editor-note-1">Editor Content 1</div>
-        </TabContentKeeper>
-      </TabsProvider>,
+      <LayoutRouterContext.Provider value={routerContext("/notes/note-1")}>
+        <TabsProvider notesTree={mockTree}>
+          <TabContentKeeper>
+            <div data-testid="editor-note-1">Editor Content 1</div>
+          </TabContentKeeper>
+        </TabsProvider>
+      </LayoutRouterContext.Provider>,
     );
 
-    expect(html).toContain("data-testid=\"editor-note-1\"");
+    expect(html).toContain('data-testid="editor-note-1"');
     expect(html).toContain("Editor Content 1");
   });
 
-  it("renders children directly when on a non-tab route like /dashboard", () => {
-    currentPathname = "/dashboard";
+  it("renders children without a router context (outside the App Router)", () => {
+    currentPathname = "/notes/note-1";
 
     const html = renderToString(
       <TabsProvider notesTree={mockTree}>
         <TabContentKeeper>
-          <div data-testid="dashboard-view">Dashboard Content</div>
+          <FakeRouterChildren />
         </TabContentKeeper>
       </TabsProvider>,
     );
 
-    expect(html).toContain("data-testid=\"dashboard-view\"");
-    expect(html).toContain("Dashboard Content");
+    expect(html).toContain("route:none");
   });
 
-  it("does not prematurely cache previous tab content under a newly activated tab while route is in flight", () => {
-    // Simulate: user is on /notes/note-1 with note-1 content
-    currentPathname = "/notes/note-1";
+  it("renders non-tab routes like /dashboard live, outside any kept slot", () => {
+    const html = renderAt("/dashboard");
 
-    function SwitchInFlightSimulation() {
-      // Step 1: user was on note-1
-      // Step 2: user clicks tab 2, setting activeTabId to note-2 while pathname is still note-1 and children is note-1
-      const [step, setStep] = React.useState(1);
-
-      if (step === 1) {
-        setStep(2);
-      }
-
-      return (
-        <TabsProvider notesTree={mockTree}>
-          <TabContentKeeper>
-            <div data-testid="active-content">
-              {step === 1 ? "Note 1 Initial Content" : "Note 1 Previous Content"}
-            </div>
-          </TabContentKeeper>
-        </TabsProvider>
-      );
-    }
-
-    const html = renderToString(<SwitchInFlightSimulation />);
-
-    // Since note-1 is active initially and pathname is /notes/note-1, note-1 is cached.
-    // It should NEVER cache Note 1's content under data-tab-content-id="note-2"
-    expect(html).not.toContain('data-tab-content-id="note-2"');
-    expect(html).toContain('data-tab-content-id="note-1"');
-  });
-
-  it("evicts oldest inactive tab when cache exceeds maxCachedTabs", () => {
-    currentPathname = "/notes/note-1";
-
-    function EvictionSimulation() {
-      // Start on note-1, then switch route and active tab to note-2 with maxCachedTabs=1
-      const [step, setStep] = React.useState(1);
-
-      if (step === 1) {
-        setStep(2);
-      }
-
-      const activeId = step === 1 ? "note-1" : "note-2";
-      currentPathname = step === 1 ? "/notes/note-1" : "/notes/note-2";
-
-      return (
-        <TabsProvider notesTree={mockTree}>
-          <TabContentKeeper maxCachedTabs={1}>
-            <div data-testid={`content-${activeId}`}>Content for {activeId}</div>
-          </TabContentKeeper>
-        </TabsProvider>
-      );
-    }
-
-    const html = renderToString(<EvictionSimulation />);
-    // With maxCachedTabs = 1, when note-2 is cached, note-1 should be evicted
-    expect(html).toContain('data-tab-content-id="note-2"');
-    expect(html).not.toContain('data-tab-content-id="note-1"');
-  });
-
-  it("never caches a tagged route loading fallback as tab content", () => {
-    currentPathname = "/notes/note-1";
-
-    function FakeRouteLoading() {
-      return <div data-testid="route-loading-fallback">Loading…</div>;
-    }
-    const TaggedFakeRouteLoading = tagRouteLoadingFallback(FakeRouteLoading);
-
-    const html = renderToString(
-      <TabsProvider notesTree={mockTree}>
-        <TabContentKeeper>
-          <TaggedFakeRouteLoading />
-        </TabContentKeeper>
-      </TabsProvider>,
-    );
-
-    // The skeleton must be rendered directly, never stored in the tab cache —
-    // a cached skeleton replays forever once the tab is marked loaded.
     expect(html).not.toContain("data-tab-content-id");
-    expect(html).toContain('data-testid="route-loading-fallback"');
+    expect(html).toContain("route:/dashboard");
   });
 
-  it("renders /notes/new children directly without caching (transient redirect route)", () => {
-    currentPathname = "/notes/new";
-
-    const html = renderToString(
-      <TabsProvider notesTree={mockTree}>
-        <TabContentKeeper>
-          <div data-testid="new-note-spinner">Creating note…</div>
-        </TabContentKeeper>
-      </TabsProvider>,
-    );
+  it("never keeps /notes/new (transient redirect route)", () => {
+    const html = renderAt("/notes/new");
 
     // /notes/new creates a note and redirects away; its one-shot spinner must
-    // never become cached tab content (the create effect cannot re-run).
+    // never become kept tab content (the create effect cannot re-run).
     expect(html).not.toContain("data-tab-content-id");
-    expect(html).toContain('data-testid="new-note-spinner"');
+    expect(html).toContain("route:/notes/new");
   });
 
-  it("renders non-tab route content when navigating from a note route to /settings", () => {
-    currentPathname = "/notes/note-1";
+  it("never evicts the tab being shown, even with a zero budget", () => {
+    const html = renderAt("/notes/note-2", 0);
 
-    function NavigationSimulation() {
-      const [route, setRoute] = React.useState("/notes/note-1");
-      currentPathname = route;
-
-      const [step, setStep] = React.useState(1);
-
-      if (step === 1) {
-        setStep(2);
-        setRoute("/settings");
-        currentPathname = "/settings";
-      }
-
-      return (
-        <TabsProvider notesTree={mockTree}>
-          <TabContentKeeper>
-            {route === "/notes/note-1" ? (
-              <div data-testid="note-editor">Note 1 Editor</div>
-            ) : (
-              <div data-testid="settings-page">Settings Page</div>
-            )}
-          </TabContentKeeper>
-        </TabsProvider>
-      );
-    }
-
-    const html = renderToString(<NavigationSimulation />);
-    expect(html).toContain('data-testid="settings-page"');
-    expect(html).toContain("Settings Page");
+    expect(html).toContain('data-tab-content-id="note-2"');
+    expect(html).toContain("route:/notes/note-2");
   });
 
-  it("strictly hides cached tab content and renders children when on /vault, /calendar, or /tags", () => {
-    currentPathname = "/vault";
+  it("renders the route exactly once for the current tab", () => {
+    const html = renderAt("/notes/note-1");
 
-    const html = renderToString(
-      <TabsProvider notesTree={mockTree}>
-        <TabContentKeeper>
-          <div data-testid="vault-view">Vault Secret View</div>
-        </TabContentKeeper>
-      </TabsProvider>,
-    );
-
-    expect(html).toContain('data-testid="vault-view"');
-    expect(html).toContain("Vault Secret View");
-  });
-
-  it("handles navigation between two non-tab routes consecutively (/vault -> /settings)", () => {
-    currentPathname = "/vault";
-
-    function NonTabNavSimulation() {
-      const [route, setRoute] = React.useState("/vault");
-      currentPathname = route;
-
-      const [step, setStep] = React.useState(1);
-
-      if (step === 1) {
-        setStep(2);
-        setRoute("/settings");
-        currentPathname = "/settings";
-      }
-
-      return (
-        <TabsProvider notesTree={mockTree}>
-          <TabContentKeeper>
-            {route === "/vault" ? (
-              <div data-testid="vault-content">Vault Content</div>
-            ) : (
-              <div data-testid="settings-content">Settings Content</div>
-            )}
-          </TabContentKeeper>
-        </TabsProvider>
-      );
-    }
-
-    const html = renderToString(<NonTabNavSimulation />);
-    expect(html).toContain('data-testid="settings-content"');
-    expect(html).not.toContain('data-testid="vault-content"');
+    expect(html.match(/data-testid="route"/g)?.length).toBe(1);
   });
 });
