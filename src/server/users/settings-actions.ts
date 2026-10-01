@@ -74,7 +74,7 @@ export async function deleteAccountAction() {
   if (!user) throw new Error("UNAUTHORIZED");
   // Cascade delete will remove all associated rows (notes, tags, tasks, …)
   await db.delete(schema.users).where(eq(schema.users.id, user.id));
-  redirect("/");
+  redirect("/signin");
 }
 
 const aiProviderInputSchema = z.object({

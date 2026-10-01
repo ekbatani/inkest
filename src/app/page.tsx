@@ -1,13 +1,8 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/server/auth";
 
-export const dynamic = "force-dynamic";
-
-export default async function RootPage() {
-  const user = await getCurrentUser();
-  if (user) {
-    redirect("/dashboard");
-  }
-
-  redirect("/signin");
+// `/` is only reached from a browser — the desktop and mobile apps open
+// `/dashboard` directly (see capacitor.config.ts and the Tauri launcher), so
+// web visitors land on the marketing site, signed in or not.
+export default function RootPage() {
+  redirect("/landing");
 }
