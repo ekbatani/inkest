@@ -36,21 +36,42 @@ const EXCHANGES = [
 ] as const;
 
 export function AiShowcase() {
+  const windowRef = React.useRef<HTMLDivElement>(null);
   const [active, setActive] = React.useState(0);
+  const [hovered, setHovered] = React.useState(false);
+  const [onScreen, setOnScreen] = React.useState(true);
 
+  // Only rotate while the preview is visible, so it isn't churning offscreen.
   React.useEffect(() => {
+    const node = windowRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting));
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  // Pause while the pointer rests on it, so a reader can finish the answer.
+  React.useEffect(() => {
+    if (hovered || !onScreen) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const timer = window.setInterval(
       () => setActive((current) => (current + 1) % EXCHANGES.length),
       5200,
     );
     return () => window.clearInterval(timer);
-  }, []);
+  }, [hovered, onScreen]);
 
   const exchange = EXCHANGES[active];
 
   return (
-    <div className="product-window" aria-label="Preview of the Inkest workspace with the AI companion">
+    <div
+      ref={windowRef}
+      className="product-window"
+      role="img"
+      aria-label="Preview of the Inkest workspace: a Markdown note beside the AI companion, which answers questions from your notes with cited sources."
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
+    >
       <div className="product-window-bar">
         <div className="flex gap-1.5" aria-hidden="true">
           <span /><span /><span />
@@ -97,7 +118,7 @@ export function AiShowcase() {
           <label><input type="checkbox" tabIndex={-1} /> Move open loops into the project board</label>
         </article>
 
-        <aside className="product-ai-panel" aria-label="AI companion preview">
+        <aside className="product-ai-panel">
           <div className="product-ai-heading">
             <span className="mk-ai-tile"><Sparkles /></span>
             Inkest AI

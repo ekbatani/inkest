@@ -52,10 +52,10 @@ export function PricingSection() {
   ];
 
   return (
-    <section id="pricing" className="pricing-section">
+    <section id="pricing" className="pricing-section" aria-labelledby="pricing-title">
       <div className="pricing-heading reveal">
         <p className="marketing-eyebrow">Simple choices, no feature games</p>
-        <h2 className="marketing-section-title">
+        <h2 id="pricing-title" className="marketing-section-title">
           Pay for hosting.
           <br />
           Not permission.

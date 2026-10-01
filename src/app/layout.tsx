@@ -77,6 +77,7 @@ export default async function RootLayout({
       lang="en"
       suppressHydrationWarning
       className="h-full"
+      data-scroll-behavior="smooth"
       data-palette={theme?.palette ?? "paper"}
       data-font={theme?.font ?? "sans"}
     >

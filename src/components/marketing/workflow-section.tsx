@@ -33,10 +33,10 @@ const MOMENTS = [
 
 export function WorkflowSection() {
   return (
-    <section id="workflow" className="workflow-section">
+    <section id="workflow" className="workflow-section" aria-labelledby="workflow-title">
       <div className="workflow-sticky">
         <p className="marketing-eyebrow">A place that follows your thinking</p>
-        <h2 className="marketing-section-title">From first thought<br />to finished work.</h2>
+        <h2 id="workflow-title" className="marketing-section-title">From first thought<br />to finished work.</h2>
         <p className="mt-5 max-w-md text-base leading-7 text-[var(--mk-muted)]">
           Inkest keeps reflection, knowledge, and action connected across your day—without
           turning your mind into another inbox.

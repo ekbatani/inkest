@@ -13,7 +13,7 @@ import {
 
 export function BentoFeatures() {
   return (
-    <section id="product" className="marketing-section">
+    <section id="product" className="marketing-section" aria-label="Features">
       <div className="marketing-feature-grid">
         <article className="feature-card feature-card--write reveal">
           <div className="feature-card-copy">

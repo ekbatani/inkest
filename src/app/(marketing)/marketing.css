@@ -330,6 +330,27 @@
   position: relative;
   z-index: 1;
 }
+/* Anchor jumps clear the sticky nav; smooth only when motion is welcome. */
+.marketing-site [id] {
+  scroll-margin-top: 5.5rem;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.marketing-site) {
+    scroll-behavior: smooth;
+  }
+}
+
+/* One visible, on-brand keyboard focus ring across the marketing site. */
+.marketing-site :is(a, button, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--mk-indigo-bright);
+  outline-offset: 3px;
+}
+.marketing-nav-link:focus-visible {
+  color: var(--mk-ink);
+}
+.marketing-nav-link:focus-visible::after {
+  transform: scaleX(1);
+}
 .marketing-marquee {
   position: relative;
   z-index: 2;
@@ -1935,6 +1956,10 @@
   top: 8rem;
   align-self: start;
 }
+/* The sticky column is narrower than a full-width title; size to fit it. */
+.workflow-sticky .marketing-section-title {
+  font-size: clamp(2.5rem, 4.4vw, 4.6rem);
+}
 .marketing-text-link {
   display: inline-flex;
   align-items: center;
@@ -2132,6 +2157,63 @@
   background:
     radial-gradient(60% 90% at 0% 30%, color-mix(in oklab, var(--mk-violet) 8%, transparent), transparent 60%),
     var(--mk-canvas);
+  display: grid;
+  align-items: center;
+  gap: 3rem;
+}
+@media (min-width: 1024px) {
+  .download-section {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: clamp(3rem, 6vw, 6rem);
+  }
+}
+.download-platforms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (min-width: 640px) {
+  .download-platforms {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.download-platform {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.1rem;
+  border: 1px solid var(--mk-line);
+  border-radius: 1.1rem;
+  background: color-mix(in oklab, var(--mk-panel) 70%, transparent);
+}
+.download-platform strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+.download-platform small {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mk-faint);
+}
+.download-platform-icon {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid var(--mk-line-strong);
+  border-radius: 0.75rem;
+  color: var(--mk-indigo-bright);
+  background: color-mix(in oklab, var(--mk-indigo) 10%, transparent);
+}
+.download-platform-icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
 }
 .download-page {
   max-width: 74rem;
@@ -2905,6 +2987,24 @@
 @keyframes marketing-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* In the two-column hero (≈1024–1280px) the preview gets too narrow for three
+   panes; drop the sidebar so the note keeps a readable measure. Below 900px
+   the later media query takes over with a single-column preview. */
+.hero-product-stage {
+  container-type: inline-size;
+}
+@container (max-width: 40rem) {
+  .product-window-body {
+    grid-template-columns: minmax(0, 1fr) 11.5rem;
+  }
+  .product-sidebar {
+    display: none;
+  }
+  .product-note {
+    padding: 1.75rem;
   }
 }
 

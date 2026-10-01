@@ -1,15 +1,32 @@
 import Link from "next/link";
-import { ArrowUpRight, Download, GitBranch, Monitor, Smartphone } from "lucide-react";
+import {
+  ArrowUpRight,
+  Download,
+  GitBranch,
+  Globe,
+  Laptop,
+  Monitor,
+  Smartphone,
+  TabletSmartphone,
+  Terminal,
+} from "lucide-react";
 import { GITHUB_TAGS_URL } from "@/server/github";
 
-const DEVICES = ["Windows", "macOS", "Linux", "Android", "iOS"] as const;
+const PLATFORMS = [
+  { name: "Windows", kind: "Desktop", icon: Monitor },
+  { name: "macOS", kind: "Desktop", icon: Laptop },
+  { name: "Linux", kind: "Desktop", icon: Terminal },
+  { name: "Android", kind: "Mobile", icon: Smartphone },
+  { name: "iOS", kind: "Mobile", icon: TabletSmartphone },
+  { name: "Web", kind: "Any browser", icon: Globe },
+] as const;
 
 export function DownloadSection() {
   return (
-    <section id="download" className="download-section">
+    <section id="download" className="download-section" aria-labelledby="download-title">
       <div className="reveal">
         <p className="marketing-eyebrow">Apps for every screen</p>
-        <h2 className="marketing-section-title">
+        <h2 id="download-title" className="marketing-section-title">
           Your brain, <em>installed.</em>
         </h2>
         <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--mk-muted)]">
@@ -34,23 +51,21 @@ export function DownloadSection() {
             <ArrowUpRight className="size-4" aria-hidden="true" />
           </a>
         </div>
-
-        <ul className="mt-8 flex flex-wrap gap-x-5 gap-y-2" aria-label="Supported platforms">
-          <li className="flex items-center gap-1.5 text-xs font-medium text-[var(--mk-muted)]">
-            <Monitor className="size-3.5 text-[var(--mk-indigo-bright)]" aria-hidden="true" />
-            Desktop
-          </li>
-          <li className="flex items-center gap-1.5 text-xs font-medium text-[var(--mk-muted)]">
-            <Smartphone className="size-3.5 text-[var(--mk-indigo-bright)]" aria-hidden="true" />
-            Mobile
-          </li>
-          {DEVICES.map((device) => (
-            <li key={device} className="text-xs font-medium text-[var(--mk-faint)]">
-              {device}
-            </li>
-          ))}
-        </ul>
       </div>
+
+      <ul className="download-platforms reveal" aria-label="Supported platforms">
+        {PLATFORMS.map(({ name, kind, icon: Icon }) => (
+          <li key={name} className="download-platform">
+            <span className="download-platform-icon">
+              <Icon aria-hidden="true" />
+            </span>
+            <span>
+              <strong>{name}</strong>
+              <small>{kind}</small>
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

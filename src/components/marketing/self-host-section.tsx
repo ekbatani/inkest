@@ -8,10 +8,10 @@ const DOCKER_COMMAND = `docker run -d \\
 
 export function SelfHostSection() {
   return (
-    <section id="open-source" className="ownership-section">
+    <section id="open-source" className="ownership-section" aria-labelledby="ownership-title">
       <div className="ownership-copy reveal">
         <p className="marketing-eyebrow">Your vault · your rules</p>
-        <h2 className="marketing-section-title">Own the place<br />where you think.</h2>
+        <h2 id="ownership-title" className="marketing-section-title">Own the place<br />where you think.</h2>
         <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--mk-muted)]">
           Inkest is open source because your private knowledge should never depend on a
           company&apos;s permission. Keep it on your server, inspect every line, and leave any time.
