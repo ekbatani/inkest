@@ -1,4 +1,4 @@
-import { Feather } from "lucide-react";
+import { LogoMark } from "@/components/brand/logo-mark";
 
 const PRINCIPLES = [
   {
@@ -33,7 +33,7 @@ export function PhilosophySection() {
             opposite — it should make space, keep secrets, and never hold your mind hostage.
           </p>
           <p className="philosophy-manifesto">
-            <Feather aria-hidden="true" />
+            <LogoMark variant="monochrome" />
             CAPTURE · ORGANIZE · THINK
           </p>
         </div>
@@ -52,7 +52,7 @@ export function PhilosophySection() {
           </ol>
 
           <figure className="philosophy-vision reveal">
-            <Feather className="watermark" aria-hidden="true" />
+            <LogoMark variant="monochrome" className="watermark" />
             <blockquote>
               Our vision: a second brain as permanent as paper and as powerful as the models that
               read it — <span className="mk-grad-text">your knowledge, your machine, your rules.</span>

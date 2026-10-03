@@ -1,6 +1,25 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
+/**
+ * The Inkest mark: a quill whose spine is a pen-nib slit ending in a breather
+ * hole — writing (feather) and ink (nib) in one silhouette. Drawn on a 32×32
+ * grid as a single even-odd path so the slit and hole stay transparent on any
+ * background. Shared with the generated favicon, Apple icon and OG image.
+ */
+export const LOGO_MARK_VIEWBOX = "0 0 32 32";
+export const LOGO_MARK_PATH =
+  "M5 27C4.6 15.4 13 5.2 27 5C27.1 9.4 26 13.2 24 16.2L25.8 16.6C24.6 18.8 22.9 20.6 20.9 22L23 22.4C18.4 26 11.9 27.5 5 27Z" +
+  "M7 25L17.6 14.4L18.4 15.2Z" +
+  "M18.2 11.8a2 2 0 1 0 4 0a2 2 0 1 0 -4 0Z";
+export const LOGO_GRADIENT_STOPS = [
+  { offset: "0", color: "#4F46E5" },
+  { offset: "0.5", color: "#7C3AED" },
+  { offset: "1", color: "#D8B4FE" },
+] as const;
+/** App-icon tile behind a white mark. */
+export const LOGO_TILE_GRADIENT = "linear-gradient(45deg, #4338CA 0%, #7C3AED 55%, #A855F7 100%)";
+
 export interface LogoMarkProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
   variant?: "gradient" | "monochrome";
@@ -13,124 +32,31 @@ export function LogoMark({
   idPrefix = "inkest",
   ...props
 }: LogoMarkProps) {
-  const gradientId = `${idPrefix}-feather-grad`;
-  const foldGradId = `${idPrefix}-fold-grad`;
-  const paperGradId = `${idPrefix}-paper-grad`;
-
-  if (variant === "monochrome") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className={cn("shrink-0", className)}
-        aria-hidden="true"
-        {...props}
-      >
-        {/* Document outline */}
-        <path
-          d="M5.5 3C4.67 3 4 3.67 4 4.5v15c0 .83.67 1.5 1.5 1.5h11c.83 0 1.5-.67 1.5-1.5V9.5L13.5 3H5.5Z"
-          fill="currentColor"
-          fillOpacity="0.18"
-        />
-        {/* Document fold */}
-        <path
-          d="M13.5 3v5c0 .83.67 1.5 1.5 1.5h3L13.5 3Z"
-          fill="currentColor"
-          fillOpacity="0.65"
-        />
-        {/* Feather Quill */}
-        <path
-          d="M5.2 19.8c.8-3.4 3.2-7.1 7.2-10 2.8-2 4.9-2.7 5.6-2.8-.2.8-.8 2.8-2.6 5.2-2.8 3.8-6.1 5.9-9 6.8-.7.2-1.1.5-1.2.8Z"
-          fill="currentColor"
-        />
-        {/* Feather Quill Lower Lobe */}
-        <path
-          d="M6.2 18.5c1.6.8 3.5.7 4.8-.4 1.2-1 2-2.4 2.6-3.8-2.1 1.2-4.5 2.1-6.8 2.1-.3.8-.5 1.5-.6 2.1Z"
-          fill="currentColor"
-          fillOpacity="0.85"
-        />
-        {/* Spine highlight */}
-        <path
-          d="M5.6 19.4C8 16.5 11.2 12.8 17.5 7.2"
-          stroke="var(--background, #fff)"
-          strokeWidth="0.85"
-          strokeLinecap="round"
-        />
-      </svg>
-    );
-  }
+  const gradientId = `${idPrefix}-mark-grad`;
 
   return (
     <svg
-      viewBox="0 0 32 32"
+      viewBox={LOGO_MARK_VIEWBOX}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={cn("shrink-0", className)}
       aria-hidden="true"
       {...props}
     >
-      <defs>
-        {/* Feather Gradient: Vibrant Blue to Violet/Magenta */}
-        <linearGradient id={gradientId} x1="6" y1="28" x2="26" y2="8" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#2563EB" />
-          <stop offset="45%" stopColor="#4F46E5" />
-          <stop offset="80%" stopColor="#8B5CF6" />
-          <stop offset="100%" stopColor="#C084FC" />
-        </linearGradient>
-
-        {/* Paper Fold Gradient */}
-        <linearGradient id={foldGradId} x1="18" y1="4" x2="25" y2="11" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#60A5FA" />
-          <stop offset="100%" stopColor="#2563EB" />
-        </linearGradient>
-
-        {/* Paper Body Gradient */}
-        <linearGradient id={paperGradId} x1="7" y1="4" x2="24" y2="28" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.96" />
-          <stop offset="100%" stopColor="#E2E8F0" stopOpacity="0.82" />
-        </linearGradient>
-
-        {/* Subtle Drop Filter */}
-        <filter id={`${idPrefix}-shadow`} x="0" y="0" width="32" height="32" filterUnits="userSpaceOnUse">
-          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="#0F172A" floodOpacity="0.15" />
-        </filter>
-      </defs>
-
-      {/* Document Sheet */}
-      <g filter={`url(#${idPrefix}-shadow)`}>
-        <path
-          d="M8 5.5C8 4.67 8.67 4 9.5 4H18.5L25 10.5V25.5C25 26.33 24.33 27 23.5 27H9.5C8.67 27 8 26.33 8 25.5V5.5Z"
-          fill={`url(#${paperGradId})`}
-        />
-      </g>
-
-      {/* Folded Corner */}
+      {variant === "gradient" && (
+        <defs>
+          <linearGradient id={gradientId} x1="6" y1="27" x2="27" y2="5" gradientUnits="userSpaceOnUse">
+            {LOGO_GRADIENT_STOPS.map((stop) => (
+              <stop key={stop.offset} offset={stop.offset} stopColor={stop.color} />
+            ))}
+          </linearGradient>
+        </defs>
+      )}
       <path
-        d="M18.5 4V9.5C18.5 10.05 18.95 10.5 19.5 10.5H25L18.5 4Z"
-        fill={`url(#${foldGradId})`}
-      />
-
-      {/* Feather Main Body */}
-      <path
-        d="M8.8 26.2C10.2 21.8 13.8 16.5 19.2 12.4C23.2 9.4 25.8 8.6 26.8 8.4C26.4 9.6 25.4 12.3 22.8 15.6C18.8 20.8 14.2 23.8 10.1 25.2C9.2 25.5 8.7 25.9 8.8 26.2Z"
-        fill={`url(#${gradientId})`}
-      />
-
-      {/* Feather Lower Lobe / Accent */}
-      <path
-        d="M10.2 24.5C12.4 25.4 14.9 25.2 16.8 23.6C18.4 22.2 19.5 20.2 20.4 18.2C17.5 19.8 14.2 21.1 11 21.1C10.6 22.2 10.3 23.4 10.2 24.5Z"
-        fill={`url(#${gradientId})`}
-        fillOpacity="0.9"
-      />
-
-      {/* Central Spine Highlight */}
-      <path
-        d="M9.5 25.5C13 21.5 17.5 16.8 26.2 8.8"
-        stroke="#FFFFFF"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeOpacity="0.9"
+        d={LOGO_MARK_PATH}
+        fillRule="evenodd"
+        clipRule="evenodd"
+        fill={variant === "gradient" ? `url(#${gradientId})` : "currentColor"}
       />
     </svg>
   );

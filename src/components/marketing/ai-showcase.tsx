@@ -84,7 +84,7 @@ export function AiShowcase() {
         <aside className="product-sidebar" aria-hidden="true">
           <div className="product-brand">
             <span>
-              <LogoMark className="size-full" />
+              <LogoMark className="size-full" idPrefix="showcase" />
             </span>
             Inkest
           </div>

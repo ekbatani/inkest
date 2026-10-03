@@ -15,7 +15,7 @@ export default function AuthLayout({
       <div className="relative z-10 flex min-h-dvh flex-col">
         <header className="auth-header">
           <Link href="/dashboard" className="marketing-logo" aria-label="Inkest workspace">
-            <LogoMark className="size-8" />
+            <LogoMark className="size-8" idPrefix="auth-header" />
             <span>Inkest</span>
           </Link>
         </header>

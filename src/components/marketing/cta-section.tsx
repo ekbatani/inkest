@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowUpRight, Feather } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { LogoMark } from "@/components/brand/logo-mark";
 
 export function CtaSection({
   user,
@@ -11,7 +12,7 @@ export function CtaSection({
       <div className="cta-panel__aurora" aria-hidden="true" />
       <div className="cta-panel__grid" aria-hidden="true" />
       <div className="final-cta-orbit" aria-hidden="true"><span /><span /><span /></div>
-      <Feather className="final-cta-feather" aria-hidden="true" />
+      <LogoMark variant="monochrome" className="final-cta-feather" />
       <p className="marketing-eyebrow">The page is yours</p>
       <h2 id="cta-title" className="marketing-display">Your best thinking<br /><em>needs a home.</em></h2>
       <p>Start free. Stay private. Take everything with you, whenever you want.</p>

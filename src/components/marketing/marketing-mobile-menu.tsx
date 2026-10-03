@@ -45,7 +45,7 @@ export function MarketingMobileMenu({
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         <div className="flex h-full flex-col">
           <div className="flex items-center gap-2.5 border-b px-5 py-4">
-            <LogoMark className="size-7" />
+            <LogoMark className="size-7" idPrefix="mobile-menu" />
             <span className="text-sm font-semibold tracking-tight">Inkest</span>
           </div>
 

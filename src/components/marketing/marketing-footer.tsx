@@ -48,7 +48,7 @@ export function MarketingFooter() {
         <div className="marketing-footer-top">
           <div className="marketing-footer-brand">
             <Link href="/landing" className="marketing-logo" aria-label="Inkest home">
-              <LogoMark className="size-8" />
+              <LogoMark className="size-8" idPrefix="footer" />
               <span>Inkest</span>
             </Link>
             <p className="marketing-footer-tagline">CAPTURE · ORGANIZE · THINK</p>
