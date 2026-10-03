@@ -117,10 +117,20 @@ export function QuickCaptureClient() {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-xs text-muted-foreground">
-          Ctrl + Enter saves your note. Ctrl + Shift + Enter generates one with AI.
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <p className="hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:flex pointer-coarse:hidden">
+          <span className="inline-flex items-center gap-1">
+            <Kbd>Ctrl</Kbd>
+            <Kbd>Enter</Kbd>
+            save
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Kbd>Ctrl</Kbd>
+            <Kbd>Shift</Kbd>
+            <Kbd>Enter</Kbd>
+            draft with AI
+          </span>
+        </p>
+        <div className="flex flex-wrap items-center gap-2 sm:ms-auto">
           <Button
             size="sm"
             variant="outline"
@@ -147,5 +157,13 @@ export function QuickCaptureClient() {
         </div>
       </div>
     </div>
+  );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="rounded border border-border/70 bg-muted/60 px-1.5 py-0.5 font-mono text-[0.65rem] leading-none text-foreground/80">
+      {children}
+    </kbd>
   );
 }
