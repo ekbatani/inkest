@@ -415,7 +415,7 @@ export function SidebarToggleWrapper({
           <SheetContent
             side="right"
             showCloseButton={false}
-            className="w-[94%] max-w-[420px] gap-0 p-0"
+            className="gap-0 p-0 data-[side=right]:w-full data-[side=right]:border-s-0 data-[side=right]:sm:max-w-[420px] data-[side=right]:sm:border-s"
           >
             <SheetTitle className="sr-only">AI Assistant</SheetTitle>
             {React.isValidElement(aiSidebar)
