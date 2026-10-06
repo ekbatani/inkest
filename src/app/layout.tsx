@@ -108,7 +108,13 @@ export default async function RootLayout({
           <SessionProvider>
             {children}
           </SessionProvider>
-          <Toaster richColors closeButton position="bottom-right" />
+          <Toaster
+            richColors
+            closeButton
+            position="bottom-right"
+            // Clear the floating bottom dock the app shell shows on phones.
+            mobileOffset={{ bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))" }}
+          />
         </ThemeProvider>
       </body>
     </html>

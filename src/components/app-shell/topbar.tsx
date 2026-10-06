@@ -4,6 +4,7 @@ import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, Plus, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/app-shell/theme-toggle";
 import { NotificationInbox } from "@/components/app-shell/notification-inbox";
 import {
@@ -63,6 +64,20 @@ export function Topbar({
   const topbarActions = useTopbarActions();
   const [commandOpen, setCommandOpen] = React.useState(false);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  // While the user is typing on a phone the bottom dock gets out of the way,
+  // like native apps do when the on-screen keyboard is up.
+  const [keyboardOpen, setKeyboardOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const sync = () => setKeyboardOpen(isEditableTarget(document.activeElement));
+    const onFocusOut = () => requestAnimationFrame(sync);
+    document.addEventListener("focusin", sync);
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      document.removeEventListener("focusin", sync);
+      document.removeEventListener("focusout", onFocusOut);
+    };
+  }, []);
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -95,14 +110,15 @@ export function Topbar({
 
   return (
     <>
+      {/* Below `sm` the bar floats at the bottom of the screen as a glass dock
+          (thumb-reachable, native-app feel); from `sm` up it is the top bar. */}
       <header
-        className="relative z-30 flex shrink-0 items-center gap-1 border-b border-border/70 bg-background/80 px-3 pb-2 backdrop-blur-xl sm:h-16 sm:min-h-16 sm:gap-2 sm:px-5 sm:pb-0 sm:pt-0"
-        style={{
-          paddingTop: "max(0.5rem, calc(0.5rem + env(safe-area-inset-top, 0px)))",
-          paddingLeft: "max(0.75rem, calc(0.75rem + env(safe-area-inset-left, 0px)))",
-          paddingRight: "max(0.75rem, calc(0.75rem + env(safe-area-inset-right, 0px)))",
-          minHeight: "calc(4rem + env(safe-area-inset-top, 0px))",
-        }}
+        data-keyboard={keyboardOpen ? "open" : undefined}
+        className={cn(
+          "fixed bottom-[calc(0.5rem+var(--sab))] left-[max(0.5rem,calc(0.5rem+var(--sal)))] right-[max(0.5rem,calc(0.5rem+var(--sar)))] z-40 flex items-center gap-0.5 rounded-[1.375rem] border border-border/60 bg-background/70 p-1 shadow-[0_12px_32px_-12px_rgb(0_0_0/0.45)] ring-1 ring-white/5 backdrop-blur-2xl backdrop-saturate-150 transition-[translate,opacity] duration-200 ease-out motion-reduce:transition-none",
+          "data-[keyboard=open]:max-sm:pointer-events-none data-[keyboard=open]:max-sm:translate-y-[calc(100%+1rem+var(--sab))] data-[keyboard=open]:max-sm:opacity-0",
+          "sm:relative sm:inset-auto sm:z-30 sm:h-16 sm:min-h-[calc(4rem+var(--sat))] sm:shrink-0 sm:gap-2 sm:rounded-none sm:border-0 sm:border-b sm:border-border/70 sm:bg-background/80 sm:pb-0 sm:pl-[max(0.75rem,calc(0.75rem+var(--sal)))] sm:pr-[max(0.75rem,calc(0.75rem+var(--sar)))] sm:pt-[max(0.5rem,calc(0.5rem+var(--sat)))] sm:shadow-none sm:ring-0 sm:backdrop-blur-xl sm:backdrop-saturate-100",
+        )}
       >
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
           <SheetTrigger
@@ -140,7 +156,7 @@ export function Topbar({
           role="combobox"
           aria-label="Open command menu"
           onClick={() => setCommandOpen(true)}
-          className="h-9 size-9 shrink-0 justify-center rounded-xl border-border/70 bg-muted/25 px-0 text-muted-foreground shadow-none hover:bg-muted/50 sm:size-auto sm:w-72 sm:justify-start sm:px-3 lg:w-80 pointer-coarse:h-10 pointer-coarse:max-sm:w-10"
+          className="h-9 size-9 shrink-0 justify-center rounded-xl border-border/70 bg-muted/25 px-0 text-muted-foreground shadow-none hover:bg-muted/50 sm:h-9 sm:w-72 sm:justify-start sm:px-3 lg:w-80 pointer-coarse:h-10 pointer-coarse:max-sm:w-10"
         >
           <Search className="size-4 pointer-coarse:size-5" />
           <span className="hidden text-sm sm:inline">Search notes &amp; projects…</span>
@@ -153,7 +169,8 @@ export function Topbar({
           {topbarActions?.slot?.node}
           <Button
             size="sm"
-            className="size-8 gap-1.5 rounded-xl p-0 shadow-sm sm:size-auto sm:px-3.5 pointer-coarse:max-sm:size-10"
+            aria-label="New note"
+            className="size-9 gap-1.5 rounded-full p-0 shadow-sm sm:h-9 sm:w-auto sm:rounded-xl sm:px-3.5 pointer-coarse:max-sm:size-10 pointer-coarse:sm:h-10"
             onClick={() => {
               if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
                 window.dispatchEvent(new CustomEvent("inkest:flush-active-save"));

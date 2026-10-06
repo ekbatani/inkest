@@ -350,7 +350,9 @@ export function SidebarToggleWrapper({
       </button>
 
       {/* Main App Content Area */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+      {/* Below `sm` the Topbar docks at the bottom, so the status-bar inset
+          moves up here. */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col pt-[var(--sat)] sm:pt-0">{children}</div>
 
       {/* Right AI Assistant Sidebar Toggle Button */}
       {aiSidebar ? (

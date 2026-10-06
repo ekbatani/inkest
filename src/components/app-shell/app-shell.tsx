@@ -42,7 +42,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             <main
               id="main-content"
               tabIndex={-1}
-              className="app-canvas min-h-0 min-w-0 flex-1 overflow-y-auto focus:outline-none"
+              className="app-canvas min-h-0 min-w-0 flex-1 overflow-y-auto pb-[calc(4.5rem+var(--sab))] focus:outline-none sm:pb-0"
             >
               <TabContentKeeper>
                 {children}
