@@ -74,7 +74,7 @@ export default async function NotesPage({
             <h1 className="text-2xl font-semibold tracking-tight">Notes Workspace</h1>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DocumentUploadModal />
           <Button
             size="sm"
@@ -259,7 +259,7 @@ export default async function NotesPage({
               <DocumentUploadModal />
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredDocuments.map((doc) => (
                 <Link
                   key={doc.id}
@@ -302,7 +302,7 @@ export default async function NotesPage({
               <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 <Pin className="size-3.5" /> Pinned Notes ({pinned.length})
               </h2>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {pinned.map((note) => (
                   <NoteCard key={note.id} note={note} />
                 ))}
@@ -319,7 +319,7 @@ export default async function NotesPage({
             {notes.length === 0 ? (
               <EmptyState search={search} hasTagFilter={activeTagObjects.length > 0} />
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {(search || activeTagObjects.length ? notes : regularNotes).map((note) => (
                   <NoteCard key={note.id} note={note} />
                 ))}

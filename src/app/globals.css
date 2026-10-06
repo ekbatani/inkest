@@ -445,6 +445,26 @@ html.dark[data-palette="midnight"],
 .inkest-prose ol {
   padding-inline-start: 1.5em;
 }
+/* Tailwind preflight resets list-style; restore markers for rendered Markdown. */
+.inkest-prose ul {
+  list-style-type: disc;
+}
+.inkest-prose ul ul {
+  list-style-type: circle;
+}
+.inkest-prose ul ul ul {
+  list-style-type: square;
+}
+.inkest-prose ol {
+  list-style-type: decimal;
+}
+.inkest-prose ul.contains-task-list,
+.inkest-prose li.task-list-item {
+  list-style-type: none;
+}
+.inkest-prose li::marker {
+  color: var(--muted-foreground);
+}
 .inkest-prose li {
   margin-top: 0.25em;
   padding-inline-start: 0.12em;

@@ -83,28 +83,32 @@ export function SidebarToggleWrapper({
   // viewport so mobile devices get the sheet variant after hydration.
   const [isDesktop, setIsDesktop] = React.useState(true);
 
+  // Crossing the desktop/mobile boundary swaps the AI sidebar container,
+  // so close it to avoid a panel popping open after rotation/resize. The
+  // close is batched with the isDesktop update so the mobile sheet never
+  // mounts open only to be closed right away, which leaves an invisible,
+  // viewport-overflowing panel running its exit transition on note pages.
+  const prevIsDesktopRef = React.useRef(true);
   React.useEffect(() => {
     const mediaQuery = window.matchMedia(AI_SIDEBAR_DESKTOP_QUERY);
-    const update = () => setIsDesktop(mediaQuery.matches);
+    const update = () => {
+      const matches = mediaQuery.matches;
+      setIsDesktop(matches);
+      if (prevIsDesktopRef.current !== matches) {
+        prevIsDesktopRef.current = matches;
+        setAiSidebarOpen(false);
+      }
+    };
     update();
     mediaQuery.addEventListener("change", update);
     return () => mediaQuery.removeEventListener("change", update);
   }, []);
 
-  // Crossing the desktop/mobile boundary swaps the AI sidebar container,
-  // so close it to avoid a panel popping open after rotation/resize.
-  const prevIsDesktopRef = React.useRef(true);
-  React.useEffect(() => {
-    if (prevIsDesktopRef.current !== isDesktop) {
-      prevIsDesktopRef.current = isDesktop;
-      setAiSidebarOpen(false);
-    }
-  }, [isDesktop]);
-
   // Route-based default: Open automatically in note pages, closed in other pages.
-  // Desktop only — on mobile the sheet is opened explicitly.
+  // Desktop only — on mobile the sheet is opened explicitly. Query the media
+  // directly: on the first client pass `isDesktop` still holds its SSR value.
   React.useEffect(() => {
-    if (!isDesktop) return;
+    if (!window.matchMedia(AI_SIDEBAR_DESKTOP_QUERY).matches) return;
     const currentCategory = isNoteRoute(pathname) ? "note" : "other";
     if (prevCategoryRef.current === null) {
       prevCategoryRef.current = currentCategory;
